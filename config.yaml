@@ -1,0 +1,22 @@
+#==============================================================================#
+### SAMPLE Info - REQUIRED PARAMETERS ####
+tumor_annotation_csv: /net/data.isilon/ag-cherrmann/hdsu/projects/neuroblastoma/publication_GEO/annotation/annotation_tumors.csv
+cells_annotation_csv: /net/data.isilon/ag-cherrmann/hdsu/projects/neuroblastoma/publication_GEO/annotation/annotation_cells.csv
+
+# Paths to data and results
+datapath: /net/data.isilon/ag-cherrmann/hdsu/projects/neuroblastoma/publication_GEO/
+
+
+#==============================================================================#
+#                         Pipeline Steps to Run                                #
+#==============================================================================#
+runTumors:
+    SEsaturation: False
+    SEspecificity: False
+    totalSignalSEmatrix: True
+    SEtarget: True
+    SEmatrix: True
+    hockeystick: False
+    bigwigaverageoverbed: True
+    consensus_SE_noH3K4me3: True
+    consensus_enhancers_noH3K4me3: False
