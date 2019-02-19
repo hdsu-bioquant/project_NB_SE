@@ -1,22 +1,47 @@
 #==============================================================================#
+# Author: 
+# Date: 19.02.2019
+# Comments:
+# Neuroblastoma Supe Enhancer Landscape code
+# 
+# INPUT:
+# main_working_directory/
+# ├── data/
+# │   ├── cells/
+# │   │   ├── chipseq/
+# │   │   │   ├── H3K27ac/
+# │   │   │   └── H3K4me3/
+# │   │   ├── rnaseq/
+# │   └── tumor/
+# │       ├── chipseq
+# │       │   ├── H3K27ac/
+# │       │   └── H3K4me3/
+# │       ├── rnaseq/
+# ├── analysis/
+# └── results/
+#     ├── figure_1/
+#     ├── figure_2/
+#     ├── figure_3/
+#     ├── figure_4/
+#     ├── sup_figure_1/
+#     ├── sup_figure_2/
+#     ├── sup_figure_3/
+#     ├── sup_figure_4/
+#     ├── sup_table_1/
+#     ├── sup_table_2/
+#     ├── sup_table_3/
+#     ├── sup_table_4/
+#==============================================================================#
 ### SAMPLE Info - REQUIRED PARAMETERS ####
 tumor_annotation_csv: /net/data.isilon/ag-cherrmann/hdsu/projects/neuroblastoma/publication_GEO/annotation/annotation_tumors.csv
 cells_annotation_csv: /net/data.isilon/ag-cherrmann/hdsu/projects/neuroblastoma/publication_GEO/annotation/annotation_cells.csv
 
 # Paths to data and results
-datapath: /net/data.isilon/ag-cherrmann/hdsu/projects/neuroblastoma/publication_GEO/
+main_working_directory: /net/data.isilon/ag-cherrmann/hdsu/projects/neuroblastoma/publication_GEO/
 
 
 #==============================================================================#
 #                         Pipeline Steps to Run                                #
 #==============================================================================#
-runTumors:
-    SEsaturation: False
-    SEspecificity: False
-    totalSignalSEmatrix: True
-    SEtarget: True
-    SEmatrix: True
-    hockeystick: False
-    bigwigaverageoverbed: True
-    consensus_SE_noH3K4me3: True
-    consensus_enhancers_noH3K4me3: False
+consensusSE:
+    call_consensus_tumor_SE: True
