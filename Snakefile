@@ -92,7 +92,7 @@ def inputall(wilcards):
     collectfiles = []
     #Consensus SE
     if config["consensusSE"]["call_consensus_tumor_SE"]:
-        collectfiles.append(join(DATAPATH, 'analysis/tumors/SE/tumors_consensus_SE_list_H3K27ac_noH3K4me3.bed'))
+        collectfiles.append(join(DATAPATH, 'analysis/tumor/SE/tumor_consensus_SE_list_H3K27ac_noH3K4me3.bed'))
     #return final list of all files to collect from the pipeline
     return collectfiles
 
@@ -132,20 +132,15 @@ rule cells_bigwigaverageoverbed:
 ### Computes the average score over each bed for tumors
 rule tumors_bigwigaverageoverbed:
     input:
-        bw=join(config['path_Tumors_ChIPseq'], '{sample}/H3K27ac/bw/{sample}_H3K27ac_SES_subtract.bw'),
-        consensusSE=join(DATAPATH, 'results/tumors/H3K27ac/SE/rose_noH3K4me3/tumors_consensus_SE_list_noH3K4me3.bed')
+        bw = join(DATAPATH, 'data/tumor/chipseq/H3K27ac/bw/{sample}_H3K27ac.bw'), 
+        consensusSE = join(DATAPATH, 'analysis/tumors/SE/tumors_consensus_SE_list_H3K27ac_noH3K4me3.bed')
     output:
-        bw_over_bed=join(DATAPATH, 'data/tumors/{sample}/H3K27ac/consensusSE/{sample}_H3K27ac_bigWigAverageOverBed.txt')
-    params:
-        outdir=join(DATAPATH, 'data/tumors/{sample}/H3K27ac/consensusSE/'),
-        cluster='-l walltime=1:30:00,nodes=1:ppn=1,mem=5g'
+        bw_over_bed=join(DATAPATH, 'analysis/tumors/SE/bwOverBed/{sample}_H3K27ac_bigWigAverageOverBed.txt')
     conda:
         "envs/bigwigoverbed.yaml"
     shell:
         """
-        if [ ! -d {params.outdir} ]; then
-            mkdir -p {params.outdir}
-        fi
+        
 
         # Compute the average score of the SES_substract.bw bigWig over the noH3K4me3 consensus SE
         bigWigAverageOverBed {input.bw} {input.consensusSE} {output.bw_over_bed}
@@ -159,9 +154,9 @@ rule tumors_bigwigaverageoverbed:
 ### Compute consensus SE list from SE called by rose for each sample ater H3K4me3 filtering
 rule tumors_consensus_SE_noH3K4me3:
     input:
-        seH3K27ac_noH3K4me3=expand(join(DATAPATH, 'data/tumor/chipseq/H3K27ac/SE/{sample}_H3K27ac_ROSE_noH3K4me3_SuperEnhancers.bed'), zip, sample=TUMOR_SAMPLES_CHIP)
+        seH3K27ac_noH3K4me3 = expand(join(DATAPATH, 'data/tumor/chipseq/H3K27ac/SE/{sample}_H3K27ac_ROSE_noH3K4me3_SuperEnhancers.bed'), zip, sample=TUMOR_SAMPLES_CHIP)
     output:
-        consensusbed=join(DATAPATH, 'analysis/tumors/SE/tumors_consensus_SE_list_H3K27ac_noH3K4me3.bed')
+        consensusbed = join(DATAPATH, 'analysis/tumor/SE/consensusSE/tumor_consensus_SE_list_H3K27ac_noH3K4me3.bed')
     conda:
         "envs/bedtools.yaml"
     shell:
