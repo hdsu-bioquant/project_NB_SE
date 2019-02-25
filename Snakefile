@@ -94,13 +94,30 @@ def inputall(wilcards):
     if config["consensusSE"]["call_consensus_tumor_SE"]:
         collectfiles.append(join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed'))
         collectfiles.extend(expand(join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{type}_H3K27ac_noH3K4me3_consensusSE_SignalScore.txt'), zip, type = ["tumor", "cells"]))
-        collectfiles.append(join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE_SignalScore.txt'))
+        #collectfiles.append(join(DATAPATH, 'tmp.txt'))
     #return final list of all files to collect from the pipeline
     return collectfiles
 
 # Collect pipeline result files
 rule all:
     input: inputall
+
+
+#"envs/R3.5.yaml"
+
+rule placeh:
+    input:
+        consensusSE         = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed')
+    output: 
+        outtmp = join(DATAPATH, 'tmp.txt')
+    params:
+        script='scripts/analysis/01_SEmatrix.R',
+    conda:
+        "envs/cuda_R3.5.yaml"
+    shell:
+        """
+        Rscript {params.script} {output.outtmp} {input.consensusSE} 
+        """
 
 
 
@@ -111,10 +128,9 @@ rule all:
 #================================================================================#
 ### Computes the SE average score signal for tumors
 def find_bwAverage(wildcards):
-    #averageOverBed = []
     SAMPLES = TUMOR_SAMPLES_CHIP if wildcards.type == "tumor" else CELLS_SAMPLES_CHIP
     averageOverBed = expand((DATAPATH + 'analysis/' + wildcards.type + '/chipseq/H3K27ac/consensusSE/{sample}_H3K27ac_bigWigAverageOverBed.txt'), zip, sample = SAMPLES)
-    print(wildcards.type)
+    #print(wildcards.type)
     return averageOverBed
     
 rule SE_SignalMatrix:
@@ -125,7 +141,7 @@ rule SE_SignalMatrix:
         matrix_rds = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{type}_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS'),
         matrix_txt = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{type}_H3K27ac_noH3K4me3_consensusSE_SignalScore.txt')
     params:
-        script='scripts/R/01_SEmatrix.R',
+        script='scripts/analysis/01_SEmatrix.R',
     conda:
         "envs/R3.5.yaml"
     shell:
@@ -140,7 +156,7 @@ rule SE_bigwigaverageoverbed:
         bw = join(DATAPATH, 'data/{type}/chipseq/H3K27ac/bw/{sample}_H3K27ac.bw'), 
         consensusSE = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed')
     output:
-        bw_over_bed=join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{sample}_H3K27ac_bigWigAverageOverBed.txt')
+        bw_over_bed=temp(join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{sample}_H3K27ac_bigWigAverageOverBed.txt'))
     conda:
         "envs/generaltools.yaml"
     shell:
@@ -170,3 +186,23 @@ rule tumors_consensus_SE_noH3K4me3:
         paste -d "" - - | awk 'BEGIN{{FS="\t";OFS="\t"}} {{ t = $4; $4 = $6; $6 = t; print;}} ' > {output.consensusbed}
         """
 
+
+
+# Install missing R packages in conda env cuda_R3.4
+rule install_missing_R_01:
+    output: ".snakemake/completeLibrary.txt"
+    params:
+        script  = 'scripts/aux/install_R_packages01.R',
+    conda: 'envs/cuda_R3.5.yaml'
+    shell:
+        """
+        
+        Rscript {params.script}
+    
+        git clone https://github.com/cudamat/cudamat.git
+        pip install cudamat/
+        rm -rf cudamat
+    
+        touch {output}
+        
+        """

@@ -1,0 +1,27 @@
+#==============================================================================#
+#                     Cluster config for a qsub system                         #
+#==============================================================================#
+# Default Rule
+__default__:
+    walltime : 04:00
+    cores    : 1
+    memory   : 1024
+    queue    : " "
+    name     : "JOBNAME.{rule}.{wildcards}"
+    output   : "logs/{rule}.{wildcards}.out"
+    error    : "logs/{rule}.{wildcards}.err"
+
+#==============================================================================#
+#                         Consensus SE                                         #
+#==============================================================================#
+tumors_consensus_SE_noH3K4me3:
+    walltime: 01:30
+    memory: 5120
+
+gpu:
+    walltime: 04:00
+    cores: 1
+    memory: 4096
+    queue: " -q gputest"
+
+
