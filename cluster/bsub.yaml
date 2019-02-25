@@ -18,10 +18,9 @@ tumors_consensus_SE_noH3K4me3:
     walltime: 01:30
     memory: 5120
 
-gpu:
-    walltime: 04:00
-    cores: 1
+install_missing_R_01:
+    walltime: 02:00
     memory: 4096
-    queue: " -q gputest"
+    queue: " -gpu num=1:j_exclusive=yes:mode=exclusive_process -q gputest"
 
 

@@ -1,0 +1,19 @@
+channels:
+ - bioconda
+ - conda-forge
+dependencies:
+ - r-base=3.5.1
+ - rstudio
+ - bioconductor-limma
+ - bioconductor-genomicranges
+ - bioconductor-rtracklayer
+ - bioconductor-summarizedexperiment
+ - bioconductor-complexheatmap
+ - bioconductor-biocparallel
+ - r-ggplot2
+ - r-rtsne
+ - r-gridextra
+ - r-ggrepel
+ - r-rcurl
+ - r-foreach
+ - bioconductor-gseabase

@@ -1,0 +1,8 @@
+channels:
+ - bioconda
+ - conda-forge
+dependencies:
+ - samtools=1.9
+ - bzip2=1.0.6
+ - bedtools=2.26.0
+ - ucsc-bigwigaverageoverbed=332 

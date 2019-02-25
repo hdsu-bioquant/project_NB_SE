@@ -94,6 +94,7 @@ def inputall(wilcards):
     if config["consensusSE"]["call_consensus_tumor_SE"]:
         collectfiles.append(join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed'))
         collectfiles.extend(expand(join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{type}_H3K27ac_noH3K4me3_consensusSE_SignalScore.txt'), zip, type = ["tumor", "cells"]))
+        collectfiles.append('.snakemake/completeLibrary.txt')
         #collectfiles.append(join(DATAPATH, 'tmp.txt'))
     #return final list of all files to collect from the pipeline
     return collectfiles
@@ -113,7 +114,7 @@ rule placeh:
     params:
         script='scripts/analysis/01_SEmatrix.R',
     conda:
-        "envs/cuda_R3.5.yaml"
+        'envs/cuda_R3.5.yaml'
     shell:
         """
         Rscript {params.script} {output.outtmp} {input.consensusSE} 
@@ -143,7 +144,7 @@ rule SE_SignalMatrix:
     params:
         script='scripts/analysis/01_SEmatrix.R',
     conda:
-        "envs/R3.5.yaml"
+        'envs/R3.5.yaml'
     shell:
         """
         Rscript {params.script} {output.matrix_rds} {output.matrix_txt} {input.consensusSE} {input.averageOverBed_path}
@@ -158,7 +159,7 @@ rule SE_bigwigaverageoverbed:
     output:
         bw_over_bed=temp(join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{sample}_H3K27ac_bigWigAverageOverBed.txt'))
     conda:
-        "envs/generaltools.yaml"
+        'envs/generaltools.yaml'
     shell:
         """
         # Compute the average score of the SES_substract.bw bigWig over the noH3K4me3 consensus SE
@@ -177,7 +178,7 @@ rule tumors_consensus_SE_noH3K4me3:
     output:
         consensusbed = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed')
     conda:
-        "envs/generaltools.yaml"
+        'envs/generaltools.yaml'
     shell:
         """
         # Merge all SE
@@ -190,15 +191,18 @@ rule tumors_consensus_SE_noH3K4me3:
 
 # Install missing R packages in conda env cuda_R3.4
 rule install_missing_R_01:
-    output: ".snakemake/completeLibrary.txt"
+    output: '.snakemake/completeLibrary.txt'
     params:
         script  = 'scripts/aux/install_R_packages01.R',
     conda: 'envs/cuda_R3.5.yaml'
     shell:
         """
         
+        unset LD_LIBRARY_PATH
+        export PATH="/usr/local/cuda/bin:$PATH"
+        nvidia-smi
+        
         Rscript {params.script}
-    
         git clone https://github.com/cudamat/cudamat.git
         pip install cudamat/
         rm -rf cudamat
