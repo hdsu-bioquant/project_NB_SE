@@ -92,7 +92,9 @@ def inputall(wilcards):
     collectfiles = []
     #Consensus SE
     if config["consensusSE"]["call_consensus_tumor_SE"]:
-        collectfiles.append(join(DATAPATH, 'analysis/tumor/SE/tumor_consensus_SE_list_H3K27ac_noH3K4me3.bed'))
+        collectfiles.append(join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed'))
+        collectfiles.extend(expand(join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{type}_H3K27ac_noH3K4me3_consensusSE_SignalScore.txt'), zip, type = ["tumor", "cells"]))
+        collectfiles.append(join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE_SignalScore.txt'))
     #return final list of all files to collect from the pipeline
     return collectfiles
 
@@ -102,46 +104,48 @@ rule all:
 
 
 
+
+
 #================================================================================#
-#                             bigWig AVERAGE OVER BED                            #
+#                     SE signal bigWig AVERAGE OVER BED                          #
 #================================================================================#
-### Computes the average score over each bed for cell lines
-rule cells_bigwigaverageoverbed:
+### Computes the SE average score signal for tumors
+def find_bwAverage(wildcards):
+    #averageOverBed = []
+    SAMPLES = TUMOR_SAMPLES_CHIP if wildcards.type == "tumor" else CELLS_SAMPLES_CHIP
+    averageOverBed = expand((DATAPATH + 'analysis/' + wildcards.type + '/chipseq/H3K27ac/consensusSE/{sample}_H3K27ac_bigWigAverageOverBed.txt'), zip, sample = SAMPLES)
+    print(wildcards.type)
+    return averageOverBed
+    
+rule SE_SignalMatrix:
     input:
-        bw=join(config['path_Cells_ChIPseq'], '{cell}/{treat}/H3K27ac/bw/{cell}_{treat}_H3K27ac_{bwtrack}_subtract.bw'),
-        consensusSE=join(DATAPATH, 'results/tumors/H3K27ac/SE/rose_noH3K4me3/tumors_consensus_SE_list_noH3K4me3.bed')
-    output:
-        bw_over_bedTRACK=join(DATAPATH, 'data/cells/{cell}/{treat}/H3K27ac/consensusSE/{cell}_{treat}_{bwtrack}_H3K27ac_bigWigAverageOverBed.txt')
+        averageOverBed_path = find_bwAverage,
+        consensusSE         = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed')
+    output: 
+        matrix_rds = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{type}_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS'),
+        matrix_txt = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{type}_H3K27ac_noH3K4me3_consensusSE_SignalScore.txt')
     params:
-        outdir=join(DATAPATH, 'data/cells/{cell}/{treat}/H3K27ac/consensusSE/'),
-        bw_over_bed=join(DATAPATH, 'data/cells/{cell}/{treat}/H3K27ac/consensusSE/{cell}_{treat}_H3K27ac_bigWigAverageOverBed.txt'),
+        script='scripts/R/01_SEmatrix.R',
         cluster='-l walltime=1:30:00,nodes=1:ppn=1,mem=5g'
     conda:
-        "envs/bigwigoverbed.yaml"
+        "envs/SEmatrix.yaml"
     shell:
         """
-        if [ ! -d {params.outdir} ]; then
-            mkdir -p {params.outdir}
-        fi
-
-        # Compute the average score of the SES_substract.bw bigWig over the noH3K4me3 consensus SE
-        bigWigAverageOverBed {input.bw} {input.consensusSE} {output.bw_over_bedTRACK}
-        cp {output.bw_over_bedTRACK} {params.bw_over_bed}
+        Rscript {params.script} {output.matrix_rds} {output.matrix_txt} {input.consensusSE} {input.averageOverBed_path}
         """
+
 
 ### Computes the average score over each bed for tumors
-rule tumors_bigwigaverageoverbed:
+rule SE_bigwigaverageoverbed:
     input:
-        bw = join(DATAPATH, 'data/tumor/chipseq/H3K27ac/bw/{sample}_H3K27ac.bw'), 
-        consensusSE = join(DATAPATH, 'analysis/tumors/SE/tumors_consensus_SE_list_H3K27ac_noH3K4me3.bed')
+        bw = join(DATAPATH, 'data/{type}/chipseq/H3K27ac/bw/{sample}_H3K27ac.bw'), 
+        consensusSE = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed')
     output:
-        bw_over_bed=join(DATAPATH, 'analysis/tumors/SE/bwOverBed/{sample}_H3K27ac_bigWigAverageOverBed.txt')
+        bw_over_bed=join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{sample}_H3K27ac_bigWigAverageOverBed.txt')
     conda:
-        "envs/bigwigoverbed.yaml"
+        "envs/generaltools.yaml"
     shell:
         """
-        
-
         # Compute the average score of the SES_substract.bw bigWig over the noH3K4me3 consensus SE
         bigWigAverageOverBed {input.bw} {input.consensusSE} {output.bw_over_bed}
         """
@@ -156,16 +160,14 @@ rule tumors_consensus_SE_noH3K4me3:
     input:
         seH3K27ac_noH3K4me3 = expand(join(DATAPATH, 'data/tumor/chipseq/H3K27ac/SE/{sample}_H3K27ac_ROSE_noH3K4me3_SuperEnhancers.bed'), zip, sample=TUMOR_SAMPLES_CHIP)
     output:
-        consensusbed = join(DATAPATH, 'analysis/tumor/SE/consensusSE/tumor_consensus_SE_list_H3K27ac_noH3K4me3.bed')
+        consensusbed = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed')
     conda:
-        "envs/bedtools.yaml"
+        "envs/generaltools.yaml"
     shell:
         """
-
         # Merge all SE
         cat {input.seH3K27ac_noH3K4me3}| sortBed | bedtools merge -c 4,4 -o distinct,count_distinct | 
         awk '$5 > 1' |sed -e 's/$/\tSE_/' | sed -n 'p;=' |
         paste -d "" - - | awk 'BEGIN{{FS="\t";OFS="\t"}} {{ t = $4; $4 = $6; $6 = t; print;}} ' > {output.consensusbed}
-
         """
 
