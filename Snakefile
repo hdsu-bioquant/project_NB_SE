@@ -126,9 +126,8 @@ rule SE_SignalMatrix:
         matrix_txt = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{type}_H3K27ac_noH3K4me3_consensusSE_SignalScore.txt')
     params:
         script='scripts/R/01_SEmatrix.R',
-        cluster='-l walltime=1:30:00,nodes=1:ppn=1,mem=5g'
     conda:
-        "envs/SEmatrix.yaml"
+        "envs/R3.5.yaml"
     shell:
         """
         Rscript {params.script} {output.matrix_rds} {output.matrix_txt} {input.consensusSE} {input.averageOverBed_path}
