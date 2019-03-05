@@ -94,6 +94,8 @@ def inputall(wilcards):
     if config["consensusSE"]["call_consensus_tumor_SE"]:
         collectfiles.append(join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed'))
         collectfiles.extend(expand(join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{type}_H3K27ac_noH3K4me3_consensusSE_SignalScore.txt'), zip, type = ["tumor", "cells"]))
+        collectfiles.extend(expand(join(DATAPATH, 'reports/01_{type}_chipseq_NMF_report.html'), zip, type = ["tumor", "cells"]))
+        #collectfiles.append(join(DATAPATH, 'reports/01_{type}_{omics}_NMF_report.html'))
         collectfiles.append('.snakemake/completeLibrary.txt')
         #collectfiles.append(join(DATAPATH, 'tmp.txt'))
     #return final list of all files to collect from the pipeline
@@ -108,7 +110,7 @@ rule all:
 
 rule placeh:
     input:
-        consensusSE         = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed')
+        consensusSE = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed')
     output: 
         outtmp = join(DATAPATH, 'tmp.txt')
     params:
@@ -121,6 +123,49 @@ rule placeh:
         """
 
 
+
+rule NMF_report_chipseq:
+    input:
+        matrix     = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{type}_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS'),
+        annotation = join(DATAPATH, 'annotation/annotation_{type}.RDS')
+    output:
+        report    = join(DATAPATH, 'reports/01_{type}_chipseq_NMF_report.html'),
+        rmd       = temp(join(DATAPATH, 'reports/01_{type}_chipseq_NMF_report.Rmd')),
+        nmf       = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/NMF/{type}_consensusSE_SignalScore_NMF.RDS'),
+        norm_nmfW = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/NMF/{type}_consensusSE_SignalScore_normNMF_W.RDS'),
+        norm_nmfH = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/NMF/{type}_consensusSE_SignalScore_normNMF_H.RDS')
+    params:
+        script   = 'scripts/analysis/99_NMF_report.Rmd',
+        assayID  = '{type}_chipseq',
+        workdir  = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/NMF/'),
+        nmf_kmin = lambda wildcards: config['NMFparams'][wildcards.type]['k.min'],
+        nmf_kmax = lambda wildcards: config['NMFparams'][wildcards.type]['k.max'],
+        nmf_iter = lambda wildcards: config['NMFparams'][wildcards.type]['iterations']
+    conda: 'envs/cuda_R3.5.yaml'
+    shell:
+        """
+        unset LD_LIBRARY_PATH
+        export PATH="/usr/local/cuda/bin:$PATH"
+        nvidia-smi
+    
+        cp {params.script} {output.rmd}
+
+        Rscript -e "rmarkdown::render( '{output.rmd}', \
+                params = list( \
+                  assayID   = '{params.assayID}', \
+                  work_dir  = '{params.workdir}', \
+                  nmf_kmin  = '{params.nmf_kmin}', \
+                  nmf_kmax  = '{params.nmf_kmax}', \
+                  nmf_iter  = '{params.nmf_iter}', \
+                  nmf       = '{output.nmf}' \
+                  norm_nmfW = '{output.norm_nmfW}' \
+                  norm_nmfH = '{output.norm_nmfH}' \
+                  matrix    = '{input.matrix}', \
+                  metadata  = '{input.annotation}' \
+                ))"
+        
+        
+        """
 
 
 
@@ -201,6 +246,7 @@ rule install_missing_R_01:
         unset LD_LIBRARY_PATH
         export PATH="/usr/local/cuda/bin:$PATH"
         nvidia-smi
+        conda install openssl=1.0
         
         Rscript {params.script}
         git clone https://github.com/cudamat/cudamat.git

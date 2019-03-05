@@ -33,7 +33,7 @@
 #     ├── sup_table_4/
 #==============================================================================#
 ### SAMPLE Info - REQUIRED PARAMETERS ####
-tumor_annotation_csv: /icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/annotation/annotation_tumors.csv
+tumor_annotation_csv: /icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/annotation/annotation_tumor.csv
 cells_annotation_csv: /icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/annotation/annotation_cells.csv
 #tumor_annotation_csv: /net/data.isilon/ag-cherrmann/hdsu/projects/neuroblastoma/publication_GEO/annotation/annotation_tumors.csv
 #cells_annotation_csv: /net/data.isilon/ag-cherrmann/hdsu/projects/neuroblastoma/publication_GEO/annotation/annotation_cells.csv
@@ -50,3 +50,39 @@ main_working_directory: /icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publ
 #==============================================================================#
 consensusSE:
     call_consensus_tumor_SE: True
+
+
+
+
+#==============================================================================#
+#                                NMF parameters                                #
+#==============================================================================#
+# Parameters to run Non-Negative Matrix Factorization
+# k.min: minimum number of signatures to decompose
+# k.max: maximun number of signatures to decompose
+# Iterations: number of outer iterations to run
+
+# Select NMF optimal K for each assay after first run
+
+NMFparams:
+    tumor:  
+        k.min: 2
+        k.max: 6
+        iterations: 5
+        optimalK:
+            chipseq : 4
+            rnaseq  : 4
+    cells: 
+        k.min: 2
+        k.max: 6
+        iterations: 5
+        optimalK:
+            chipseq : 3
+            rnaseq  : 3
+    tumor_cells:  
+        k.min: 2
+        k.max: 6
+        iterations: 5
+        optimalK:
+            chipseq : 5
+            rnaseq  : 5
