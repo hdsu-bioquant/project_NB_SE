@@ -135,7 +135,7 @@ rule NMF_report_chipseq:
         norm_nmfW = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/NMF/{type}_consensusSE_SignalScore_normNMF_W.RDS'),
         norm_nmfH = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/NMF/{type}_consensusSE_SignalScore_normNMF_H.RDS')
     params:
-        script   = 'scripts/analysis/99_NMF_report.Rmd',
+        script   = 'scripts/analysis/03_chipseq_NMF_report.Rmd',
         assayID  = '{type}_chipseq',
         workdir  = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/NMF/'),
         nmf_kmin = lambda wildcards: config['NMFparams'][wildcards.type]['k.min'],
@@ -157,9 +157,9 @@ rule NMF_report_chipseq:
                   nmf_kmin  = '{params.nmf_kmin}', \
                   nmf_kmax  = '{params.nmf_kmax}', \
                   nmf_iter  = '{params.nmf_iter}', \
-                  nmf       = '{output.nmf}' \
-                  norm_nmfW = '{output.norm_nmfW}' \
-                  norm_nmfH = '{output.norm_nmfH}' \
+                  nmf       = '{output.nmf}', \
+                  norm_nmfW = '{output.norm_nmfW}', \
+                  norm_nmfH = '{output.norm_nmfH}', \
                   matrix    = '{input.matrix}', \
                   metadata  = '{input.annotation}' \
                 ))"

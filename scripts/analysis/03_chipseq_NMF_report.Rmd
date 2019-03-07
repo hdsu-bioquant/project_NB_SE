@@ -97,7 +97,7 @@ outer.iter <- params$nmf_iter
 inner.iter <- 2*10^4
 
 # path to save NMF results
-path.NMF.run       <- params$nmf_kmin
+path.NMF.run       <- params$nmf
 path.normNMF.run   <- params$norm_nmfW
 path.normNMF_H.run <- params$norm_nmfH
 
@@ -235,9 +235,9 @@ Minize the Frobenius error, the coefficient of variation and the mean Amari dist
 
 
 #Annotation for H matrix heatmap
-typeIDs <- unique(metadata$type)
+typeIDs <- unique(metadata$Type)
 type.colVector <- list(Type = setNames(inferno(n=length(typeIDs)), typeIDs))
-heat.anno <- HeatmapAnnotation(df = data.frame(Type = metadata$type),
+heat.anno <- HeatmapAnnotation(df = data.frame(Type = metadata$Type),
                                col = type.colVector,
                                show_annotation_name = TRUE, na_col = "white")
 

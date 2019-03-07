@@ -68,21 +68,21 @@ NMFparams:
     tumor:  
         k.min: 2
         k.max: 6
-        iterations: 5
+        iterations: 200
         optimalK:
             chipseq : 4
             rnaseq  : 4
     cells: 
         k.min: 2
         k.max: 6
-        iterations: 5
+        iterations: 200
         optimalK:
             chipseq : 3
             rnaseq  : 3
     tumor_cells:  
         k.min: 2
         k.max: 6
-        iterations: 5
+        iterations: 200
         optimalK:
             chipseq : 5
             rnaseq  : 5
