@@ -90,13 +90,16 @@ printExp()
 #helper function to collect final files from pipeline
 def inputall(wilcards):
     collectfiles = []
-    #Consensus SE
-    if config["consensusSE"]["call_consensus_tumor_SE"]:
-        collectfiles.append(join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed'))
-        collectfiles.extend(expand(join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{type}_H3K27ac_noH3K4me3_consensusSE_SignalScore.txt'), zip, type = ["tumor", "cells"]))
+    if config["phase02_NMF"]["NMF_chipseq_tumor"]:
         collectfiles.extend(expand(join(DATAPATH, 'reports/01_{type}_chipseq_NMF_report.html'), zip, type = ["tumor", "cells"]))
         #collectfiles.append(join(DATAPATH, 'reports/01_{type}_{omics}_NMF_report.html'))
-        collectfiles.append('.snakemake/completeLibrary.txt')
+    if config["phase01_consensusSE"]["SE_target_gene"]:
+        collectfiles.append(join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'))
+    #Consensus SE
+    if config["phase01_consensusSE"]["consensus_tumor_SE"]:
+        collectfiles.append(join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed'))
+        collectfiles.extend(expand(join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{type}_H3K27ac_noH3K4me3_consensusSE_SignalScore.txt'), zip, type = ["tumor", "cells"]))
+        #collectfiles.append('.snakemake/completeLibrary.txt')
         #collectfiles.append(join(DATAPATH, 'tmp.txt'))
     #return final list of all files to collect from the pipeline
     return collectfiles
@@ -234,9 +237,12 @@ rule tumors_consensus_SE_noH3K4me3:
 
 
 
-# Install missing R packages in conda env cuda_R3.4
-rule install_missing_R_01:
-    output: '.snakemake/completeLibrary.txt'
+# Download auxiliary data and install missing R packages in conda env
+rule down_misc_install_missing_R:
+    output:
+        tads           = join(DATAPATH, 'db/TADs/hESC_domains_hg19.RDS')
+        hsapiens_genes = join(DATAPATH, 'db/misc/EnsDb_Hsapiens_v75_genes.RDS')
+        hic_K562       = join(DATAPATH, 'db/hic/GSE63525_K562_HiCCUPS_looplist.txt')
     params:
         script  = 'scripts/aux/install_R_packages01.R',
     conda: 'envs/cuda_R3.5.yaml'

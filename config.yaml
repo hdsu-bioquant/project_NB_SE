@@ -48,9 +48,15 @@ main_working_directory: /icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publ
 #==============================================================================#
 #                         Pipeline Steps to Run                                #
 #==============================================================================#
-consensusSE:
-    call_consensus_tumor_SE: True
+phase01_consensusSE:
+    consensus_tumor_SE: True
+    SE_target_gene:     True
 
+phase02_NMF:
+    NMF_chipseq_tumor:  False
+    NMF_rnaseq_tumor:   False
+    NMF_chipseq_cells:  False
+    NMF_rnaseq_cells:   False
 
 
 
