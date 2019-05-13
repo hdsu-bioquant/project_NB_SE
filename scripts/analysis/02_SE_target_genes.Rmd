@@ -1,0 +1,569 @@
+---
+title: "SE target assignment"
+author: "Health Data Science Unit"
+date: "`r date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    number_sections: false
+params:
+  # Paths data
+  # Paths external data
+  # Paths misc data
+  assayID:   "foo"
+  work_dir:  "foo"
+  nmf_kmin:  2
+  nmf_kmax:  6
+  nmf_iter:  10
+  nmf:       "path/to/save"
+  norm_nmfW: "path/to/save"
+  norm_nmfH: "path/to/save"
+  matrix:    "path/to/matrix"
+  metadata:  "path/to/metadata"
+  tumor_annot:    "annotation/annotation_tumor.RDS"
+  SE:             "analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed"
+  hichip_SK_N_AS: "data/cells/hichip/mango/SK-N-AS_HiChIP_mango.all"
+  hichip_CLB_GA:  "data/cells/hichip/mango/CLB-GA_HiChIP_mango.all"
+  SE_signal:      "analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS"
+  gene_exprs:     "data/tumor/rnaseq/exprs/tumor_RNAseq_Counts_Matrix.RDS"
+  hic:  "db/hic/GSE63525_K562_HiCCUPS_looplist.txt"
+  TADs: "db/TADs/hESC_domains_hg19.RDS"
+  hsapiens_genes: "db/misc/EnsDb_Hsapiens_v75_genes.RDS"
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+#this chunk sets global options for Rmarkdown
+knitr::opts_chunk$set(echo = FALSE)
+#setting working directory. Should be home directory of the project
+knitr::opts_knit$set(root.dir=params$work_dir)
+options(knitr.table.format="html")
+
+library(GenomicInteractions)
+library(tidyverse)
+library(edgeR)
+
+
+# Paths data
+params <- list(tumor_annot    = "annotation/annotation_tumor.RDS",
+               SE             = "analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed",
+               hichip_SK_N_AS = "data/cells/hichip/mango/SK-N-AS_HiChIP_mango.all",
+               hichip_CLB_GA  = "data/cells/hichip/mango/CLB-GA_HiChIP_mango.all",
+               SE_signal      = "analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS",
+               gene_exprs     = "data/tumor/rnaseq/exprs/tumor_RNAseq_Counts_Matrix.RDS",
+               # Paths external data
+               hic  = "db/hic/GSE63525_K562_HiCCUPS_looplist.txt",
+               TADs = "db/TADs/hESC_domains_hg19.RDS",
+               # Paths misc data
+               hsapiens_genes = "db/misc/EnsDb_Hsapiens_v75_genes.RDS")
+
+path_hichip <- c(params$hichip_SK_N_AS, params$hichip_CLB_GA)
+names(path_hichip) <- sub("_HiChIP_mango.all", "", basename(path_hichip))
+
+
+```
+
+
+# Parameters and Data loading
+  
+```{r dataloading, results="asis", cache=FALSE, message=FALSE}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                                Params                                      ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+NCORES <- 10
+
+# For each SE find genes around this window size 
+SE_neighbor_genes_window <- 500000
+
+hichip_mango_FDR   <- 0.05
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                         Read human genes Granges                           ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+hsapiens_genes <- readRDS(params$hsapiens_genes)
+hsapiens_genes$id <- hsapiens_genes$gene_id
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                          Read Consensus SEs                                ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+#read consensus SE
+consensusSE <- read.table(params$SE, stringsAsFactors=FALSE)
+colnames(consensusSE) <- c("chr", "start", "end", "ID", "nMerged", "IDsMerged")
+SE <- makeGRangesFromDataFrame(consensusSE, keep.extra.column = TRUE)
+SE$id <- SE$ID
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                Read data - SE signal - Gene expression - TADs              ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# Read data - Tumor annotation
+tumor_annot <- readRDS(params$tumor_annot)
+# Read data - SE signal
+SE_signal  <- readRDS(params$SE_signal)
+# Read data - Gene expression
+gene_exprs <- readRDS(params$gene_exprs)
+# Read data - TADs
+hESC_domain_hg19 <- readRDS(params$TADs)
+# Read data - Genes
+#hsapiens_genes <- readRDS(params$hsapiens_genes)
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##       Gene expression - genes Granges - same IDs - Find promoters          ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# use only Ensembl ID to match gene names
+rownames(gene_exprs) <- sapply(strsplit(rownames(gene_exprs), "\\."), "[[", 1)
+# Filter H.sapiens Granges and expression matrix
+# Keep only shared genes
+gene_exprs <- gene_exprs[rownames(gene_exprs) %in% hsapiens_genes$gene_id, ]
+dim(gene_exprs)
+hsapiens_genes  <- hsapiens_genes[hsapiens_genes$gene_id %in% rownames(gene_exprs)]
+length(hsapiens_genes)
+
+# Find promoters
+proms <- promoters(hsapiens_genes, upstream = 5000, downstream = 1000) 
+
+
+```
+  
+# Assignment based on SE signal and gene expression correlation
+
+```{r assign_corr}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##  Assign target gene based on correlation of signal and gene expression     ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+## Keep samples with available RNAseq and ChIPseq data  ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# Tumor annotation
+tumor_annot <- tumor_annot[which(tumor_annot$avail.ChIPseq & tumor_annot$avail.RNAseq),]
+dim(tumor_annot)
+# SE signal
+SE_signal   <- SE_signal[,tumor_annot$ProjectID]
+dim(SE_signal)
+# Gene expression
+gene_exprs  <- gene_exprs[,tumor_annot$ProjectID]
+dim(gene_exprs)
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+## Gene expression - Normalize - filter genes wo annot  ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# RNAseq read-counts normalization
+gene_exprs_norm <- DGEList(counts  = gene_exprs, 
+                           samples = colnames(gene_exprs), 
+                           remove.zeros = TRUE)
+gene_exprs_norm$samples$group <- rep(1,ncol(gene_exprs_norm))
+
+#identify the cpm value that corresponds to atleast 20 reads in the smallest library
+cutoff <- (20/min(gene_exprs_norm$samples$lib.size)) * 10^6  
+#cutoff cpm should be present in atleast 25% of samples
+isexpr <- rowSums(cpm(gene_exprs_norm) > cutoff) > round(0.25 * ncol(gene_exprs_norm)) 
+table(isexpr)
+gene_exprs_norm <- gene_exprs_norm[isexpr, ,keep.lib.sizes=FALSE]
+# normalize using voom
+gene_exprs_norm <- calcNormFactors(gene_exprs_norm, method="TMM")
+gene_exprs_norm <- voom(gene_exprs_norm, plot=TRUE)
+gene_exprs_norm <- gene_exprs_norm$E
+hist(gene_exprs_norm)
+dim(gene_exprs_norm)
+
+# Filter H.sapiens Granges keep only expressed genes
+hsapiens_genes_exprs  <- hsapiens_genes[hsapiens_genes$gene_id %in% rownames(gene_exprs_norm)]
+dim(gene_exprs_norm)
+length(hsapiens_genes_exprs)
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+## Overlap SE and genes regions - Corr. Signal-Exprs    ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# find overlap between SE regions and gene regions, 
+# filter out the regions which overlap 
+# (duplicates will be present because some SE overlap with multiple genes and vice versa)
+overlap <- findOverlaps(resize(SE, 
+                               width = (2*SE_neighbor_genes_window) + width(SE),
+                               fix   = "center"), 
+                        hsapiens_genes_exprs)
+
+# Compute correlation between SE signal and gene expression
+SE_signal_exprs_corr <- mclapply(1:length(overlap), function(i){
+  # Find neighbor gene
+  hit <- overlap[i]
+  SE_hit   <- SE[queryHits(hit)]
+  gene_hit <- hsapiens_genes_exprs[subjectHits(hit)]
+  # Compute Spearman correlation
+  ct <- cor.test(SE_signal[SE_hit$ID,], gene_exprs_norm[gene_hit$gene_id,], method = "spearman")
+  # return corr results and gene IDs
+  data.frame(SE      = SE_hit$ID,
+             ENSEMBL = gene_hit$gene_id, 
+             SYMBOL  = gene_hit$symbol,
+             method  = "correlation",
+             pval    = ct$p.value,
+             corr    = ct$estimate,
+             row.names = NULL, 
+             stringsAsFactors = FALSE)
+}, mc.cores = NCORES)
+SE_signal_exprs_corr <- do.call(rbind, SE_signal_exprs_corr)
+head(SE_signal_exprs_corr)
+length(unique(SE_signal_exprs_corr$SE))
+
+```
+
+# Assignment based nearest gene
+
+```{r assign_nearest}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                    Assign target gene based on nearest gene                ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+idx <- nearest(SE, hsapiens_genes)
+SE_nearest <- data.frame(SE      = SE$ID,
+                         ENSEMBL = hsapiens_genes$gene_id[idx],
+                         SYMBOL  = hsapiens_genes$symbol[idx],
+                         method  = "nearest",
+                         stringsAsFactors = FALSE)
+```
+
+
+
+# Assignment based on interaction data
+
+```{r assign_interaction}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                    Assign target gene based on interaction data            ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                      Read HiChIP mango results                             ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+hichip <- do.call(rbind, lapply(path_hichip, function(path_mango){
+  read_tsv(path_mango, col_names = F)  %>% 
+    dplyr::filter(X8 <= hichip_mango_FDR)
+}))
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                             Read HiC data                                  ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+loops <- read_tsv(gzfile(params$hic))
+
+loops <- na.omit(loops)
+loops$chr1 <- paste0("chr", loops$chr1)
+loops$chr2 <- paste0("chr", loops$chr2)
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##              Make genomicInteractions from HiC and HiChIP data             ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+colnames(hichip) <- colnames(loops)[1:ncol(hichip)]
+
+interA <- GRanges(loops$chr1, IRanges(loops$x1, loops$x2))
+interB <- GRanges( loops$chr2, IRanges(loops$y1, loops$y2))
+HiC    <- GenomicInteractions(interA, interB,counts =  loops$o)
+
+interA  <- GRanges(hichip$chr1, IRanges(hichip$x1, hichip$x2))
+interB  <- GRanges( hichip$chr2, IRanges(hichip$y1, hichip$y2))
+hichipI <- GenomicInteractions(interA, interB,counts =  hichip$o)
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                   Finding targets in interaction data                      ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+## Calling targets
+annotation.features = list(SE = SE,
+                           promotor = proms)
+
+annotateInteractions(HiC, annotation.features)
+annotateInteractions(hichipI, annotation.features)
+#categoriseInteractions(loopsI)
+
+# Annotated using interactions:
+plotInteractionAnnotations(HiC)
+plotInteractionAnnotations(hichipI)
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                     Annotate by interactions function                      ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+hicSE     <- HiC[isInteractionType(HiC, "SE", "promotor")]
+hichipSE  <- hichipI[isInteractionType(hichipI, "SE", "promotor")]
+
+SEtargets <- function(SE2gene){
+  anchorA <- anchorOne(SE2gene)
+  anchorB <- anchorTwo(SE2gene)
+  
+  # create all possibl;e list combinations of SE and promotor
+  x <- c(anchorA$SE.id, anchorB$SE.id) 
+  y <- c(anchorB$promotor.id,anchorA$promotor.id )
+  
+  # iterate trough lists to make all possible pairs:
+  z <- mapply(function(a,b){
+    as.matrix(expand.grid(a,b, stringsAsFactors = FALSE))
+  }, x,y)
+  
+  interactions <- na.omit(do.call(rbind, z))
+  interactions <- as.data.frame(interactions, stringsAsFactors = FALSE)
+  colnames(interactions) <- c("SE", "ENSEMBL")
+  interactions <- unique(interactions)
+  return(interactions) 
+}
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##             Find SE target genes annotated by HiChIP data                  ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+hichipT <- SEtargets(hichipSE)
+hichipT$method <- "HiChIP"
+hichipT$SYMBOL <- hsapiens_genes$symbol[match(hichipT$ENSEMBL, hsapiens_genes$gene_id)]
+# hichipT <- hichipT[order(hichipT$se.id),]
+# hichipT <- as_tibble(hichipT)
+# 
+# uhichipT <- hichipT %>% 
+#   group_by(se.id) %>% 
+#   summarise( HiChIP = paste(target.id, sep = "", collapse = "|"))
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##              Find SE target genes annotated by HiC data                    ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+hicT <- SEtargets(hicSE)
+hicT$method <- "HiC"
+hicT$SYMBOL <- hsapiens_genes$symbol[match(hicT$ENSEMBL, hsapiens_genes$gene_id)]
+
+# hicT <- hicT[order(hicT$se.id),]
+# 
+# uhicT <- hicT %>% 
+#   group_by(se.id) %>% 
+#   summarise( HiC = paste(target.id, sep = "", collapse = "|"))
+# 
+# uSE <- full_join(uSE,uhichipT) 
+# uSE <- full_join(uSE,uhicT) 
+
+  
+
+```
+
+# Combine annotations
+
+```{r combine_annot}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                     Combine all possible annotations                       ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# Based on correlation of SE signal and gene expression
+head(SE_signal_exprs_corr)
+# Based on closest gene
+head(SE_nearest)
+# Based on interaction data
+head(hichipT)
+head(hicT)
+
+SE_annot_df <- bind_rows(SE_signal_exprs_corr,
+                         SE_nearest,
+                         hichipT,
+                         hicT)
+head(SE_annot_df)
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                     Format SE granges to save                              ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+SE_target <- SE
+# Remove unused metadata
+SE_target$nMerged   <- NULL
+SE_target$IDsMerged <- NULL
+SE_target$id        <- NULL
+# Assign names
+names(SE_target) <- SE_target$ID
+SE_target
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                 Find distance between SE and target gene                   ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+SE_annot_df$distance <- GenomicRanges::distance(x = SE_target[SE_annot_df$SE], 
+                                                y = hsapiens_genes[SE_annot_df$ENSEMBL])
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##               Find if SE and target gene are in the same TAD               ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+## annotate with TADS
+hESC_domain_hg19
+
+# Overlap of SE with TADs
+ov_se_tad <- findOverlaps(SE_target, hESC_domain_hg19)
+ov_se_tad <- data.frame(SE  = SE_target$ID[queryHits(ov_se_tad)],
+                        TAD = subjectHits(ov_se_tad), 
+                        stringsAsFactors = FALSE)
+head(ov_se_tad)
+# Overlap of Gene promoters with TADs
+ov_genes_tad <- findOverlaps(proms, hESC_domain_hg19)
+ov_genes_tad <- data.frame(ENSEMBL = proms$gene_id[queryHits(ov_genes_tad)],
+                           TAD     = subjectHits(ov_genes_tad), 
+                           stringsAsFactors = FALSE)
+head(ov_genes_tad)
+
+hist(sapply(split(ov_se_tad, ov_se_tad$SE), nrow))
+
+
+# Parse overlaps and find alse if gene is inside the SE
+SE_GENE_same_TAD <- do.call(rbind, mclapply(split(ov_se_tad, ov_se_tad$SE), function(hit_SE_TAD){
+  # Define SE iD
+  SE_ID <- unique(hit_SE_TAD$SE)
+  # retrieve Genes that are in the same TAD
+  hit_GENE <- ov_genes_tad$ENSEMBL[ov_genes_tad$TAD %in% hit_SE_TAD$TAD]
+  # If gene is inside SE, annotate as same TAD
+  hit_SE_GENE <- findOverlaps(SE_target[SE_ID], hsapiens_genes)
+  hit_SE_GENE <- hsapiens_genes$gene_id[subjectHits(hit_SE_GENE)]
+  
+  # Return SE and genes in the same TADs
+  data.frame(SE      = SE_ID,
+             ENSEMBL = unique(c(hit_GENE, hit_SE_GENE)), 
+             stringsAsFactors = FALSE)
+  
+  #
+}, mc.cores = NCORES))
+
+
+# Include same TAD annotation in asignment data frame
+head(SE_annot_df)
+
+SE_annot_df$inSameTAD <- paste0(SE_annot_df$SE, SE_annot_df$ENSEMBL) %in% paste0(SE_GENE_same_TAD$SE, SE_GENE_same_TAD$ENSEMBL)
+sum(SE_annot_df$inSameTAD)
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                 Save SE target annotation data frame                       ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+saveRDS(SE_annot_df, "analysis/tumor/SE_annot/tumor_consensusSE_target_annotation_df.RDS")
+```
+
+# Rank target genes for each SE
+
+```{r top_target}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##            Rank possible comination of different annotations               ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+unique(SE_annot_df$method)
+
+# Define rank of possible annotation, from top to bottom
+all_evidence <- c("HiChIP", "HiC", "correlation", "nearest")
+# Combine all possible sources of annotation
+combn_evidence <- do.call(c, lapply(length(all_evidence):1, function(i){
+  combn(all_evidence, m = i, simplify = FALSE)
+}))
+combn_evidence
+
+# Reorder combination, to rank evidende according to the following rank:
+# 1 HiChIP
+# 2 HiC
+# 3 correlation
+# 4 nearest
+idx_evidence <- do.call(c, lapply(all_evidence, function(one_type){
+  # return index if X type of annotation was found in this combination
+  which(sapply(combn_evidence, function(evidence_list){
+    one_type %in% evidence_list
+  }))
+}))
+combn_evidence <- combn_evidence[unique(idx_evidence)]
+
+combn_evidence
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##            Assign rank of annotation to choose top target                  ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+# Split annotation data frame by SE ID, and find top target for each SE
+SE_target_rank <- mclapply(split(SE_annot_df, SE_annot_df$SE), function(SE_annot){
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ## Filter targets based on correlation by p.val or corr ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  # remove target by corr that are not in the same TAD
+  SE_annot <- SE_annot[!(SE_annot$method == "correlation" & (!SE_annot$inSameTAD)), ,drop=FALSE]
+  #idx <- which(SE_annot$method == "correlation" & SE_annot$method > 0.05)
+  # Filter targets based on correlation
+  idx <- which((SE_annot$method == "correlation" & abs(SE_annot$corr) < 0.1 ))
+  #print(SE_annot)
+  if (length(idx) > 0) {
+    SE_annot <- SE_annot[-idx,,drop = FALSE]
+  }
+  #print(SE_annot)
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##    Split by gene symbol and assign evidence rank     ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  #rank_symbol <- lapply(split(SE_annot, SE_annot$SYMBOL), function(annot_gene){
+  rank_gene <- lapply(split(SE_annot, SE_annot$ENSEMBL), function(annot_gene){
+    # Cycle through evidence combinations and find rank
+    rank_each_gene <- sapply(combn_evidence, function(evidence_list){
+      in_evidence <- unique(annot_gene$method) %in% evidence_list
+      sum(in_evidence) == length(evidence_list)
+    })
+    # Find max corr
+    if (sum(annot_gene$method == "correlation") > 0) {
+      corr <- annot_gene$corr[annot_gene$method == "correlation"]
+      corr <- corr[which.max(abs(corr))]
+    } else {
+      corr <- NA
+    }
+    data.frame(SE            = unique(annot_gene$SE),
+               ENSEMBL       = unique(annot_gene$ENSEMBL),
+               SYMBOL        = unique(annot_gene$SYMBOL),
+               evidence_rank = min(which(rank_each_gene)),
+               corr = corr, 
+               stringsAsFactors = FALSE)
+               
+  })
+  do.call(rbind, rank_gene)
+  # rank_symbol
+  # SE_annot %>%
+  #   group_by(SYMBOL)
+  
+  #which.min()
+  
+}, mc.cores = NCORES )
+head(SE_target_rank)
+
+saveRDS(SE_target_rank, "analysis/tumor/SE_annot/tumor_consensusSE_target_rank_list.RDS")
+
+```
+
+# Select top target gene for each SE
+
+```{r}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                         Select top SE target gene                          ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+SE_top_target <- do.call(rbind, mclapply(SE_target_rank, function(rank_gene){
+  # if evidence is Nearest + correlation (rank 13), 
+  #downgreade to only only correlation (rank 14)
+  rank_gene$evidence_rank[rank_gene$evidence_rank == 13] <- 14
+  # Select top tier rank
+  min_rank <- min(rank_gene$evidence_rank)
+  rank_gene <- rank_gene[rank_gene$evidence_rank == min_rank, ,drop=FALSE]
+  # if more than one gene in the top tier, select gene with highest correlation
+  na_corr <- is.na(rank_gene$corr)
+  if (sum(na_corr) < nrow(rank_gene)) {
+    rank_gene <- rank_gene[!na_corr, , drop=FALSE]
+    rank_gene <- rank_gene[which.max(abs(rank_gene$corr)), , drop = FALSE]
+  } else {
+    rank_gene <- rank_gene[1, , drop=FALSE]
+  }
+  # parse string to show which types of data where used to obtain the annotation
+  rank_gene$evidence_types <- paste(combn_evidence[[rank_gene$evidence_rank]], collapse = "|")
+  return(rank_gene)
+}, mc.cores = NCORES ))
+
+head(SE_top_target)
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                 Assign top SE target gene to SE Granges                    ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+SE_target
+idx <- match(SE_target$ID, SE_top_target$SE)
+head(SE_top_target)
+
+SE_target$target_SYMBOL   <- SE_top_target$SYMBOL[idx]
+SE_target$target_ENSEMBL  <- SE_top_target$ENSEMBL[idx]
+SE_target$target_evidence <- SE_top_target$evidence_types[idx]
+SE_target
+
+
+
+saveRDS(SE_target, file="analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS")
+
+write.table(SE_target, "analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.bed",
+            quote = FALSE, col.names = FALSE, row.names = FALSE)
+
+```
+
