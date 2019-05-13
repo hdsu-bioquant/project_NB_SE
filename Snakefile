@@ -171,6 +171,54 @@ rule NMF_report_chipseq:
         """
 
 
+#================================================================================#
+#                                  SE target genes                               #
+#================================================================================#
+rule SE_target_genes:
+    input:
+        tumor_annot = join(DATAPATH, 'annotation/annotation_tumor.RDS'),
+        SE_bed      = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed'),
+        hichip_SK_N_AS = join(DATAPATH, 'data/cells/hichip/mango/SK-N-AS_HiChIP_mango.all'),
+        hichip_CLB_GA = join(DATAPATH, 'data/cells/hichip/mango/CLB-GA_HiChIP_mango.all'),
+        SE_signal = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS'),
+        gene_exprs = join(DATAPATH, 'data/tumor/rnaseq/exprs/tumor_RNAseq_Counts_Matrix.RDS'),
+        hic = join(DATAPATH, 'db/hic/GSE63525_K562_HiCCUPS_looplist.txt'),
+        TADs = join(DATAPATH, 'db/TADs/hESC_domains_hg19.RDS'),
+        hsapiens_genes = join(DATAPATH, 'db/misc/EnsDb_Hsapiens_v75_genes.RDS')
+    output:
+        report    = join(DATAPATH, 'reports/02_SE_target_genes_report.html'),
+        rmd       = temp(join(DATAPATH, 'reports/02_SE_target_genes_report.Rmd')),
+        SE_target = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS')
+    params:
+        script   = 'scripts/analysis/02_SE_target_genes.Rmd',
+        workdir  = DATAPATH
+    conda: 'envs/R3.5.yaml'
+    shell:
+        """
+        #unset LD_LIBRARY_PATH
+        #export PATH="/usr/local/cuda/bin:$PATH"
+        #nvidia-smi
+    
+        cp {params.script} {output.rmd}
+
+        Rscript -e "rmarkdown::render( '{output.rmd}', \
+            params = list( \
+                work_dir       = '{params.workdir}', \
+                tumor_annot    = '{input.tumor_annot}', \
+                SE             = '{input.SE_bed}', \
+                hichip_SK_N_AS = '{input.hichip_SK_N_AS}', \
+                hichip_CLB_GA  = '{input.hichip_CLB_GA}', \
+                SE_signal      = '{input.SE_signal}', \
+                gene_exprs     = '{input.gene_exprs}', \
+                hic            = '{input.hic}', \
+                TADs           = '{input.TADs}', \
+                hsapiens_genes = '{input.hsapiens_genes}', \
+                SE_target_gr   = '{output.SE_target}' \
+                ))"
+        
+        
+        """
+
 
 #================================================================================#
 #                     SE signal bigWig AVERAGE OVER BED                          #
@@ -240,25 +288,24 @@ rule tumors_consensus_SE_noH3K4me3:
 # Download auxiliary data and install missing R packages in conda env
 rule down_misc_install_missing_R:
     output:
+        hsapiens_genes = join(DATAPATH, 'db/misc/EnsDb_Hsapiens_v75_genes.RDS'),
+        hic_K562       = join(DATAPATH, 'db/hic/GSE63525_K562_HiCCUPS_looplist.txt'),
         tads           = join(DATAPATH, 'db/TADs/hESC_domains_hg19.RDS')
-        hsapiens_genes = join(DATAPATH, 'db/misc/EnsDb_Hsapiens_v75_genes.RDS')
-        hic_K562       = join(DATAPATH, 'db/hic/GSE63525_K562_HiCCUPS_looplist.txt')
     params:
-        script  = 'scripts/aux/install_R_packages01.R',
-    conda: 'envs/cuda_R3.5.yaml'
+        script  = 'scripts/aux/missing_packages_and_aux_data.R',
+        workdir = DATAPATH
+    conda: 'envs/R3.5.yaml'
     shell:
         """
         
-        unset LD_LIBRARY_PATH
-        export PATH="/usr/local/cuda/bin:$PATH"
-        nvidia-smi
-        conda install openssl=1.0
+        #unset LD_LIBRARY_PATH
+        #export PATH="/usr/local/cuda/bin:$PATH"
+        #nvidia-smi
+        #conda install openssl=1.0
         
-        Rscript {params.script}
-        git clone https://github.com/cudamat/cudamat.git
-        pip install cudamat/
-        rm -rf cudamat
-    
-        touch {output}
+        Rscript {params.script} {params.workdir} {output.hsapiens_genes} {output.hic_K562} {output.tads}
+        #git clone https://github.com/cudamat/cudamat.git
+        #pip install cudamat/
+        #rm -rf cudamat
         
         """

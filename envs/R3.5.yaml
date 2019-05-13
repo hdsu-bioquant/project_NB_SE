@@ -4,16 +4,32 @@ channels:
 dependencies:
  - r-base=3.5.1
  - rstudio
+ - r-tidyverse
+ - r-rtsne
+ - r-gridextra
+ - r-ggrepel
+ - r-limsolve
+ - r-devtools 
+ - r-kableextra
+ - r-biocmanager
+ - r-fpc
+ - r-rngtools
+ - r-viridis
  - bioconductor-limma
  - bioconductor-genomicranges
  - bioconductor-rtracklayer
  - bioconductor-summarizedexperiment
  - bioconductor-complexheatmap
  - bioconductor-biocparallel
- - r-ggplot2
- - r-rtsne
- - r-gridextra
- - r-ggrepel
- - r-rcurl
- - r-foreach
  - bioconductor-gseabase
+ - bioconductor-genomicinteractions
+ - bioconductor-ensdb.hsapiens.v75
+ - bioconductor-homo.sapiens
+ - bioconductor-edger
+ - bioconductor-ggbio
+ - python=3.6.7
+ - numpy
+ - pip
+ - pip:
+   - tensorflow==2.0.0-alpha0
+   

@@ -12,16 +12,7 @@ params:
   # Paths data
   # Paths external data
   # Paths misc data
-  assayID:   "foo"
   work_dir:  "foo"
-  nmf_kmin:  2
-  nmf_kmax:  6
-  nmf_iter:  10
-  nmf:       "path/to/save"
-  norm_nmfW: "path/to/save"
-  norm_nmfH: "path/to/save"
-  matrix:    "path/to/matrix"
-  metadata:  "path/to/metadata"
   tumor_annot:    "annotation/annotation_tumor.RDS"
   SE:             "analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed"
   hichip_SK_N_AS: "data/cells/hichip/mango/SK-N-AS_HiChIP_mango.all"
@@ -31,6 +22,7 @@ params:
   hic:  "db/hic/GSE63525_K562_HiCCUPS_looplist.txt"
   TADs: "db/TADs/hESC_domains_hg19.RDS"
   hsapiens_genes: "db/misc/EnsDb_Hsapiens_v75_genes.RDS"
+  SE_target_gr:    "analysis/tumor/SE_annot/tumor_consensusSE_target_annotation_df.RDS"
 editor_options: 
   chunk_output_type: console
 ---
@@ -49,17 +41,19 @@ library(edgeR)
 
 
 # Paths data
-params <- list(tumor_annot    = "annotation/annotation_tumor.RDS",
-               SE             = "analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed",
-               hichip_SK_N_AS = "data/cells/hichip/mango/SK-N-AS_HiChIP_mango.all",
-               hichip_CLB_GA  = "data/cells/hichip/mango/CLB-GA_HiChIP_mango.all",
-               SE_signal      = "analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS",
-               gene_exprs     = "data/tumor/rnaseq/exprs/tumor_RNAseq_Counts_Matrix.RDS",
-               # Paths external data
-               hic  = "db/hic/GSE63525_K562_HiCCUPS_looplist.txt",
-               TADs = "db/TADs/hESC_domains_hg19.RDS",
-               # Paths misc data
-               hsapiens_genes = "db/misc/EnsDb_Hsapiens_v75_genes.RDS")
+# params <- list(tumor_annot    = "annotation/annotation_tumor.RDS",
+#                SE             = "analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed",
+#                hichip_SK_N_AS = "data/cells/hichip/mango/SK-N-AS_HiChIP_mango.all",
+#                hichip_CLB_GA  = "data/cells/hichip/mango/CLB-GA_HiChIP_mango.all",
+#                SE_signal      = "analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS",
+#                gene_exprs     = "data/tumor/rnaseq/exprs/tumor_RNAseq_Counts_Matrix.RDS",
+#                # Paths external data
+#                hic  = "db/hic/GSE63525_K562_HiCCUPS_looplist.txt",
+#                TADs = "db/TADs/hESC_domains_hg19.RDS",
+#                # Paths misc data
+#                hsapiens_genes = "db/misc/EnsDb_Hsapiens_v75_genes.RDS",
+#                # Paths results
+#                SE_target_gr   = "analysis/tumor/SE_annot/tumor_consensusSE_target_annotation_df.RDS")
 
 path_hichip <- c(params$hichip_SK_N_AS, params$hichip_CLB_GA)
 names(path_hichip) <- sub("_HiChIP_mango.all", "", basename(path_hichip))
@@ -423,8 +417,8 @@ sum(SE_annot_df$inSameTAD)
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##                 Save SE target annotation data frame                       ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+saveRDS(SE_annot_df, file.path(dirname(params$SE_target_gr), "tumor_consensusSE_target_annotation_df.RDS"))
 
-saveRDS(SE_annot_df, "analysis/tumor/SE_annot/tumor_consensusSE_target_annotation_df.RDS")
 ```
 
 # Rank target genes for each SE
@@ -513,7 +507,7 @@ SE_target_rank <- mclapply(split(SE_annot_df, SE_annot_df$SE), function(SE_annot
 }, mc.cores = NCORES )
 head(SE_target_rank)
 
-saveRDS(SE_target_rank, "analysis/tumor/SE_annot/tumor_consensusSE_target_rank_list.RDS")
+saveRDS(SE_target_rank, file.path(dirname(params$SE_target_gr), "tumor_consensusSE_target_rank_list.RDS"))
 
 ```
 
@@ -559,10 +553,11 @@ SE_target$target_evidence <- SE_top_target$evidence_types[idx]
 SE_target
 
 
+saveRDS(SE_target_rank, file.path(dirname(params$SE_target_gr), "tumor_consensusSE_target_rank_list.RDS"))
 
-saveRDS(SE_target, file="analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS")
+saveRDS(SE_target, file=params$SE_target_gr)
 
-write.table(SE_target, "analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.bed",
+write.table(SE_target, file.path(dirname(params$SE_target_gr), "tumor_consensusSE_target_GRanges.bed"),
             quote = FALSE, col.names = FALSE, row.names = FALSE)
 
 ```

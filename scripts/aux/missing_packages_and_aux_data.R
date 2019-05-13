@@ -10,16 +10,21 @@ datapath <- args[1]
 datapath
 setwd(datapath)
 
-
-
-
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##                     paths of misc data to download                         ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# hsapiens_genes_path <- "db/misc/EnsDb_Hsapiens_v75_genes.RDS"
+# path_hic <- "db/hic/GSE63525_K562_HiCCUPS_looplist.txt"
+# path_TADs <- "db/TADs/hESC_domains_hg19.RDS"
 
-hsapiens_genes_path <- "db/misc/EnsDb_Hsapiens_v75_genes.RDS"
-path_hic <- "db/hic/GSE63525_K562_HiCCUPS_looplist.txt"
-path_TADs <- "db/TADs/hESC_domains_hg19.RDS"
+hsapiens_genes_path <- args[2]
+path_hic            <- args[3]
+path_TADs           <- args[4]
+
+hsapiens_genes_path
+path_hic
+path_TADs
+
 
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##                        install missing R packages                          ##
