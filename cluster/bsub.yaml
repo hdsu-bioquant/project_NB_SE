@@ -31,8 +31,8 @@ install_missing_R_01:
 
 NMF_report_chipseq:
     walltime: 10:00
-    memory: 10240
-    queue: " -gpu num=1:j_exclusive=yes:mode=exclusive_process -q gputest"
+    memory: 46080
+#    queue: " -gpu num=1:j_exclusive=yes:mode=exclusive_process -q gputest"
 
 
 #==============================================================================#

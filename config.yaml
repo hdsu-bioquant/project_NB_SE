@@ -49,14 +49,17 @@ main_working_directory: /icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publ
 #                         Pipeline Steps to Run                                #
 #==============================================================================#
 phase01_consensusSE:
-    consensus_tumor_SE: True
-    SE_target_gene:     True
+    consensus_tumor_SE : True
+    SE_target_gene     : True
 
 phase02_NMF:
-    NMF_chipseq_tumor:  False
-    NMF_rnaseq_tumor:   False
-    NMF_chipseq_cells:  False
-    NMF_rnaseq_cells:   False
+    NMF_chipseq_tumor  : True
+    NMF_chipseq_cells  : True
+    NMF_rnaseq_tumor   : False
+    NMF_rnaseq_cells   : False
+    
+compileFigs:
+  figure2: True
 
 
 
@@ -72,23 +75,23 @@ phase02_NMF:
 
 NMFparams:
     tumor:  
-        k.min: 2
-        k.max: 6
-        iterations: 200
+        k.min      : 2
+        k.max      : 6
+        iterations : 50
         optimalK:
-            chipseq : 4
-            rnaseq  : 4
+            chipseq: 4
+            rnaseq : 4
     cells: 
-        k.min: 2
-        k.max: 6
-        iterations: 200
+        k.min      : 2
+        k.max      : 6
+        iterations : 50
         optimalK:
-            chipseq : 3
-            rnaseq  : 3
+            chipseq: 3
+            rnaseq : 3
     tumor_cells:  
-        k.min: 2
-        k.max: 6
-        iterations: 200
+        k.min      : 2
+        k.max      : 6
+        iterations : 100
         optimalK:
-            chipseq : 5
-            rnaseq  : 5
+            chipseq: 5
+            rnaseq : 5

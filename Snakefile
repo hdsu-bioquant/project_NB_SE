@@ -9,8 +9,6 @@ import re
 # Import config file & parameters
 configfile: 'config.yaml'
 
-
-
 # Read Annotation CSV and find samples with ChIPseq or/and RNAseq data
 TUMOR_SAMPLES_CHIP = []
 TUMOR_SAMPLES_RNA  = []
@@ -53,7 +51,14 @@ with open(config['cells_annotation_csv']) as f:
 # Import paths from config file
 DATAPATH = config['main_working_directory']
 
-        
+
+#==============================================================================#
+#                               Include extra rules                            #
+#==============================================================================#
+# Include snakefiles containing figure rules
+include: "snakefiles/figure2.Snakefile"
+
+
         
 #==============================================================================#
 #               Print sample data at the pipeline's start.                     #
@@ -90,8 +95,12 @@ printExp()
 #helper function to collect final files from pipeline
 def inputall(wilcards):
     collectfiles = []
+    if config["compileFigs"]["figure2"]:
+        collectfiles.append(join(DATAPATH, 'results/figures/figure2/figure2_paths.txt'))
     if config["phase02_NMF"]["NMF_chipseq_tumor"]:
-        collectfiles.extend(expand(join(DATAPATH, 'reports/01_{type}_chipseq_NMF_report.html'), zip, type = ["tumor", "cells"]))
+        collectfiles.append(join(DATAPATH, 'reports/03_tumor_chipseq_NMF_report.html'))
+    if config["phase02_NMF"]["NMF_chipseq_cells"]:
+        collectfiles.append(join(DATAPATH, 'reports/03_cells_chipseq_NMF_report.html'))
         #collectfiles.append(join(DATAPATH, 'reports/01_{type}_{omics}_NMF_report.html'))
     if config["phase01_consensusSE"]["SE_target_gene"]:
         collectfiles.append(join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'))
@@ -132,8 +141,8 @@ rule NMF_report_chipseq:
         matrix     = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{type}_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS'),
         annotation = join(DATAPATH, 'annotation/annotation_{type}.RDS')
     output:
-        report    = join(DATAPATH, 'reports/01_{type}_chipseq_NMF_report.html'),
-        rmd       = temp(join(DATAPATH, 'reports/01_{type}_chipseq_NMF_report.Rmd')),
+        report    = join(DATAPATH, 'reports/03_{type}_chipseq_NMF_report.html'),
+        rmd       = temp(join(DATAPATH, 'reports/03_{type}_chipseq_NMF_report.Rmd')),
         nmf       = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/NMF/{type}_consensusSE_SignalScore_NMF.RDS'),
         norm_nmfW = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/NMF/{type}_consensusSE_SignalScore_normNMF_W.RDS'),
         norm_nmfH = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/NMF/{type}_consensusSE_SignalScore_normNMF_H.RDS')
@@ -144,12 +153,12 @@ rule NMF_report_chipseq:
         nmf_kmin = lambda wildcards: config['NMFparams'][wildcards.type]['k.min'],
         nmf_kmax = lambda wildcards: config['NMFparams'][wildcards.type]['k.max'],
         nmf_iter = lambda wildcards: config['NMFparams'][wildcards.type]['iterations']
-    conda: 'envs/cuda_R3.5.yaml'
+    conda: 'envs/R3.5.yaml'
     shell:
         """
-        unset LD_LIBRARY_PATH
-        export PATH="/usr/local/cuda/bin:$PATH"
-        nvidia-smi
+        #unset LD_LIBRARY_PATH
+        #export PATH="/usr/local/cuda/bin:$PATH"
+        #nvidia-smi
     
         cp {params.script} {output.rmd}
 
@@ -309,3 +318,5 @@ rule down_misc_install_missing_R:
         #rm -rf cudamat
         
         """
+
+
