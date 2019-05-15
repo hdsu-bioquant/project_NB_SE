@@ -57,6 +57,8 @@ norm.mat <- readRDS(params$matrix)
 # read metadata
 metadata <- readRDS(params$metadata)
 
+metadata  <- metadata[match(colnames(norm.mat), metadata$ProjectID),]
+
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##                          Print dataset dimension                           ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
@@ -107,38 +109,32 @@ path.normNMF_H.run <- params$norm_nmfH
 ```
 
 
-```{r NMF_pyCuda, eval=TRUE, message=FALSE}
+```{r NMF_run, eval=TRUE, message=FALSE}
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-##                        Create nmf experiment object                        ##
+##              Create nmf experiment object and run NMF                      ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 nmf.exp <- nmfExperimentFromMatrix(matrix = norm.mat)
 
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-##                                   Run NMF                                ##
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-nmf.exp <- runNmfGpuPyCuda(
-  nmf.exp = nmf.exp,
-  k.min = k.min,
-  k.max = k.max,
-  outer.iter = outer.iter,
-  inner.iter = inner.iter,
-  tmp.path = paste0(params$work_dir, "/tmp"),
-  seed = TRUE,
-  gpu.id = 0)
 
+nmf.exp <- runNMFtensor(nmf.exp, 
+                        k.min = k.min, 
+                        k.max = k.max, 
+                        outer.iter = outer.iter, 
+                        inner.iter = inner.iter, 
+                        conver.test.stop.threshold = 1000)
 # save results
 saveRDS(nmf.exp, file = path.NMF.run)
 
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-##                             Normalize NMF                                ##
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                             Normalize NMF                                  ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 # normalize NMF
 norm.nmf.exp <- normalizeW(nmf.exp)
 norm.nmf.exp.H <- normalizeH(nmf.exp)
 
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-##                    K stats and normalization                             ##
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                    K stats and normalization                               ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ## Estimate K stats
 my.kstats <- function(NMFexperiment){
   # calc different k stats
@@ -150,9 +146,9 @@ my.kstats <- function(NMFexperiment){
 }
 norm.nmf.exp <- my.kstats(norm.nmf.exp)
 
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-##                            Save results                                  ##
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                            Save results                                    ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 #save results as RDS file
 saveRDS(norm.nmf.exp, file = path.normNMF.run)
 saveRDS(norm.nmf.exp.H, file = path.normNMF_H.run)
@@ -163,9 +159,6 @@ saveRDS(norm.nmf.exp.H, file = path.normNMF_H.run)
 ### Factorization quality metrics and optimal K
 
 Based on the results of the factorization quality metrics, an optimal number of signatures (k) must be chosen:
-
-```{r fixBratwurst}
-```
 
   
 ```{r NMF_optK, results='hide',fig.keep='all', eval=TRUE, warning=FALSE, message=FALSE}
@@ -199,12 +192,12 @@ dev.off()
 ##                        Generate river plot                                 ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 #river <- generateRiverplot(norm.nmf.exp)
-river <- my_generateRiverplot(norm.nmf.exp)
+river <- generateRiverplot(norm.nmf.exp)
 plot(river, plot_area=1, yscale=0.6, nodewidth=0.5)
 
-pdf(file = paste0(figs.path, "/NMF_riverplot.pdf"), width=8, height=6)
-plot(river, plot_area=1, yscale=0.6, nodewidth=0.5)
-dev.off()
+# pdf(file = paste0(figs.path, "/NMF_riverplot.pdf"), width=8, height=6)
+# plot(river, plot_area=1, yscale=0.6, nodewidth=0.5)
+# dev.off()
 
 
 
@@ -235,7 +228,7 @@ Minize the Frobenius error, the coefficient of variation and the mean Amari dist
 
 
 #Annotation for H matrix heatmap
-typeIDs <- unique(metadata$Type)
+typeIDs <- unique(as.character(metadata$Type))
 type.colVector <- list(Type = setNames(inferno(n=length(typeIDs)), typeIDs))
 heat.anno <- HeatmapAnnotation(df = data.frame(Type = metadata$Type),
                                col = type.colVector,
@@ -245,7 +238,7 @@ heat.anno <- HeatmapAnnotation(df = data.frame(Type = metadata$Type),
 ##              Generate H matrix heatmap, W normalized                       ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 
-h.heatmap.list <- list()
+# h.heatmap.list <- list()
 for(ki in names(norm.nmf.exp@HMatrixList)) {
   cat("\n")
   cat("  \n#### H matrix for k=",  ki, "  \n  ")
@@ -264,15 +257,15 @@ for(ki in names(norm.nmf.exp@HMatrixList)) {
                        show_row_names = FALSE,
                        cluster_rows = FALSE)
   print(h.heatmap)
-  h.heatmap.list[[as.character(ki)]] <- h.heatmap
+  # h.heatmap.list[[as.character(ki)]] <- h.heatmap
 }
 
-#save H matrix heatmap
-pdf(file = paste0(figs.path, "/NMF_Hmatrix_wnorm_heatmap.pdf"), width=10, height=7)
-for(ki in names(h.heatmap.list)) {
-  print(h.heatmap.list[[as.character(ki)]])
-}
-dev.off()
+# #save H matrix heatmap
+# pdf(file = paste0(figs.path, "/NMF_Hmatrix_wnorm_heatmap.pdf"), width=10, height=7)
+# for(ki in names(h.heatmap.list)) {
+#   print(h.heatmap.list[[as.character(ki)]])
+# }
+# dev.off()
 
 
 ```
@@ -283,38 +276,38 @@ dev.off()
   
 ```{r Hmatrix_Hnorm, fig.width=10, fig.height=5.5, out.width="90%", results='asis', eval=TRUE, warning=FALSE}
 
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-##              Generate H matrix heatmap, H normalized                       ##
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-
-h.heatmap.list <- list()
-for(ki in names(norm.nmf.exp.H@HMatrixList)) {
-  cat("\n")
-  cat("  \n#### H matrix for k=",  ki, "  \n  ")
-  #plot H matrix
-  tmp.hmatrix <- HMatrix(norm.nmf.exp.H, k = ki)
-  colnames(tmp.hmatrix) <- colnames(norm.nmf.exp.H)
-  h.heatmap <- Heatmap(tmp.hmatrix,
-                       col = colorRamp2(seq(min(tmp.hmatrix), max(tmp.hmatrix), length.out = 100), viridis(n=100)),
-                       name = "Exposure",
-                       clustering_distance_columns = 'pearson',
-                       show_column_dend = FALSE,
-                       heatmap_legend_param = 
-                         list(color_bar = "continuous", legend_height=unit(2, "cm")),
-                       top_annotation = heat.anno,
-                       show_column_names = FALSE,
-                       show_row_names = FALSE,
-                       cluster_rows = FALSE)
-  print(h.heatmap)
-  h.heatmap.list[[as.character(ki)]] <- h.heatmap
-}
-
-#save H matrix heatmap
-pdf(file = paste0(figs.path, "/NMF_Hmatrix_hnorm_heatmap.pdf"), width=10, height=7)
-for(ki in names(h.heatmap.list)) {
-  print(h.heatmap.list[[as.character(ki)]])
-}
-dev.off()
+# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# ##              Generate H matrix heatmap, H normalized                       ##
+# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# 
+# h.heatmap.list <- list()
+# for(ki in names(norm.nmf.exp.H@HMatrixList)) {
+#   cat("\n")
+#   cat("  \n#### H matrix for k=",  ki, "  \n  ")
+#   #plot H matrix
+#   tmp.hmatrix <- HMatrix(norm.nmf.exp.H, k = ki)
+#   colnames(tmp.hmatrix) <- colnames(norm.nmf.exp.H)
+#   h.heatmap <- Heatmap(tmp.hmatrix,
+#                        col = colorRamp2(seq(min(tmp.hmatrix), max(tmp.hmatrix), length.out = 100), viridis(n=100)),
+#                        name = "Exposure",
+#                        clustering_distance_columns = 'pearson',
+#                        show_column_dend = FALSE,
+#                        heatmap_legend_param = 
+#                          list(color_bar = "continuous", legend_height=unit(2, "cm")),
+#                        top_annotation = heat.anno,
+#                        show_column_names = FALSE,
+#                        show_row_names = FALSE,
+#                        cluster_rows = FALSE)
+#   print(h.heatmap)
+#   h.heatmap.list[[as.character(ki)]] <- h.heatmap
+# }
+# 
+# #save H matrix heatmap
+# pdf(file = paste0(figs.path, "/NMF_Hmatrix_hnorm_heatmap.pdf"), width=10, height=7)
+# for(ki in names(h.heatmap.list)) {
+#   print(h.heatmap.list[[as.character(ki)]])
+# }
+# dev.off()
 
 ```
 
@@ -405,69 +398,5 @@ for(K in k.min:k.max) {
   saveRDS(norm.nmf.hmatrix, paste0(path_results_K, "/NMF_hmatrix.K", K, ".RDS"))
 }
 
-
-
-
-# remove tmp dir
-unlink(file.path(params$work_dir, "tmp"), recursive=TRUE)
 ```
-
-
-```{r fixBratwurst}
-my_generateRiverplot <- function(nmf.exp, edges.cutoff = 0, useH=FALSE,
-                                color=TRUE) {
-    if(useH)
-      W.list <- lapply(HMatrix(nmf.exp), t)
-    else
-      W.list <- WMatrix(nmf.exp)
-    rank.max <- max(as.numeric(names(W.list)))
-    rank.min <- min(as.numeric(names(W.list)))
-    nodes <- do.call(rbind, lapply(rank.min:rank.max, function(i) {
-      data.frame(ID = sapply(1:i, function(n) paste(i, "_S", n, sep = "")),
-                 x = i)
-    }))
-    edges <- do.call(rbind, lapply(rank.min:(rank.max - 1), function(i){
-      df <- data.frame(
-        N1 = rep(sapply(1:i, function(n) paste(i, "_S", n, sep = "")),
-                 each = i + 1),
-        N2 = rep(sapply(1:(i + 1), function(n) paste(i + 1, "_S", n, sep = "")),
-                 time = i),
-        Value = as.vector(t(Bratwurst:::nnls_sol(W.list[[as.character(i)]], W.list[[as.character(i + 1)]])))
-        )
-      df$ID <- paste(df$N1, df$N2)
-      return(df)
-    }))
-    edges_dfList <- split(edges, f = edges$N2)
-    edges_vecList <- lapply(edges_dfList, function(current_df){
-      norm_vec <- current_df$Value / sum(current_df$Value)
-      names(norm_vec) <- current_df$ID
-      return(norm_vec)
-    })
-    edges_vec <- do.call(c, edges_vecList)
-    names(edges_vec) <- unlist(lapply(edges_vecList, names))
-    edges$rescaled <- edges_vec[as.character(edges$ID)]
-    edges <- edges[edges$Value > edges.cutoff, ]
-    nodes$y <- Bratwurst:::yNodeCoords(nodes, edges, rank_flag = TRUE,
-                           start_coords = c(-0.5, 0.5),
-                           edgeWeightColName = "rescaled",
-                           scale_fun = function(x){return(x^(1 / 3))})
-    edges <- Bratwurst:::reorderEdges(nodes, edges)
-    if (color){
-      pca <- prcomp(t(do.call(cbind, W.list)))
-      pca <- apply(pca$x, 2, function(r) {
-        r <- r - min(r)
-        return(r / max(r))
-      })
-      col <- rgb(pca[, 1], pca[, 2], pca[, 3], 0.9)
-      nodes$col <- col
-    }
-    ret <- makeRiver(nodes = nodes, edges = edges)
-    return(ret)
-  }
-  
-  
-  
-environment(my_generateRiverplot) <- asNamespace("Bratwurst")
-```
-
 
