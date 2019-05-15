@@ -107,6 +107,7 @@ def inputall(wilcards):
     #Consensus SE
     if config["phase01_consensusSE"]["consensus_tumor_SE"]:
         collectfiles.append(join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed'))
+        collectfiles.append(join(DATAPATH, 'analysis/tumor_cells/chipseq/H3K27ac/consensusSE/tumor_cells_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS'))
         collectfiles.extend(expand(join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{type}_H3K27ac_noH3K4me3_consensusSE_SignalScore.txt'), zip, type = ["tumor", "cells"]))
         #collectfiles.append('.snakemake/completeLibrary.txt')
         #collectfiles.append(join(DATAPATH, 'tmp.txt'))
@@ -134,6 +135,55 @@ rule placeh:
         Rscript {params.script} {output.outtmp} {input.consensusSE} 
         """
 
+
+optK_tcc = str(config['NMFparams']['tumor_cells']['optimalK']['chipseq'])
+rule NMF_report_chipseq_tumor_cells:
+    input:
+        matrix     = join(DATAPATH, 'analysis/tumor_cells_/chipseq/H3K27ac/consensusSE/tumor_cells__H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS'),
+        annotation = join(DATAPATH, 'annotation/annotation_{type}.RDS')
+    output:
+        report    = join(DATAPATH, 'reports/03_tumor_cells__chipseq_NMF_report.html'),
+        rmd       = temp(join(DATAPATH, 'reports/03_tumor_cells_chipseq_NMF_report.Rmd')),
+        nmf       = join(DATAPATH, 'analysis/tumor_cells/chipseq/H3K27ac/NMF/tumor_cells_consensusSE_SignalScore_NMF.RDS'),
+        norm_nmfW = join(DATAPATH, 'analysis/tumor_cells/chipseq/H3K27ac/NMF/tumor_cells_consensusSE_SignalScore_normNMF_W.RDS'),
+        norm_nmfH = join(DATAPATH, 'analysis/tumor_cells/chipseq/H3K27ac/NMF/tumor_cells_consensusSE_SignalScore_normNMF_H.RDS'),
+        hmatrix_wnorm = join(DATAPATH, ('analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K' + optK_tcc + '_Hmatrix_wnorm.RDS')),
+        wmatrix_wnorm = join(DATAPATH, ('analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K' + optK_tcc + '_Wmatrix_Wnorm.RDS')),
+        nmf_features  = join(DATAPATH, ('analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K' + optK_tcc + '_NMF_features.RDS')),
+        hmatrix_hnorm = join(DATAPATH, ('analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K' + optK_tcc + '_Hmatrix_hnorm.RDS'))
+    params:
+        script   = 'scripts/analysis/03_tumor_cells_chipseq_NMF_report.Rmd',
+        assayID  = '{type}_chipseq',
+        workdir  = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/NMF/'),
+        nmf_kmin = lambda wildcards: config['NMFparams'][wildcards.type]['k.min'],
+        nmf_kmax = lambda wildcards: config['NMFparams'][wildcards.type]['k.max'],
+        nmf_iter = lambda wildcards: config['NMFparams'][wildcards.type]['iterations']
+    conda: 'envs/R3.5.yaml'
+    shell:
+        """
+    
+        cp {params.script} {output.rmd}
+
+        Rscript -e "rmarkdown::render( '{output.rmd}', \
+                params = list( \
+                  assayID   = '{params.assayID}', \
+                  work_dir  = '{params.workdir}', \
+                  nmf_kmin  = '{params.nmf_kmin}', \
+                  nmf_kmax  = '{params.nmf_kmax}', \
+                  nmf_iter  = '{params.nmf_iter}', \
+                  nmf       = '{output.nmf}', \
+                  norm_nmfW = '{output.norm_nmfW}', \
+                  norm_nmfH = '{output.norm_nmfH}', \
+                  matrix    = '{input.matrix}', \
+                  metadata  = '{input.annotation}' \
+                  hmatrix_wnorm = '{output.hmatrix_wnorm}', \
+                  wmatrix_wnorm = '{output.wmatrix_wnorm}', \
+                  nmf_features  = '{output.nmf_features}', \
+                  hmatrix_hnorm = '{output.hmatrix_hnorm}', \
+                ))"
+        
+        
+        """
 
 
 rule NMF_report_chipseq:
@@ -232,7 +282,26 @@ rule SE_target_genes:
 #================================================================================#
 #                     SE signal bigWig AVERAGE OVER BED                          #
 #================================================================================#
-### Computes the SE average score signal for tumors
+### Computes the SE average score signal for tumors and cells
+rule SE_SignalMatrix_combined:
+    input:
+        averageOverBed_tumor = expand((DATAPATH + 'analysis/tumor/chipseq/H3K27ac/consensusSE/{sample}_H3K27ac_bigWigAverageOverBed.txt'), zip, sample = TUMOR_SAMPLES_CHIP),
+        averageOverBed_cells = expand((DATAPATH + 'analysis/cells/chipseq/H3K27ac/consensusSE/{sample}_H3K27ac_bigWigAverageOverBed.txt'), zip, sample = CELLS_SAMPLES_CHIP),
+        consensusSE          = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed')
+    output: 
+        matrix_rds = join(DATAPATH, 'analysis/tumor_cells/chipseq/H3K27ac/consensusSE/tumor_cells_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS'),
+        matrix_txt = join(DATAPATH, 'analysis/tumor_cells/chipseq/H3K27ac/consensusSE/tumor_cells_H3K27ac_noH3K4me3_consensusSE_SignalScore.txt')
+    params:
+        script='scripts/analysis/01_SEmatrix.R'
+    conda:
+        'envs/R3.5.yaml'
+    shell:
+        """
+        Rscript {params.script} {output.matrix_rds} {output.matrix_txt} {input.consensusSE} {input.averageOverBed_tumor} {input.averageOverBed_cells}
+        """
+
+
+### Computes the SE average score signal for tumors or cells
 def find_bwAverage(wildcards):
     SAMPLES = TUMOR_SAMPLES_CHIP if wildcards.type == "tumor" else CELLS_SAMPLES_CHIP
     averageOverBed = expand((DATAPATH + 'analysis/' + wildcards.type + '/chipseq/H3K27ac/consensusSE/{sample}_H3K27ac_bigWigAverageOverBed.txt'), zip, sample = SAMPLES)
@@ -247,7 +316,9 @@ rule SE_SignalMatrix:
         matrix_rds = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{type}_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS'),
         matrix_txt = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{type}_H3K27ac_noH3K4me3_consensusSE_SignalScore.txt')
     params:
-        script='scripts/analysis/01_SEmatrix.R',
+        script='scripts/analysis/01_SEmatrix.R'
+    wildcard_constraints:
+        type = "a-z"
     conda:
         'envs/R3.5.yaml'
     shell:
