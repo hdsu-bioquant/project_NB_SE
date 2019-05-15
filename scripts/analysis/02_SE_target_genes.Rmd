@@ -64,7 +64,7 @@ names(path_hichip) <- sub("_HiChIP_mango.all", "", basename(path_hichip))
 
 # Parameters and Data loading
   
-```{r dataloading, results="asis", cache=FALSE, message=FALSE}
+```{r dataloading, results="asis", message=FALSE}
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##                                Params                                      ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
@@ -550,15 +550,14 @@ head(SE_top_target)
 SE_target$target_SYMBOL   <- SE_top_target$SYMBOL[idx]
 SE_target$target_ENSEMBL  <- SE_top_target$ENSEMBL[idx]
 SE_target$target_evidence <- SE_top_target$evidence_types[idx]
-SE_target
+SE_target$target_main_evidence <- sapply(strsplit(SE_target$target_evidence, "\\|"), "[[", 1)
 
-
-saveRDS(SE_target_rank, file.path(dirname(params$SE_target_gr), "tumor_consensusSE_target_rank_list.RDS"))
 
 saveRDS(SE_target, file=params$SE_target_gr)
 
 write.table(SE_target, file.path(dirname(params$SE_target_gr), "tumor_consensusSE_target_GRanges.bed"),
             quote = FALSE, col.names = FALSE, row.names = FALSE)
+
 
 ```
 
