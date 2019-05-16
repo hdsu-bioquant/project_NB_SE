@@ -139,6 +139,57 @@ rule placeh:
         Rscript {params.script} {output.outtmp} {input.consensusSE} 
         """
 
+
+#================================================================================#
+#                              SE ChIPseq Signal NMF                             #
+#================================================================================#
+#optK_tcc = str(config['NMFparams']['tumor_cells']['optimalK']['chipseq'])
+rule NMF_report_rnaseq:
+    input:
+        matrix     = join(DATAPATH, 'analysis/{type}/rnaseq/H3K27ac/consensusSE/{type}_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS'),
+        annotation = join(DATAPATH, 'annotation/annotation_{type}.RDS')
+    output:
+        report    = join(DATAPATH, 'reports/04_{type}_SE_targets_rnaseq_NMF_report.html'),
+        rmd       = temp(join(DATAPATH, 'reports/04_{type}_SE_targets_rnaseq_NMF_report.Rmd')),
+        nmf       = join(DATAPATH, 'analysis/{type}/rnaseq/NMF/{type}_consensusSE_SignalScore_NMF.RDS'),
+        norm_nmfW = join(DATAPATH, 'analysis/{type}/rnaseq/NMF/{type}_consensusSE_SignalScore_normNMF_W.RDS'),
+        norm_nmfH = join(DATAPATH, 'analysis/{type}/rnaseq/NMF/{type}_consensusSE_SignalScore_normNMF_H.RDS')
+    params:
+        script   = 'scripts/analysis/04_SE_targets_rnaseq_NMF_report.Rmd',
+        assayID  = '{type}_chipseq',
+        workdir  = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/NMF/'),
+        nmf_kmin = lambda wildcards: config['NMFparams'][wildcards.type]['k.min'],
+        nmf_kmax = lambda wildcards: config['NMFparams'][wildcards.type]['k.max'],
+        nmf_iter = lambda wildcards: config['NMFparams'][wildcards.type]['iterations']
+    wildcard_constraints:
+        type = "a-z"
+    conda: 'envs/R3.5.yaml'
+    shell:
+        """
+        #unset LD_LIBRARY_PATH
+        #export PATH="/usr/local/cuda/bin:$PATH"
+        #nvidia-smi
+    
+        cp {params.script} {output.rmd}
+
+        Rscript -e "rmarkdown::render( '{output.rmd}', \
+                params = list( \
+                  assayID   = '{params.assayID}', \
+                  work_dir  = '{params.workdir}', \
+                  nmf_kmin  = '{params.nmf_kmin}', \
+                  nmf_kmax  = '{params.nmf_kmax}', \
+                  nmf_iter  = '{params.nmf_iter}', \
+                  nmf       = '{output.nmf}', \
+                  norm_nmfW = '{output.norm_nmfW}', \
+                  norm_nmfH = '{output.norm_nmfH}', \
+                  matrix    = '{input.matrix}', \
+                  metadata  = '{input.annotation}' \
+                ))"
+        
+        
+        """
+
+
 #================================================================================#
 #                              SE ChIPseq Signal NMF                             #
 #================================================================================#
@@ -212,7 +263,7 @@ rule NMF_report_chipseq:
         nmf_kmax = lambda wildcards: config['NMFparams'][wildcards.type]['k.max'],
         nmf_iter = lambda wildcards: config['NMFparams'][wildcards.type]['iterations']
     wildcard_constraints:
-        type = "a-z"
+        type = "[a-z]+"
     conda: 'envs/R3.5.yaml'
     shell:
         """
@@ -316,6 +367,7 @@ def find_bwAverage(wildcards):
     SAMPLES = TUMOR_SAMPLES_CHIP if wildcards.type == "tumor" else CELLS_SAMPLES_CHIP
     averageOverBed = expand((DATAPATH + 'analysis/' + wildcards.type + '/chipseq/H3K27ac/consensusSE/{sample}_H3K27ac_bigWigAverageOverBed.txt'), zip, sample = SAMPLES)
     #print(wildcards.type)
+    #print(averageOverBed)
     return averageOverBed
     
 rule SE_SignalMatrix:
@@ -328,7 +380,7 @@ rule SE_SignalMatrix:
     params:
         script='scripts/analysis/01_SEmatrix.R'
     wildcard_constraints:
-        type = "a-z"
+        type = "[a-z]+"
     conda:
         'envs/R3.5.yaml'
     shell:
