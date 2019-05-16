@@ -1,5 +1,5 @@
 ---
-title: "Non-Negative Matrix Factorization (NMF) report"
+title: "Figure 2a"
 author: "Health Data Science Unit"
 date: "`r date()`"
 output: 

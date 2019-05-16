@@ -99,6 +99,7 @@ def inputall(wilcards):
         collectfiles.append(join(DATAPATH, 'results/figures/figure2/figure2_paths.txt'))
     if config["phase02_NMF"]["NMF_chipseq_tumor"]:
         collectfiles.append(join(DATAPATH, 'reports/03_tumor_chipseq_NMF_report.html'))
+        collectfiles.append(join(DATAPATH, 'reports/03_tumor_cells_chipseq_NMF_report.html'))
     if config["phase02_NMF"]["NMF_chipseq_cells"]:
         collectfiles.append(join(DATAPATH, 'reports/03_cells_chipseq_NMF_report.html'))
         #collectfiles.append(join(DATAPATH, 'reports/01_{type}_{omics}_NMF_report.html'))
@@ -135,29 +136,32 @@ rule placeh:
         Rscript {params.script} {output.outtmp} {input.consensusSE} 
         """
 
-
+#================================================================================#
+#                              SE ChIPseq Signal NMF                             #
+#================================================================================#
 optK_tcc = str(config['NMFparams']['tumor_cells']['optimalK']['chipseq'])
 rule NMF_report_chipseq_tumor_cells:
     input:
-        matrix     = join(DATAPATH, 'analysis/tumor_cells_/chipseq/H3K27ac/consensusSE/tumor_cells__H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS'),
-        annotation = join(DATAPATH, 'annotation/annotation_{type}.RDS')
+        matrix      = join(DATAPATH, 'analysis/tumor_cells/chipseq/H3K27ac/consensusSE/tumor_cells_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS'),
+        annot_tumor = join(DATAPATH, 'annotation/annotation_tumor.RDS'),
+        annot_cells = join(DATAPATH, 'annotation/annotation_cells.RDS')
     output:
-        report    = join(DATAPATH, 'reports/03_tumor_cells__chipseq_NMF_report.html'),
+        report    = join(DATAPATH, 'reports/03_tumor_cells_chipseq_NMF_report.html'),
         rmd       = temp(join(DATAPATH, 'reports/03_tumor_cells_chipseq_NMF_report.Rmd')),
         nmf       = join(DATAPATH, 'analysis/tumor_cells/chipseq/H3K27ac/NMF/tumor_cells_consensusSE_SignalScore_NMF.RDS'),
         norm_nmfW = join(DATAPATH, 'analysis/tumor_cells/chipseq/H3K27ac/NMF/tumor_cells_consensusSE_SignalScore_normNMF_W.RDS'),
         norm_nmfH = join(DATAPATH, 'analysis/tumor_cells/chipseq/H3K27ac/NMF/tumor_cells_consensusSE_SignalScore_normNMF_H.RDS'),
-        hmatrix_wnorm = join(DATAPATH, ('analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K' + optK_tcc + '_Hmatrix_wnorm.RDS')),
-        wmatrix_wnorm = join(DATAPATH, ('analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K' + optK_tcc + '_Wmatrix_Wnorm.RDS')),
-        nmf_features  = join(DATAPATH, ('analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K' + optK_tcc + '_NMF_features.RDS')),
-        hmatrix_hnorm = join(DATAPATH, ('analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K' + optK_tcc + '_Hmatrix_hnorm.RDS'))
+        hmatrix_wnorm = join(DATAPATH, ('analysis/tumor_cells/chipseq/H3K27ac/NMF/tumor_cells_consensusSE_K' + optK_tcc + '_Hmatrix_wnorm.RDS')),
+        wmatrix_wnorm = join(DATAPATH, ('analysis/tumor_cells/chipseq/H3K27ac/NMF/tumor_cells_consensusSE_K' + optK_tcc + '_Wmatrix_Wnorm.RDS')),
+        nmf_features  = join(DATAPATH, ('analysis/tumor_cells/chipseq/H3K27ac/NMF/tumor_cells_consensusSE_K' + optK_tcc + '_NMF_features.RDS')),
+        hmatrix_hnorm = join(DATAPATH, ('analysis/tumor_cells/chipseq/H3K27ac/NMF/tumor_cells_consensusSE_K' + optK_tcc + '_Hmatrix_hnorm.RDS'))
     params:
         script   = 'scripts/analysis/03_tumor_cells_chipseq_NMF_report.Rmd',
-        assayID  = '{type}_chipseq',
-        workdir  = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/NMF/'),
-        nmf_kmin = lambda wildcards: config['NMFparams'][wildcards.type]['k.min'],
-        nmf_kmax = lambda wildcards: config['NMFparams'][wildcards.type]['k.max'],
-        nmf_iter = lambda wildcards: config['NMFparams'][wildcards.type]['iterations']
+        assayID  = 'tumor_cells_chipseq',
+        nmf_kmin = config['NMFparams']['tumor_cells']['k.min'],
+        nmf_kmax = config['NMFparams']['tumor_cells']['k.max'],
+        nmf_iter = config['NMFparams']['tumor_cells']['iterations'],
+        optimalK = optK_tcc
     conda: 'envs/R3.5.yaml'
     shell:
         """
@@ -166,8 +170,9 @@ rule NMF_report_chipseq_tumor_cells:
 
         Rscript -e "rmarkdown::render( '{output.rmd}', \
                 params = list( \
-                  assayID   = '{params.assayID}', \
-                  work_dir  = '{params.workdir}', \
+                  assayID     = '{params.assayID}', \
+                  annot_tumor = '{input.annot_tumor}', \
+                  annot_cells = '{input.annot_cells}', \
                   nmf_kmin  = '{params.nmf_kmin}', \
                   nmf_kmax  = '{params.nmf_kmax}', \
                   nmf_iter  = '{params.nmf_iter}', \
@@ -175,11 +180,11 @@ rule NMF_report_chipseq_tumor_cells:
                   norm_nmfW = '{output.norm_nmfW}', \
                   norm_nmfH = '{output.norm_nmfH}', \
                   matrix    = '{input.matrix}', \
-                  metadata  = '{input.annotation}' \
+                  K         = {params.optimalK}, \
                   hmatrix_wnorm = '{output.hmatrix_wnorm}', \
                   wmatrix_wnorm = '{output.wmatrix_wnorm}', \
                   nmf_features  = '{output.nmf_features}', \
-                  hmatrix_hnorm = '{output.hmatrix_hnorm}', \
+                  hmatrix_hnorm = '{output.hmatrix_hnorm}' \
                 ))"
         
         
@@ -203,6 +208,8 @@ rule NMF_report_chipseq:
         nmf_kmin = lambda wildcards: config['NMFparams'][wildcards.type]['k.min'],
         nmf_kmax = lambda wildcards: config['NMFparams'][wildcards.type]['k.max'],
         nmf_iter = lambda wildcards: config['NMFparams'][wildcards.type]['iterations']
+    wildcard_constraints:
+        type = "a-z"
     conda: 'envs/R3.5.yaml'
     shell:
         """

@@ -18,6 +18,40 @@ rule compile_figure2:
         """
 
 #================================================================================#
+#              Figure 2c - Tumor and Cell lines SE signal UMAP                   #
+#================================================================================#
+optK_tcc = str(config['NMFparams']['tumor_cells']['optimalK']['chipseq'])
+rule fig2c_tumor_cells_SE_umap:
+    input:
+        annot_tumor = join(DATAPATH, 'annotation/annotation_tumor.RDS'),
+        annot_cells = join(DATAPATH, 'annotation/annotation_cells.RDS'),
+        matrix      = join(DATAPATH, 'analysis/tumor_cells/chipseq/H3K27ac/consensusSE/tumor_cells_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS'),
+        hmatrix_wnorm = join(DATAPATH, ('analysis/tumor_cells/chipseq/H3K27ac/NMF/tumor_cells_consensusSE_K' + optK_tcc + '_Hmatrix_wnorm.RDS'))
+    output:
+        report    = join(DATAPATH, 'reports/figure2c_tumor_cells_UMAP.html'),
+        rmd       = temp(join(DATAPATH, 'reports/figure2c_tumor_cells_UMAP.Rmd')),
+        figure2c  = join(DATAPATH, 'results/figures/figure2/figure2c_tumor_cells_SE_UMAP.pdf')
+    params:
+        script   = 'scripts/figure2/figure2c_tumor_cells_UMAP.Rmd'
+    conda: '../envs/R3.5.yaml'
+    shell:
+        """
+        cp {params.script} {output.rmd}
+
+        Rscript -e "rmarkdown::render( '{output.rmd}', \
+                params = list( \
+                  annot_tumor   = '{input.annot_tumor}', \
+                  annot_cells   = '{input.annot_cells}', \
+                  matrix        = '{input.matrix}', \
+                  hmatrix_wnorm = '{output.hmatrix_wnorm}', \
+                  figure2c      = '{output.figure2c}' \
+                ))"
+
+
+        """
+
+
+#================================================================================#
 #                      Figure 2b - Tumor SE signal NMF                           #
 #================================================================================#
 optK_cc = str(config['NMFparams']['cells']['optimalK']['chipseq'])
