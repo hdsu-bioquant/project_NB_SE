@@ -61,7 +61,7 @@ annot_tumor <- readRDS(params$annot_tumor)
 annot_cells <- readRDS(params$annot_cells)
 
 annot <- bind_rows(annot_tumor, annot_cells)
-annot <- annot[!is.na(annot$avail.ChIPseq), ]
+annot <- annot[annot$avail.ChIPseq, ]
 annot$Type[annot$Type == "Metastasis"] <- "Tumor"
 
 head(annot)

@@ -65,7 +65,7 @@ annot_tumor <- readRDS(params$annot_tumor)
 annot_cells <- readRDS(params$annot_cells)
 
 metadata <- bind_rows(annot_tumor, annot_cells)
-metadata <- metadata[!is.na(metadata$avail.ChIPseq), ]
+metadata <- metadata[metadata$avail.ChIPseq, ]
 metadata  <- metadata[match(colnames(norm.mat), metadata$ProjectID),]
 
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
