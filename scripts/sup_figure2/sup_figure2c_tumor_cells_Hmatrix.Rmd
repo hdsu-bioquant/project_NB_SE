@@ -1,0 +1,103 @@
+---
+title: "Figure 2b"
+author: "Health Data Science Unit"
+date: "`r date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    number_sections: false
+params:
+  annot_tumor   : "path/to/metadata"
+  annot_cells   : "path/to/metadata"
+  hmatrix_wnorm : "path/to/data"
+  sup_figure2c  : "results/figures/..."
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+#this chunk sets global options for Rmarkdown
+knitr::opts_chunk$set(echo = TRUE)
+options(knitr.table.format="html")
+
+
+library(ComplexHeatmap)
+library(tidyverse)
+library(viridis)
+
+
+```
+
+# Supplementary Figure 2.c Tumar & Cell lines SE signal NMF H matrix
+
+## Data loading
+  
+Read NMF object
+  
+```{r dataloading}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                             Read Data                                      ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# Read Hmatrix
+norm.nmf.hmatrix <- readRDS(params$hmatrix_wnorm)
+
+# read annotation 
+annot_tumor <- readRDS(params$annot_tumor)
+annot_cells <- readRDS(params$annot_cells)
+
+annot <- bind_rows(annot_tumor, annot_cells)
+annot <- annot[!is.na(annot$avail.ChIPseq), ]
+head(annot)
+
+
+```
+
+```{r hmat_heatmap}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                        H matrix heatmap annotation                         ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+#Annotation for H matrix heatmap
+type.colVector <- list(Type    = c("Tumor"="grey80", "Metastasis"="grey60", "Cell line"="grey20", "NA"="white"),
+                       MYCN    = c("Amp"="grey20", "NonAmp"="grey80", "NA"="white"),
+                       Stage   = c("4"="grey20", "1-3;4S"="grey80", "NA"="white"),
+                       Age     = c(">18mo"="grey20", "<18mo"="grey80", "NA"="white"),
+                       Relapse = c("Yes"="grey20", "No"="grey80", "NA"="grey100"))
+
+#Heatmap annotation
+heat.anno <- HeatmapAnnotation(df = data.frame(Type    = annot$Type,
+                                               MYCN    = annot$MYCN,
+                                               Stage   = annot$Stage,
+                                               Age     = annot$Age,
+                                               Relapse = annot$Relapse),
+                               col = type.colVector,
+                               show_annotation_name = TRUE, na_col = "white")
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##              Generate H matrix heatmap, W normalized                       ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+#plot H matrix
+h.heatmap <- Heatmap(norm.nmf.hmatrix,
+                     col  = viridis(n=100),
+                     name = "Exposure",
+                     clustering_distance_columns = 'pearson',
+                     show_column_dend = FALSE,
+                     heatmap_legend_param = 
+                       list(color_bar = "continuous", legend_height=unit(2, "cm")),
+                     top_annotation = heat.anno,
+                     show_column_names = TRUE,
+                     show_row_names = FALSE,
+                     cluster_rows = FALSE)
+print(h.heatmap)
+
+pdf(file = params$sup_figure2c, width=15, height=7)
+h.heatmap
+dev.off()
+
+
+```
+  
+

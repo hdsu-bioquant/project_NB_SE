@@ -7,13 +7,15 @@
 rule compile_figure2:
     input:
         figure2a = join(DATAPATH, 'results/figures/figure2/figure2a_tumor_SE_hmatrix.pdf'),
-        figure2b = join(DATAPATH, 'results/figures/figure2/figure2b_cells_SE_hmatrix.pdf')
+        figure2b = join(DATAPATH, 'results/figures/figure2/figure2b_cells_SE_hmatrix.pdf'),
+        figure2c  = join(DATAPATH, 'results/figures/figure2/figure2c_tumor_cells_SE_UMAP.pdf')
     output: join(DATAPATH, 'results/figures/figure2/figure2_paths.txt')
     shell:
         """
         touch {output}
         echo 'Figure 2a {input.figure2a}' >> {output}
         echo 'Figure 2b {input.figure2b}' >> {output}
+        echo 'Figure 2c {input.figure2c}' >> {output}
         
         """
 
@@ -42,8 +44,8 @@ rule fig2c_tumor_cells_SE_umap:
                 params = list( \
                   annot_tumor   = '{input.annot_tumor}', \
                   annot_cells   = '{input.annot_cells}', \
-                  matrix        = '{input.matrix}', \
-                  hmatrix_wnorm = '{output.hmatrix_wnorm}', \
+                  SE_signal     = '{input.matrix}', \
+                  hmatrix_wnorm = '{input.hmatrix_wnorm}', \
                   figure2c      = '{output.figure2c}' \
                 ))"
 

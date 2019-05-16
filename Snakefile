@@ -57,6 +57,7 @@ DATAPATH = config['main_working_directory']
 #==============================================================================#
 # Include snakefiles containing figure rules
 include: "snakefiles/figure2.Snakefile"
+include: "snakefiles/sup_figure2.Snakefile"
 
 
         
@@ -95,17 +96,19 @@ printExp()
 #helper function to collect final files from pipeline
 def inputall(wilcards):
     collectfiles = []
+    # Compile figures
     if config["compileFigs"]["figure2"]:
         collectfiles.append(join(DATAPATH, 'results/figures/figure2/figure2_paths.txt'))
-    if config["phase02_NMF"]["NMF_chipseq_tumor"]:
+    if config["compileFigs"]["sup_figure2"]:
+        collectfiles.append(join(DATAPATH, 'results/figures/sup_figure2/sup_figure2_paths.txt'))
+    # NMF
+    if config["phase02_NMF"]["NMF_chipseq"]:
         collectfiles.append(join(DATAPATH, 'reports/03_tumor_chipseq_NMF_report.html'))
         collectfiles.append(join(DATAPATH, 'reports/03_tumor_cells_chipseq_NMF_report.html'))
-    if config["phase02_NMF"]["NMF_chipseq_cells"]:
-        collectfiles.append(join(DATAPATH, 'reports/03_cells_chipseq_NMF_report.html'))
-        #collectfiles.append(join(DATAPATH, 'reports/01_{type}_{omics}_NMF_report.html'))
+        collectfiles.append(join(DATAPATH, 'reports/03_cells_chipseq_NMF_report.html'))        
+    # Consensus SE
     if config["phase01_consensusSE"]["SE_target_gene"]:
         collectfiles.append(join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'))
-    #Consensus SE
     if config["phase01_consensusSE"]["consensus_tumor_SE"]:
         collectfiles.append(join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed'))
         collectfiles.append(join(DATAPATH, 'analysis/tumor_cells/chipseq/H3K27ac/consensusSE/tumor_cells_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS'))

@@ -53,13 +53,12 @@ phase01_consensusSE:
     SE_target_gene     : True
 
 phase02_NMF:
-    NMF_chipseq_tumor  : True
-    NMF_chipseq_cells  : True
-    NMF_rnaseq_tumor   : False
-    NMF_rnaseq_cells   : False
+    NMF_chipseq : True
+    NMF_rnaseq  : False
     
 compileFigs:
-  figure2: True
+  figure2    : True
+  sup_figure2: True
 
 
 
