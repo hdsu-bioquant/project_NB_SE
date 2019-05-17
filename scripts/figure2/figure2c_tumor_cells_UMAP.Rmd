@@ -145,11 +145,12 @@ hmatrix_zscores <- t(apply(hmatrix, MARGIN=1, function(exposure){
 }))
 
 MES_score <- hmatrix_zscores[which.max(hmatrix_zscores[,"P5"]),]
+
+MES_score <- hmatrix[which.max(hmatrix[,"P5"]),]
+MES_score <- (MES_score*10)/max(MES_score)
+
+# assign MES score
 chip_umap_df$MES_score <- MES_score[match(chip_umap_df$ProjectID, names(MES_score))]
-
-
-
-
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##                        plot UMAP                                           ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##

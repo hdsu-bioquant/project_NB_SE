@@ -1,0 +1,90 @@
+---
+title: "Figure 2b"
+author: "Health Data Science Unit"
+date: "`r date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    number_sections: false
+params:
+  h_tumor  : "path/to/data"
+  h_cells  : "path/to/data"
+  figure2f : "results/figures/figure2/..."
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+#this chunk sets global options for Rmarkdown
+knitr::opts_chunk$set(echo = TRUE)
+#setting working directory. Should be home directory of the project
+options(knitr.table.format="html")
+
+library(viridis)
+library(ggplot2)
+
+```
+
+# Figure 2.f MES density
+
+## Data loading
+  
+  
+```{r dataloading}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                             Read data                                      ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# Read NMF object
+h_tumor <- readRDS(params$h_tumor)
+h_cells <- readRDS(params$h_cells)
+```
+
+```{r mesenchymal_ggpartitions, echo=FALSE}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                      Mesenchymal Signature zscore                          ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# Z score for rows of matrix x
+matrix_Zscore <- function(x){
+  t(apply(x, MARGIN=1, function(score){
+    (score - median(score)) / mad(score)
+  }))
+}
+  
+hz_tumor <- matrix_Zscore(h_tumor)
+hz_cells <- matrix_Zscore(h_cells)
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                  Mesenchymal Signature zscore density plot                 ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+tumor_df <- data.frame(Zscore = hz_tumor["MES",],
+                       Type   = "Tumor", stringsAsFactors = FALSE)
+cells_df <- data.frame(Zscore = hz_cells["MES",],
+                       Type   = "Cell line", stringsAsFactors = FALSE)
+
+#ggplot data frame
+ggdf <- rbind(tumor_df, cells_df)
+
+density_Mesenchymal_NMF <- ggplot(ggdf, aes(x=Zscore, group=Type, color=Type, fill=Type)) +
+  geom_density(alpha=.3) +
+  scale_color_manual(values=c("#4daf4a", "#377eb8"))+
+  scale_fill_manual(values=c("#4daf4a", "#377eb8"))+
+  labs(y="Density", x="Mesenchymal Signature Zscore") +
+  theme_bw() +
+  theme(axis.line=element_line(colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank())
+density_Mesenchymal_NMF
+
+
+ggsave(params$figure2f, plot = density_Mesenchymal_NMF, width = 3, height = 2)
+
+
+```
+  
+
+

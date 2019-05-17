@@ -1,0 +1,150 @@
+---
+title: "Figure 2b"
+author: "Health Data Science Unit"
+date: "`r date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    number_sections: false
+params:
+  nmf_tumor     : "path/to/data"
+  nmf_cells     : "path/to/data"
+  figure2d_tumor: "results/figures/figure2/..."
+  figure2d_cells: "results/figures/figure2/..."
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+#this chunk sets global options for Rmarkdown
+knitr::opts_chunk$set(echo = TRUE)
+#setting working directory. Should be home directory of the project
+options(knitr.table.format="html")
+
+library(Bratwurst)
+library(viridis)
+
+
+```
+
+# Figure 2.f riverplots
+
+## Data loading
+  
+Read NMF object
+  
+```{r dataloading}
+
+# params <- list(annot_tumor = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/annotation/annotation_tumor.RDS",
+#                annot_cells = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/annotation/annotation_cells.RDS",
+#                nmf_tumor   = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_SignalScore_normNMF_W.RDS",
+#                nmf_cells   = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_SignalScore_normNMF_W.RDS")
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                             Read data                                      ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# Read NMF object
+nmf_tumor <- readRDS(params$nmf_tumor)
+nmf_cells <- readRDS(params$nmf_cells)
+```
+
+
+
+
+```{r cellsRiver, message=FALSE, results='hide',fig.keep='all', fig.width=8, fig.height=6}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                        Generate river plot                                 ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+river <- generateRiverplot(nmf_cells)
+#Change color and names of nodes
+
+#K1 Mes viridis
+#K2 No MYCN inferno
+#K3 MYCN plasma
+k.min <- min(as.numeric(names(nmf_cells@HMatrixList)))
+k.max <- max(as.numeric(names(nmf_cells@HMatrixList)))
+
+
+
+name_vector <- unlist(sapply(k.min:k.max, function(k) paste0(paste0("K", k), " Sig", 1:k)))
+#name_vector <- rep("", length(as.character(river$nodes$ID)))
+names(name_vector) <- as.character(river$nodes$ID)
+col.vir <- viridis(5, begin = 0.3)
+col.inf <- inferno(5, begin = 0.3)
+col.pla <- plasma(5, begin = 0.3)
+col.mag <- magma(5, begin = 0.1)
+
+
+col_vector=c(col.inf[1], col.vir[1], 
+             col.vir[2], col.pla[1], col.inf[2], 
+             col.pla[2], col.pla[2], col.inf[3], col.vir[3], 
+             col.inf[4], col.pla[3], col.vir[4], col.mag[2], col.pla[3],
+             col.pla[5], col.inf[5], col.mag[3], col.inf[5], col.pla[5], col.vir[5])
+
+
+
+names(col_vector) <- unlist(sapply(k.min:k.max, function(k) paste0(paste0("K", k), "Sig", 1:k)))
+sig_names <- unlist(sapply(k.min:k.max, function(k) paste0(paste0("K", k), "Sig", 1:k , "_placeholder")))
+names(sig_names) <- as.character(river$nodes$ID)
+river <- relabelRiverplot(river, list(name_vector=name_vector,
+                                      col_vector=col_vector,
+                                      sig_names=sig_names))
+
+plot(river, plot_area=1, yscale=0.6, nodewidth=0.5)
+
+pdf(file=params$figure2d_cells, width=8, height=6)
+plot(river, plot_area=1, yscale=0.6, nodewidth=0.5)
+dev.off()
+```
+
+
+
+```{r tumorRiver, message=FALSE, results='hide',fig.keep='all', fig.width=8, fig.height=6}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                        Generate river plot                                 ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+river <- generateRiverplot(nmf_tumor)
+
+k.min <- min(as.numeric(names(nmf_tumor@HMatrixList)))
+k.max <- max(as.numeric(names(nmf_tumor@HMatrixList)))
+
+
+name_vector=unlist(sapply(k.min:k.max, function(k) paste0(paste0("K", k), " Sig", 1:k)))
+names(name_vector) <- as.character(river$nodes$ID)
+
+col.vir <- viridis(5, begin = 0.2)
+col.inf <- inferno(5, begin = 0.3)
+col.pla <- plasma(5, begin = 0.3)
+col.mag <- magma(5, begin = 0.1)
+
+
+col_vector=c(col.inf[1], col.pla[1], 
+             col.vir[2], col.inf[2], col.pla[2], 
+             col.mag[1], col.inf[3], col.vir[3], col.pla[3], 
+             col.pla[4], col.vir[4], col.pla[4], col.inf[4], col.mag[2], 
+             col.pla[5], col.vir[5], col.pla[5], col.mag[3], col.inf[5], col.mag[3])
+
+
+
+names(col_vector) <- unlist(sapply(k.min:k.max, function(k) paste0(paste0("K", k), "Sig", 1:k)))
+sig_names <- unlist(sapply(k.min:k.max, function(k) paste0(paste0("K", k), "Sig", 1:k , "_placeholder")))
+names(sig_names) <- as.character(river$nodes$ID)
+river <- relabelRiverplot(river, list(name_vector=name_vector,
+                                      col_vector=col_vector,
+                                      sig_names=sig_names))
+
+plot(river, plot_area=1, yscale=0.6, nodewidth=0.5)
+
+pdf(file=params$figure2d_tumor, width=8, height=6)
+plot(river, plot_area=1, yscale=0.6, nodewidth=0.5)
+dev.off()
+```
+
+
+
+
+
