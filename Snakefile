@@ -102,6 +102,8 @@ def inputall(wilcards):
     if config["compileFigs"]["sup_figure2"]:
         collectfiles.append(join(DATAPATH, 'results/figures/sup_figure2/sup_figure2_paths.txt'))
     # NMF
+    if config["phase02_NMF"]["NMF_rnaseq"]:
+        collectfiles.extend(expand(join(DATAPATH, 'reports/04_{type}_SE_targets_rnaseq_NMF_report.html'), zip, type = ["tumor", "cells"]))
     if config["phase02_NMF"]["NMF_chipseq"]:
         collectfiles.append(join(DATAPATH, 'reports/03_tumor_chipseq_NMF_report.html'))
         collectfiles.append(join(DATAPATH, 'reports/03_tumor_cells_chipseq_NMF_report.html'))
@@ -113,8 +115,6 @@ def inputall(wilcards):
         collectfiles.append(join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed'))
         collectfiles.append(join(DATAPATH, 'analysis/tumor_cells/chipseq/H3K27ac/consensusSE/tumor_cells_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS'))
         collectfiles.extend(expand(join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{type}_H3K27ac_noH3K4me3_consensusSE_SignalScore.txt'), zip, type = ["tumor", "cells"]))
-        #collectfiles.append('.snakemake/completeLibrary.txt')
-        #collectfiles.append(join(DATAPATH, 'tmp.txt'))
     #return final list of all files to collect from the pipeline
     return collectfiles
 
@@ -141,28 +141,28 @@ rule placeh:
 
 
 #================================================================================#
-#                              SE ChIPseq Signal NMF                             #
+#                        SE targets Gene Expression NMF                          #
 #================================================================================#
 #optK_tcc = str(config['NMFparams']['tumor_cells']['optimalK']['chipseq'])
 rule NMF_report_rnaseq:
     input:
-        matrix     = join(DATAPATH, 'analysis/{type}/rnaseq/H3K27ac/consensusSE/{type}_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS'),
+        SE_target  = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'),
+        matrix     = join(DATAPATH, 'data/{type}/rnaseq/exprs/{type}_RNAseq_TPM_Matrix.RDS'),
         annotation = join(DATAPATH, 'annotation/annotation_{type}.RDS')
     output:
         report    = join(DATAPATH, 'reports/04_{type}_SE_targets_rnaseq_NMF_report.html'),
         rmd       = temp(join(DATAPATH, 'reports/04_{type}_SE_targets_rnaseq_NMF_report.Rmd')),
-        nmf       = join(DATAPATH, 'analysis/{type}/rnaseq/NMF/{type}_consensusSE_SignalScore_NMF.RDS'),
-        norm_nmfW = join(DATAPATH, 'analysis/{type}/rnaseq/NMF/{type}_consensusSE_SignalScore_normNMF_W.RDS'),
-        norm_nmfH = join(DATAPATH, 'analysis/{type}/rnaseq/NMF/{type}_consensusSE_SignalScore_normNMF_H.RDS')
+        nmf       = join(DATAPATH, 'analysis/{type}/rnaseq/NMF/{type}_consensusSE_targetExprs_NMF.RDS'),
+        norm_nmfW = join(DATAPATH, 'analysis/{type}/rnaseq/NMF/{type}_consensusSE_targetExprs_normNMF_W.RDS'),
+        norm_nmfH = join(DATAPATH, 'analysis/{type}/rnaseq/NMF/{type}_consensusSE_targetExprs_normNMF_H.RDS')
     params:
         script   = 'scripts/analysis/04_SE_targets_rnaseq_NMF_report.Rmd',
-        assayID  = '{type}_chipseq',
-        workdir  = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/NMF/'),
+        assayID  = '{type}_rnaseq',
         nmf_kmin = lambda wildcards: config['NMFparams'][wildcards.type]['k.min'],
         nmf_kmax = lambda wildcards: config['NMFparams'][wildcards.type]['k.max'],
         nmf_iter = lambda wildcards: config['NMFparams'][wildcards.type]['iterations']
     wildcard_constraints:
-        type = "a-z"
+        type = "[a-z]+"
     conda: 'envs/R3.5.yaml'
     shell:
         """
@@ -175,7 +175,6 @@ rule NMF_report_rnaseq:
         Rscript -e "rmarkdown::render( '{output.rmd}', \
                 params = list( \
                   assayID   = '{params.assayID}', \
-                  work_dir  = '{params.workdir}', \
                   nmf_kmin  = '{params.nmf_kmin}', \
                   nmf_kmax  = '{params.nmf_kmax}', \
                   nmf_iter  = '{params.nmf_iter}', \
@@ -183,6 +182,7 @@ rule NMF_report_rnaseq:
                   norm_nmfW = '{output.norm_nmfW}', \
                   norm_nmfH = '{output.norm_nmfH}', \
                   matrix    = '{input.matrix}', \
+                  SE        = '{input.SE_target}', \
                   metadata  = '{input.annotation}' \
                 ))"
         

@@ -54,7 +54,7 @@ phase01_consensusSE:
 
 phase02_NMF:
     NMF_chipseq : True
-    NMF_rnaseq  : False
+    NMF_rnaseq  : True
     
 compileFigs:
   figure2    : True
