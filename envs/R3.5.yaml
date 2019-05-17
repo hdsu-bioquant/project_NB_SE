@@ -28,6 +28,7 @@ dependencies:
  - bioconductor-homo.sapiens
  - bioconductor-edger
  - bioconductor-ggbio
+ - bioconductor-yapsa
  - python=3.6.7
  - numpy
  - pip

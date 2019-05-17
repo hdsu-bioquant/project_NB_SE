@@ -296,14 +296,14 @@ rule NMF_report_chipseq:
 #================================================================================#
 rule SE_target_genes:
     input:
-        tumor_annot = join(DATAPATH, 'annotation/annotation_tumor.RDS'),
-        SE_bed      = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed'),
+        tumor_annot    = join(DATAPATH, 'annotation/annotation_tumor.RDS'),
+        SE_bed         = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed'),
         hichip_SK_N_AS = join(DATAPATH, 'data/cells/hichip/mango/SK-N-AS_HiChIP_mango.all'),
-        hichip_CLB_GA = join(DATAPATH, 'data/cells/hichip/mango/CLB-GA_HiChIP_mango.all'),
-        SE_signal = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS'),
-        gene_exprs = join(DATAPATH, 'data/tumor/rnaseq/exprs/tumor_RNAseq_Counts_Matrix.RDS'),
-        hic = join(DATAPATH, 'db/hic/GSE63525_K562_HiCCUPS_looplist.txt'),
-        TADs = join(DATAPATH, 'db/TADs/hESC_domains_hg19.RDS'),
+        hichip_CLB_GA  = join(DATAPATH, 'data/cells/hichip/mango/CLB-GA_HiChIP_mango.all'),
+        SE_signal      = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS'),
+        gene_exprs     = join(DATAPATH, 'data/tumor/rnaseq/exprs/tumor_RNAseq_Counts_Matrix.RDS'),
+        hic            = join(DATAPATH, 'db/hic/GSE63525_K562_HiCCUPS_looplist.txt'),
+        TADs           = join(DATAPATH, 'db/TADs/hESC_domains_hg19.RDS'),
         hsapiens_genes = join(DATAPATH, 'db/misc/EnsDb_Hsapiens_v75_genes.RDS')
     output:
         report    = join(DATAPATH, 'reports/02_SE_target_genes_report.html'),
@@ -353,7 +353,7 @@ rule SE_SignalMatrix_combined:
         matrix_rds = join(DATAPATH, 'analysis/tumor_cells/chipseq/H3K27ac/consensusSE/tumor_cells_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS'),
         matrix_txt = join(DATAPATH, 'analysis/tumor_cells/chipseq/H3K27ac/consensusSE/tumor_cells_H3K27ac_noH3K4me3_consensusSE_SignalScore.txt')
     params:
-        script='scripts/analysis/01_SEmatrix.R'
+        script = 'scripts/analysis/01_SEmatrix.R'
     conda:
         'envs/R3.5.yaml'
     shell:
@@ -378,7 +378,7 @@ rule SE_SignalMatrix:
         matrix_rds = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{type}_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS'),
         matrix_txt = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{type}_H3K27ac_noH3K4me3_consensusSE_SignalScore.txt')
     params:
-        script='scripts/analysis/01_SEmatrix.R'
+        script = 'scripts/analysis/01_SEmatrix.R'
     wildcard_constraints:
         type = "[a-z]+"
     conda:
@@ -392,10 +392,11 @@ rule SE_SignalMatrix:
 ### Computes the average score over each bed for tumors
 rule SE_bigwigaverageoverbed:
     input:
-        bw = join(DATAPATH, 'data/{type}/chipseq/H3K27ac/bw/{sample}_H3K27ac.bw'), 
-        consensusSE = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed')
+        hsapiens_genes = join(DATAPATH, 'db/misc/EnsDb_Hsapiens_v75_genes.RDS'),
+        bw             = join(DATAPATH, 'data/{type}/chipseq/H3K27ac/bw/{sample}_H3K27ac.bw'), 
+        consensusSE    = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed')
     output:
-        bw_over_bed=temp(join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{sample}_H3K27ac_bigWigAverageOverBed.txt'))
+        bw_over_bed    = temp(join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{sample}_H3K27ac_bigWigAverageOverBed.txt'))
     conda:
         'envs/generaltools.yaml'
     shell:
@@ -414,7 +415,7 @@ rule tumors_consensus_SE_noH3K4me3:
     input:
         seH3K27ac_noH3K4me3 = expand(join(DATAPATH, 'data/tumor/chipseq/H3K27ac/SE/{sample}_H3K27ac_ROSE_noH3K4me3_SuperEnhancers.bed'), zip, sample=TUMOR_SAMPLES_CHIP)
     output:
-        consensusbed = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed')
+        consensusbed        = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed')
     conda:
         'envs/generaltools.yaml'
     shell:
