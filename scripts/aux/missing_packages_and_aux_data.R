@@ -29,7 +29,7 @@ path_TADs
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##                        install missing R packages                          ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-devtools::install_github('andquintero/bratwurst', ref='dev_hdsu')
+devtools::install_github('andquintero/bratwurst', ref='dev_hdsu', upgrade = "never")
 # if (!requireNamespace("BiocManager", quietly = TRUE))
 #   install.packages("BiocManager")
 

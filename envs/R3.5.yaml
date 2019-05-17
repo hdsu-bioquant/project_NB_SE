@@ -29,6 +29,7 @@ dependencies:
  - bioconductor-edger
  - bioconductor-ggbio
  - bioconductor-yapsa
+ - bioconductor-deseq2
  - python=3.6.7
  - numpy
  - pip
