@@ -147,7 +147,8 @@ rule placeh:
 rule NMF_report_rnaseq:
     input:
         SE_target  = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'),
-        matrix     = join(DATAPATH, 'data/{type}/rnaseq/exprs/{type}_RNAseq_TPM_Matrix.RDS'),
+        #matrix     = join(DATAPATH, 'data/{type}/rnaseq/exprs/{type}_RNAseq_TPM_Matrix.RDS'),
+        matrix     = join(DATAPATH, 'data/{type}/rnaseq/exprs/{type}_RNAseq_Counts_Matrix.RDS'),
         annotation = join(DATAPATH, 'annotation/annotation_{type}.RDS')
     output:
         report    = join(DATAPATH, 'reports/04_{type}_SE_targets_rnaseq_NMF_report.html'),

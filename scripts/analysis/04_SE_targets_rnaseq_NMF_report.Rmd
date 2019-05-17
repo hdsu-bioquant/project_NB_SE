@@ -36,8 +36,8 @@ library(ComplexHeatmap)
 library(circlize)
 library(ggplot2)
 library(knitr)
-
-
+#library(edgeR)
+library(DESeq2)
 
 ```
 
@@ -92,6 +92,50 @@ kable(tmp.dim)
 
 ```
   
+
+```{r normalizeRNAseq}
+# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# ## Gene expression - Normalize - filter genes wo annot  ##
+# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# # RNAseq read-counts normalization
+# gene_exprs_norm <- DGEList(counts  = norm.mat, 
+#                            samples = colnames(norm.mat), 
+#                            remove.zeros = TRUE)
+# gene_exprs_norm$samples$group <- rep(1,ncol(gene_exprs_norm))
+# 
+# # #identify the cpm value that corresponds to atleast 20 reads in the smallest library
+# # cutoff <- (20/min(gene_exprs_norm$samples$lib.size)) * 10^6  
+# # #cutoff cpm should be present in atleast 25% of samples
+# # isexpr <- rowSums(cpm(gene_exprs_norm) > cutoff) > round(0.25 * ncol(gene_exprs_norm)) 
+# # table(isexpr)
+# # gene_exprs_norm <- gene_exprs_norm[isexpr, ,keep.lib.sizes=FALSE]
+# # normalize using voom
+# gene_exprs_norm <- calcNormFactors(gene_exprs_norm, method="TMM")
+# gene_exprs_norm <- limma::voom(gene_exprs_norm, plot=F)
+# gene_exprs_norm <- gene_exprs_norm$E
+# hist(gene_exprs_norm)
+# dim(gene_exprs_norm)
+# 
+# # Drop negative values
+# norm.mat <- gene_exprs_norm
+# norm.mat[norm.mat < 0] <- 0
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                              Normalize counts                              ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+rna.counts <- norm.mat
+
+# do DESeq2 size factor normalization
+sf <- estimateSizeFactorsForMatrix(rna.counts)
+rna.counts <- t( t(rna.counts) / sf )
+
+# do +1 log2 transformation
+rna.norm.mat <- apply(rna.counts + 1, 2, log2)
+hist(rna.norm.mat)
+
+norm.mat <- rna.norm.mat
+```
+
 
 # Applying NMF
 
