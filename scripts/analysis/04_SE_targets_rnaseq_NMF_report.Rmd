@@ -65,7 +65,7 @@ SE <- readRDS(params$SE)
 ##               Filter matrix to keep only SE target genes                   ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 rownames(norm.mat) <- sapply(strsplit(rownames(norm.mat), "\\."), "[[", 1)
-norm.mat <- norm.mat[match(SE$target_ENSEMBL, rownames(norm.mat)),]
+norm.mat <- norm.mat[rownames(norm.mat) %in% SE$target_ENSEMBL,]
 
 
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##

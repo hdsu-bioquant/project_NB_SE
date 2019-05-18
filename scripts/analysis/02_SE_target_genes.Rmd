@@ -114,6 +114,11 @@ rownames(gene_exprs) <- sapply(strsplit(rownames(gene_exprs), "\\."), "[[", 1)
 # Keep only shared genes
 gene_exprs <- gene_exprs[rownames(gene_exprs) %in% hsapiens_genes$gene_id, ]
 dim(gene_exprs)
+# Keep only expressed genes
+gene_exprs <- gene_exprs[rowSums(gene_exprs) > 0,]
+dim(gene_exprs)
+
+# keep only genes in expression matrix
 hsapiens_genes  <- hsapiens_genes[hsapiens_genes$gene_id %in% rownames(gene_exprs)]
 length(hsapiens_genes)
 

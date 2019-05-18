@@ -11,6 +11,7 @@ rule compile_figure2:
         figure2c   = join(DATAPATH, 'results/figures/figure2/figure2c_tumor_cells_SE_UMAP.pdf'),
         figure2d01 = join(DATAPATH, 'results/figures/figure2/figure2d_01_tumor_riverplot.pdf'),
         figure2d02 = join(DATAPATH, 'results/figures/figure2/figure2d_02_cells_riverplot.pdf'),
+        figure2e   = join(DATAPATH, 'results/figures/figure2/figure2e_tumor_SE_targets_hmatrix.pdf'),
         figure2f   = join(DATAPATH, 'results/figures/figure2/figure2f_tumor_cells_density.pdf')
     output: join(DATAPATH, 'results/figures/figure2/figure2_paths.txt')
     shell:
@@ -21,6 +22,7 @@ rule compile_figure2:
         echo 'Figure 2c {input.figure2c}' >> {output}
         echo 'Figure 2d {input.figure2d01}' >> {output}
         echo 'Figure 2d {input.figure2d02}' >> {output}
+        echo 'Figure 2e {input.figure2e}' >> {output}
         echo 'Figure 2f {input.figure2f}' >> {output}
         
         """
@@ -50,6 +52,47 @@ rule fig2f_tumor_cells_density:
                   h_tumor  = '{input.h_tumor}', \
                   h_cells  = '{input.h_cells}', \
                   figure2f = '{output.figure2f}' \
+                ))"
+
+
+        """
+
+#================================================================================#
+#                    Figure 2e - Tumor SE Target RNAseq NMF                      #
+#================================================================================#
+optK_tr = str(config['NMFparams']['tumor']['optimalK']['rnaseq'])
+rule fig2e_tumor_SE_Targets_heatmap:
+    input:
+        annotation = join(DATAPATH, 'annotation/annotation_tumor.RDS'),
+        norm_nmfW = join(DATAPATH, 'analysis/tumor/rnaseq/NMF/tumor_consensusSE_targetExprs_normNMF_W.RDS'),
+        norm_nmfH = join(DATAPATH, 'analysis/tumor/rnaseq/NMF/tumor_consensusSE_targetExprs_normNMF_H.RDS')        
+    output:
+        report    = join(DATAPATH, 'reports/figure2e_tumor_RNAseq_NMF.html'),
+        rmd       = temp(join(DATAPATH, 'reports/figure2e_tumor_RNAseq_NMF.Rmd')),
+        hmatrix_wnorm = join(DATAPATH, ('analysis/tumor/rnaseq/NMF/tumor_consensusSE_K' + optK_tr + '_Hmatrix_wnorm.RDS')),
+        wmatrix_wnorm = join(DATAPATH, ('analysis/tumor/rnaseq/NMF/tumor_consensusSE_K' + optK_tr + '_Wmatrix_Wnorm.RDS')),
+        nmf_features  = join(DATAPATH, ('analysis/tumor/rnaseq/NMF/tumor_consensusSE_K' + optK_tr + '_NMF_features.RDS')),
+        hmatrix_hnorm = join(DATAPATH, ('analysis/tumor/rnaseq/NMF/tumor_consensusSE_K' + optK_tr + '_Hmatrix_hnorm.RDS')),
+        figure2e      = join(DATAPATH, 'results/figures/figure2/figure2e_tumor_SE_targets_hmatrix.pdf')
+    params:
+        script   = 'scripts/figure2/figure2e_tumor_RNAseq_NMF.Rmd',
+        optimalK = optK_tc
+    conda: '../envs/R3.5.yaml'
+    shell:
+        """
+        cp {params.script} {output.rmd}
+
+        Rscript -e "rmarkdown::render( '{output.rmd}', \
+                params = list( \
+                  K         = {params.optimalK}, \
+                  annot     = '{input.annotation}', \
+                  norm_nmfW = '{input.norm_nmfW}', \
+                  norm_nmfH = '{input.norm_nmfH}', \
+                  hmatrix_wnorm = '{output.hmatrix_wnorm}', \
+                  wmatrix_wnorm = '{output.wmatrix_wnorm}', \
+                  nmf_features  = '{output.nmf_features}', \
+                  hmatrix_hnorm = '{output.hmatrix_hnorm}', \
+                  figure2e      = '{output.figure2e}' \
                 ))"
 
 
