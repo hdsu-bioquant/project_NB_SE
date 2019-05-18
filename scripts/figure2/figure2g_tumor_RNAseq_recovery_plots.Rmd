@@ -1,0 +1,207 @@
+---
+title: "Figure 2g - Tumor SE Target RNAseq NMF recovery plots "
+author: "Health Data Science Unit"
+date: "`r date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    number_sections: false
+params:
+  annot         : "path/to/..."
+  hmatrix_wnorm : "path/to/..."
+  figure2g      : "results/figures/figure2/..."
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+#this chunk sets global options for Rmarkdown
+knitr::opts_chunk$set(echo = TRUE)
+#setting working directory. Should be home directory of the project
+knitr::opts_knit$set(root.dir=params$work_dir)
+options(knitr.table.format="html")
+
+library(Bratwurst)
+library(viridis)
+library(ComplexHeatmap)
+library(circlize)
+library(ggplot2)
+library(knitr)
+
+
+# params <- list(K         = 4,
+#                annot     = "annotation/annotation_tumor.RDS",
+#                nmf       = "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_SignalScore_NMF.RDS",
+#                norm_nmfW = "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_SignalScore_normNMF_W.RDS",
+#                norm_nmfH = "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_SignalScore_normNMF_H.RDS",
+#                hmatrix_wnorm = "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS",
+#                wmatrix_wnorm = "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Wmatrix_Wnorm.RDS",
+#                nmf_features  = "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_NMF_features.RDS",
+#                hmatrix_hnorm = "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS",
+#                figure2a      = "results/figures/figure2/figure2a_tumor_SE_hmatrix.pdf")
+
+```
+
+
+## Data loading
+  
+
+```{r dataloading}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                          Read NMF objects                                  ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+hmatrix <- readRDS(params$hmatrix_wnorm)
+# read annotation 
+annot <- readRDS(params$annot)
+annot <- annot[match(colnames(hmatrix), annot$ProjectID),]
+rownames(annot) <- annot$ProjectID
+
+
+
+```
+  
+```{r helper_functions}
+```
+
+
+
+
+```{r recovery}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                Signature annotation enrichment                             ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+table(annot$Stage)
+recovery_plot(h = hmatrix, annot, "Stage", "4")
+table(annot$GenomicSubtype)
+recovery_plot(h = hmatrix, annot, "GenomicSubtype", "A")
+recovery_plot(h = hmatrix, annot, "GenomicSubtype", "D")
+table(annot$Relapse)
+recovery_plot(h = hmatrix, annot, "Relapse", "Yes")
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                Signature annotation enrichment                             ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+
+pdf(file = params$figure2g, width=7, height=7)
+layout(matrix(c(1,2,
+                3,4), ncol = 2, byrow = TRUE))
+recovery_plot(h = hmatrix, annot, "Stage", "4")
+recovery_plot(h = hmatrix, annot, "GenomicSubtype", "A")
+recovery_plot(h = hmatrix, annot, "GenomicSubtype", "D")
+recovery_plot(h = hmatrix, annot, "Relapse", "Yes")
+dev.off()
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+```{r helper_functions}
+# Helper functions 
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                      Recovery plots functions                              ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+auc <- function(rnk.list,max=NULL) {
+  aux = sapply(rnk.list,function(rnk) {
+    if (is.null(max)) {max = max(rnk)} 
+    rnk = sort(rnk)
+    X = 0
+    i = 1
+    ngenes = length(rnk)
+    while ((rnk[i] <= max) && (i <= length(rnk))) {X = X + max -rnk[i];i = i+1}
+    rauc = X/(i-1)/max
+    return(rauc)
+  })
+  return(aux)
+}
+
+roc <- function(rnk.list,max=NULL,title=NULL) {
+  require(RColorBrewer)
+  col = brewer.pal(length(rnk.list),'Set1')
+  rnk = c(1,rnk.list[[1]])
+  if (is.null(max)) {max = max(rnk)} else {rnk=c(rnk,max)}
+  plot(rnk,(1:length(rnk))/length(rnk),type='s',col=col[1],lwd=3,main=title,ylab='',xlab='Ranks', las=1)
+  for (i in 2:length(rnk.list)) {
+    rnk = c(1,rnk.list[[i]])
+    if (is.null(max)) {max = max(rnk)} else {rnk=c(rnk,max)}
+    lines(rnk,(1:length(rnk))/length(rnk),type='s',col=col[i],lwd=3)
+  }
+  L = length(rnk.list[[1]])
+  abline(1/L,(1-1/L)/(max),lty=2,lwd=2,col='darkgrey')
+  legend('bottomright',legend = names(rnk.list),col=col,lwd=3)
+}
+
+recovery_plot <- function(h, annot, annotID, levelID){
+  which.a = annotID
+  annot.factor <- annot[,annotID]
+  
+  n.samples = nrow(annot)
+  
+  ALL.RNKS = lapply(levels(annot.factor),function(l) {
+  RNKS=lapply(1:nrow(h),function(i) {
+    exp = sort(h[i,],decreasing=TRUE)
+    i.rnk = match(rownames(annot)[annot.factor==l],names(exp))
+    i.rnk = sort(i.rnk[!is.na(i.rnk)])
+    return(i.rnk)
+  })
+  #names(RNKS) = paste0('Sig ',1:length(RNKS))
+  names(RNKS) = rownames(h)
+  return(RNKS)
+  })
+    names(ALL.RNKS) = levels(annot.factor)
+    
+    AUC.RAND = lapply(ALL.RNKS,function(r) {
+    do.call('rbind',lapply(r, function(x) {
+      ##
+      l = lapply(1:500,function(i) {
+        sample(1:n.samples,length(x))
+      })
+      aux = auc(l,max=n.samples)
+      return(c(mean(aux),sd(aux)))
+    }))
+      })
+  
+  AUC = lapply(ALL.RNKS,auc,max=n.samples)
+  
+  
+  PVAL = lapply(1:length(AUC),function(i) {
+    x = data.frame(AUC.RAND[[i]],AUC[[i]])
+    colnames(x) = c('mean','sd','val')
+    z = (x[,3]-x[,1])/x[,2]
+    p = ifelse(z>0,pnorm(z,lower.tail=FALSE),pnorm(z))
+    x$z = z
+    x$p = p
+    return(x)
+  })
+  names(PVAL) = names(AUC)
+  
+  n <- levelID
+  #for (n in names(ALL.RNKS)) {
+    #cat("\n")
+    #cat("  \n##### ",  n, "  \n  ")
+    #print(n)
+    RNKS = ALL.RNKS[[n]]
+    names(RNKS) = paste0(names(RNKS),' - Pval = ',sprintf('%.1e',PVAL[[n]][,5]))
+    roc(RNKS,max=n.samples,title=paste0(annotID,' - level : ',n))
+    
+  #}
+}
+
+
+```
+
