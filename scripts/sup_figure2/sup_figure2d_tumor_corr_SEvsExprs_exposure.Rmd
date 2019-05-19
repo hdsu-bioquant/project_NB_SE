@@ -1,0 +1,180 @@
+---
+title: "Sup. Figure 2d - Correlation of SE signal exposure to SE target exposure"
+author: "Health Data Science Unit"
+date: "`r date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    number_sections: false
+params:
+  h_SEsig : "path/to/data"
+  h_exprs : "path/to/data"
+  figure  : "results/figures..."
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+#this chunk sets global options for Rmarkdown
+knitr::opts_chunk$set(echo = TRUE)
+#setting working directory. Should be home directory of the project
+options(knitr.table.format="html")
+
+library(tidyverse)
+library(viridis)
+library(ggplot2)
+
+```
+
+## Data loading
+  
+  
+```{r dataloading}
+
+# params <- list(h_SEsig = '/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS',
+#                h_exprs = '/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS')
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                             Read data                                      ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# Read NMF H matrices
+h_SEsig <- readRDS(params$h_SEsig)
+h_exprs <- readRDS(params$h_exprs)
+
+# keep only shared samples
+h_SEsig <- h_SEsig[,colnames(h_SEsig) %in% colnames(h_exprs)]
+#h_exprs <- h_exprs[,colnames(h_exprs) %in% colnames(h_SEsig)]
+h_exprs <- h_exprs[,match(colnames(h_SEsig), colnames(h_SEsig))]
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                           basic ggplot theme                               ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+tm <- theme_bw() +
+  theme(#axis.line=element_line(colour = "black"),
+    #axis.line = element_line(size = .1, colour = "grey20"),
+    legend.text = element_text(size=5),
+    #axis.line=element_blank(),
+    axis.title.y = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    #panel.border = element_blank(),
+    panel.background = element_blank())
+
+
+```
+
+```{r scatterPlot}
+
+signatureIDs <- setNames(rownames(h_SEsig), rownames(h_SEsig))
+rownames(h_SEsig) <- paste0("ChIPseq.", rownames(h_SEsig))
+rownames(h_exprs) <- paste0("RNAseq.", rownames(h_exprs))
+
+h_SEsig_exprs <- as.data.frame(t(rbind(h_SEsig, h_exprs)))
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                        Matrix wide to long format                          ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+Expand <- function(data) {
+  grid <- expand.grid(x = 1:ncol(data), y = 1:ncol(data))
+  grid <- subset(grid, x != y)
+  all <- do.call("rbind", lapply(1:nrow(grid), function(i) {
+    xcol <- grid[i, "x"]
+    ycol <- grid[i, "y"]
+    data.frame(xvar = names(data)[ycol], yvar = names(data)[xcol], 
+               x = data[, xcol], y = data[, ycol], data)
+  }))
+  all$xvar <- factor(all$xvar, levels = names(data))
+  all$yvar <- factor(all$yvar, levels = names(data))
+  all
+}
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##            SE signal vs SE target exprs H matrix exposures                 ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+h_SEsig_exprs_long <- Expand(h_SEsig_exprs)
+h_SEsig_exprs_long <- h_SEsig_exprs_long[substr(h_SEsig_exprs_long$xvar, 1,4)=="ChIP",]
+h_SEsig_exprs_long <- h_SEsig_exprs_long[substr(h_SEsig_exprs_long$yvar, 1,3)=="RNA",]
+
+
+ggplot(h_SEsig_exprs_long, aes(x=x, y=y)) +
+  geom_point() +
+  facet_grid(xvar ~ yvar, scales = "free") +
+  tm
+
+ggplot(h_SEsig_exprs_long, aes(x=x, y=y)) +
+  geom_point() +
+  facet_grid(xvar ~ yvar, scales = "free") +
+  geom_smooth(method="lm") +
+  tm
+
+
+# # Tumors ChIPseq vs Tumors RNAseq
+# pdf(file="figures/figure2/chip_rna_corr/corr.tumorChIP.tumorRNA.pdf", width=12, height=12)
+# g + theme(panel.grid.major = element_blank(), 
+# panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+# dev.off()
+
+```
+
+
+```{r printCorrExposures}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                           basic ggplot theme                               ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+head(h_SEsig_exprs_long)
+
+tm <- theme_bw() +
+  theme(
+    legend.text = element_text(size=5),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    #panel.border = element_blank(),
+    panel.background = element_blank())
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                           print figure                                     ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+unique(h_SEsig_exprs_long$xvar)
+
+
+
+# h_SEsig_exprs_long %>% 
+#   filter(grepl("MYCN", xvar) & grepl("MYCN", yvar)) %>%
+#   ggplot(aes(x=x, y=y)) +
+#   geom_point() +
+#   xlab("SE signal MYCN") +
+#   ylab("SE target MYCN") +
+#   tm
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                Signature annotation enrichment                             ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+p_list <- lapply(signatureIDs, function(sigID){
+  p <- h_SEsig_exprs_long %>% 
+  filter(grepl(sigID, xvar) & grepl(sigID, yvar)) %>%
+  ggplot(aes(x=x, y=y)) +
+  geom_point() +
+  xlab(paste0("SE signal ", sigID)) +
+  ylab(paste0("SE target ", sigID)) +
+  tm
+  p
+})
+
+
+library(patchwork)
+
+pdf(file = params$figure, width=4, height=4)
+p_list$MYCN + p_list$MES + p_list$`MNA-LR` + p_list$`MNA-HR` + plot_layout(ncol = 2)
+dev.off()
+
+
+
+```
+
+

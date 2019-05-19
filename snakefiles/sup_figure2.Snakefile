@@ -9,6 +9,7 @@ rule compile_sup_figure2:
         #sup_figure2a = join(DATAPATH, 'results/figures/figure2/figure2a_tumor_SE_hmatrix.pdf'),
         #sup_figure2b = join(DATAPATH, 'results/figures/figure2/figure2b_cells_SE_hmatrix.pdf')
         sup_figure2c = join(DATAPATH, 'results/sup_figure2/sup_figure2c_tumor_cells_SE_hmatrix.pdf'),
+        sup_figure2d = join(DATAPATH, 'results/sup_figure2/sup_figure2d_tumor_corr_SEvsExprs_exposure.pdf'),
         sup_figure2e = join(DATAPATH, 'results/sup_figure2/sup_figure2e_tumor_mostVariablehmatrix.pdf')
     output: join(DATAPATH, 'results/sup_figure2/sup_figure2_paths.txt')
     shell:
@@ -17,6 +18,7 @@ rule compile_sup_figure2:
         #echo 'Sup. Figure 2a {input.sup_figure2c}' >> {output}
         #echo 'Sup. Figure 2b {input.sup_figure2c}' >> {output}
         echo 'Sup. Figure 2c {input.sup_figure2c}' >> {output}
+        echo 'Sup. Figure 2d {input.sup_figure2d}' >> {output}
         echo 'Sup. Figure 2e {input.sup_figure2e}' >> {output}
         
         """
@@ -62,6 +64,35 @@ rule sup_fig2e_tumor_mostVarible_heatmap:
 
         """
 
+#================================================================================#
+#    Sup. Figure 2d - Correlation of SE signal exposure to SE target exposure    #
+#================================================================================#
+optK_tc = str(config['NMFparams']['tumor']['optimalK']['chipseq'])
+optK_tr = str(config['NMFparams']['tumor']['optimalK']['rnaseq'])
+rule sup_fig2d_tumor_corr_SEvsExprs_exposure:
+    input:
+        h_SEsig = join(DATAPATH, ('analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K' + optK_tc + '_Hmatrix_wnorm.RDS')),
+        h_exprs = join(DATAPATH, ('analysis/tumor/rnaseq/NMF/tumor_consensusSE_K' + optK_tr + '_Hmatrix_wnorm.RDS'))
+    output:
+        report = join(DATAPATH, 'reports/sup_figure2d_tumor_corr_SEvsExprs_exposure.html'),
+        rmd    = temp(join(DATAPATH, 'reports/sup_figure2d_tumor_corr_SEvsExprs_exposure.Rmd')),
+        figure = join(DATAPATH, 'results/sup_figure2/sup_figure2d_tumor_corr_SEvsExprs_exposure.pdf')
+    params:
+        script   = 'scripts/sup_figure2/sup_figure2d_tumor_corr_SEvsExprs_exposure.Rmd'
+    conda: '../envs/R3.5.yaml'
+    shell:
+        """
+        cp {params.script} {output.rmd}
+
+        Rscript -e "rmarkdown::render( '{output.rmd}', \
+                params = list( \
+                  h_SEsig = '{input.h_SEsig}', \
+                  h_exprs = '{input.h_exprs}', \
+                  figure  = '{output.figure}' \
+                ))"
+
+
+        """
 
 #================================================================================#
 #           Sup. Figure 2c - Tumor and Cell lines SE signal H matrix             #
