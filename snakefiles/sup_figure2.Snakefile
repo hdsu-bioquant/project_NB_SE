@@ -6,8 +6,7 @@
 
 rule compile_sup_figure2:
     input:
-        #sup_figure2a = join(DATAPATH, 'results/figures/figure2/figure2a_tumor_SE_hmatrix.pdf'),
-        #sup_figure2b = join(DATAPATH, 'results/figures/figure2/figure2b_cells_SE_hmatrix.pdf')
+        sup_figure2a = join(DATAPATH, 'results/sup_figure2/sup_figure2a_tumor_cells_SE_heatmap.pdf'),
         sup_figure2c = join(DATAPATH, 'results/sup_figure2/sup_figure2c_tumor_cells_SE_hmatrix.pdf'),
         sup_figure2d = join(DATAPATH, 'results/sup_figure2/sup_figure2d_tumor_corr_SEvsExprs_exposure.pdf'),
         sup_figure2e = join(DATAPATH, 'results/sup_figure2/sup_figure2e_tumor_mostVariablehmatrix.pdf')
@@ -15,7 +14,7 @@ rule compile_sup_figure2:
     shell:
         """
         touch {output}
-        #echo 'Sup. Figure 2a {input.sup_figure2c}' >> {output}
+        echo 'Sup. Figure 2a {input.sup_figure2a}' >> {output}
         #echo 'Sup. Figure 2b {input.sup_figure2c}' >> {output}
         echo 'Sup. Figure 2c {input.sup_figure2c}' >> {output}
         echo 'Sup. Figure 2d {input.sup_figure2d}' >> {output}
@@ -126,3 +125,32 @@ rule sup_fig2c_tumor_cells_SE_Hmatrix:
         """
 
 
+#================================================================================#
+#              Figure 2a - Tumor and Cell lines SE signal heatmap                #
+#================================================================================#
+rule sup_fig2a_tumor_cells_SE_heatmap:
+    input:
+        annot_tumor = join(DATAPATH, 'annotation/annotation_tumor.RDS'),
+        annot_cells = join(DATAPATH, 'annotation/annotation_cells.RDS'),
+        matrix      = join(DATAPATH, 'analysis/tumor_cells/chipseq/H3K27ac/consensusSE/tumor_cells_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS')
+    output:
+        report = join(DATAPATH, 'reports/sup_figure2a_tumor_cells_heatmap.html'),
+        rmd    = temp(join(DATAPATH, 'reports/sup_figure2a_tumor_cells_heatmap.Rmd')),
+        figure = join(DATAPATH, 'results/sup_figure2/sup_figure2a_tumor_cells_SE_heatmap.pdf')
+    params:
+        script   = 'scripts/sup_figure2/sup_figure2a_tumor_cells_heatmap.Rmd'
+    conda: '../envs/R3.5.yaml'
+    shell:
+        """
+        cp {params.script} {output.rmd}
+
+        Rscript -e "rmarkdown::render( '{output.rmd}', \
+                params = list( \
+                  annot_tumor = '{input.annot_tumor}', \
+                  annot_cells = '{input.annot_cells}', \
+                  se_signal   = '{input.matrix}', \
+                  figure      = '{output.figure}' \
+                ))"
+
+
+        """
