@@ -98,12 +98,13 @@ def inputall(wilcards):
     collectfiles = []
     # Compile figures
     if config["compileFigs"]["figure2"]:
-        collectfiles.append(join(DATAPATH, 'results/figures/figure2/figure2_paths.txt'))
+        collectfiles.append(join(DATAPATH, 'results/figure2/figure2_paths.txt'))
     if config["compileFigs"]["sup_figure2"]:
-        collectfiles.append(join(DATAPATH, 'results/figures/sup_figure2/sup_figure2_paths.txt'))
+        collectfiles.append(join(DATAPATH, 'results/sup_figure2/sup_figure2_paths.txt'))
     # NMF
     if config["phase02_NMF"]["NMF_rnaseq"]:
         collectfiles.extend(expand(join(DATAPATH, 'reports/04_{type}_SE_targets_rnaseq_NMF_report.html'), zip, type = ["tumor", "cells"]))
+        collectfiles.extend(expand(join(DATAPATH, 'reports/05_{type}_mostVariable_rnaseq_NMF_report.html'), zip, type = ["tumor", "cells"]))        
     if config["phase02_NMF"]["NMF_chipseq"]:
         collectfiles.append(join(DATAPATH, 'reports/03_tumor_chipseq_NMF_report.html'))
         collectfiles.append(join(DATAPATH, 'reports/03_tumor_cells_chipseq_NMF_report.html'))
@@ -190,6 +191,50 @@ rule NMF_report_rnaseq:
         
         """
 
+rule NMF_report_rnaseq_mostVariable:
+    input:
+        SE_target  = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'),
+        matrix     = join(DATAPATH, 'data/{type}/rnaseq/exprs/{type}_RNAseq_Counts_Matrix.RDS'),
+        annotation = join(DATAPATH, 'annotation/annotation_{type}.RDS')
+    output:
+        report    = join(DATAPATH, 'reports/05_{type}_mostVariable_rnaseq_NMF_report.html'),
+        rmd       = temp(join(DATAPATH, 'reports/05_{type}_mostVariable_rnaseq_NMF_report.Rmd')),
+        nmf       = join(DATAPATH, 'analysis/{type}/rnaseq/NMF_mostVariable/{type}_mostVariable_NMF.RDS'),
+        norm_nmfW = join(DATAPATH, 'analysis/{type}/rnaseq/NMF_mostVariable/{type}_mostVariable_normNMF_W.RDS'),
+        norm_nmfH = join(DATAPATH, 'analysis/{type}/rnaseq/NMF_mostVariable/{type}_mostVariable_normNMF_H.RDS')
+    params:
+        script   = 'scripts/analysis/05_mostVariable_rnaseq_NMF_report.Rmd',
+        assayID  = '{type}_rnaseq',
+        nmf_kmin = lambda wildcards: config['NMFparams'][wildcards.type]['k.min'],
+        nmf_kmax = lambda wildcards: config['NMFparams'][wildcards.type]['k.max'],
+        nmf_iter = lambda wildcards: config['NMFparams'][wildcards.type]['iterations']
+    wildcard_constraints:
+        type = "[a-z]+"
+    conda: 'envs/R3.5.yaml'
+    shell:
+        """
+        #unset LD_LIBRARY_PATH
+        #export PATH="/usr/local/cuda/bin:$PATH"
+        #nvidia-smi
+    
+        cp {params.script} {output.rmd}
+
+        Rscript -e "rmarkdown::render( '{output.rmd}', \
+                params = list( \
+                  assayID   = '{params.assayID}', \
+                  nmf_kmin  = '{params.nmf_kmin}', \
+                  nmf_kmax  = '{params.nmf_kmax}', \
+                  nmf_iter  = '{params.nmf_iter}', \
+                  nmf       = '{output.nmf}', \
+                  norm_nmfW = '{output.norm_nmfW}', \
+                  norm_nmfH = '{output.norm_nmfH}', \
+                  matrix    = '{input.matrix}', \
+                  SE        = '{input.SE_target}', \
+                  metadata  = '{input.annotation}' \
+                ))"
+        
+        
+        """
 
 #================================================================================#
 #                              SE ChIPseq Signal NMF                             #

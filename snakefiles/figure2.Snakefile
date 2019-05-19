@@ -6,15 +6,15 @@
 
 rule compile_figure2:
     input:
-        figure2a   = join(DATAPATH, 'results/figures/figure2/figure2a_tumor_SE_hmatrix.pdf'),
-        figure2b   = join(DATAPATH, 'results/figures/figure2/figure2b_cells_SE_hmatrix.pdf'),
-        figure2c   = join(DATAPATH, 'results/figures/figure2/figure2c_tumor_cells_SE_UMAP.pdf'),
-        figure2d01 = join(DATAPATH, 'results/figures/figure2/figure2d_01_tumor_riverplot.pdf'),
-        figure2d02 = join(DATAPATH, 'results/figures/figure2/figure2d_02_cells_riverplot.pdf'),
-        figure2e   = join(DATAPATH, 'results/figures/figure2/figure2e_tumor_SE_targets_hmatrix.pdf'),
-        figure2f   = join(DATAPATH, 'results/figures/figure2/figure2f_tumor_cells_density.pdf'),
-        figure2g  = join(DATAPATH, 'results/figures/figure2/figure2g_tumor_SE_targets_NMF_recovery.pdf')
-    output: join(DATAPATH, 'results/figures/figure2/figure2_paths.txt')
+        figure2a   = join(DATAPATH, 'results/figure2/figure2a_tumor_SE_hmatrix.pdf'),
+        figure2b   = join(DATAPATH, 'results/figure2/figure2b_cells_SE_hmatrix.pdf'),
+        figure2c   = join(DATAPATH, 'results/figure2/figure2c_tumor_cells_SE_UMAP.pdf'),
+        figure2d01 = join(DATAPATH, 'results/figure2/figure2d_01_tumor_riverplot.pdf'),
+        figure2d02 = join(DATAPATH, 'results/figure2/figure2d_02_cells_riverplot.pdf'),
+        figure2e   = join(DATAPATH, 'results/figure2/figure2e_tumor_SE_targets_hmatrix.pdf'),
+        figure2f   = join(DATAPATH, 'results/figure2/figure2f_tumor_cells_density.pdf'),
+        figure2g  = join(DATAPATH, 'results/figure2/figure2g_tumor_SE_targets_NMF_recovery.pdf')
+    output: join(DATAPATH, 'results/figure2/figure2_paths.txt')
     shell:
         """
         touch {output}
@@ -40,7 +40,7 @@ rule fig2g_tumor_SE_Targets_recovery:
     output:
         report    = join(DATAPATH, 'reports/figure2g_tumor_RNAseq_recovery_plots.html'),
         rmd       = temp(join(DATAPATH, 'reports/figure2g_tumor_RNAseq_recovery_plots.Rmd')),
-        figure2g  = join(DATAPATH, 'results/figures/figure2/figure2g_tumor_SE_targets_NMF_recovery.pdf')
+        figure2g  = join(DATAPATH, 'results/figure2/figure2g_tumor_SE_targets_NMF_recovery.pdf')
     params:
         script   = 'scripts/figure2/figure2g_tumor_RNAseq_recovery_plots.Rmd'
     conda: '../envs/R3.5.yaml'
@@ -70,7 +70,7 @@ rule fig2f_tumor_cells_density:
     output:
         report   = join(DATAPATH, 'reports/figure2f_tumor_cells_density.html'),
         rmd      = temp(join(DATAPATH, 'reports/figure2f_tumor_cells_density.Rmd')),
-        figure2f = join(DATAPATH, 'results/figures/figure2/figure2f_tumor_cells_density.pdf')
+        figure2f = join(DATAPATH, 'results/figure2/figure2f_tumor_cells_density.pdf')
     params:
         script   = 'scripts/figure2/figure2f_tumor_cells_density.Rmd'
     conda: '../envs/R3.5.yaml'
@@ -104,7 +104,7 @@ rule fig2e_tumor_SE_Targets_heatmap:
         wmatrix_wnorm = join(DATAPATH, ('analysis/tumor/rnaseq/NMF/tumor_consensusSE_K' + optK_tr + '_Wmatrix_Wnorm.RDS')),
         nmf_features  = join(DATAPATH, ('analysis/tumor/rnaseq/NMF/tumor_consensusSE_K' + optK_tr + '_NMF_features.RDS')),
         hmatrix_hnorm = join(DATAPATH, ('analysis/tumor/rnaseq/NMF/tumor_consensusSE_K' + optK_tr + '_Hmatrix_hnorm.RDS')),
-        figure2e      = join(DATAPATH, 'results/figures/figure2/figure2e_tumor_SE_targets_hmatrix.pdf')
+        figure2e      = join(DATAPATH, 'results/figure2/figure2e_tumor_SE_targets_hmatrix.pdf')
     params:
         script   = 'scripts/figure2/figure2e_tumor_RNAseq_NMF.Rmd',
         optimalK = optK_tr
@@ -140,8 +140,8 @@ rule fig2d_tumor_cells_riverplots:
     output:
         report     = join(DATAPATH, 'reports/figure2d_tumor_cells_riverplots.html'),
         rmd        = temp(join(DATAPATH, 'reports/figure2d_tumor_cells_riverplots.Rmd')),
-        figure2d01 = join(DATAPATH, 'results/figures/figure2/figure2d_01_tumor_riverplot.pdf'),
-        figure2d02 = join(DATAPATH, 'results/figures/figure2/figure2d_02_cells_riverplot.pdf')
+        figure2d01 = join(DATAPATH, 'results/figure2/figure2d_01_tumor_riverplot.pdf'),
+        figure2d02 = join(DATAPATH, 'results/figure2/figure2d_02_cells_riverplot.pdf')
     params:
         script   = 'scripts/figure2/figure2d_tumor_cells_riverplots.Rmd'
     conda: '../envs/R3.5.yaml'
@@ -175,7 +175,7 @@ rule fig2c_tumor_cells_SE_umap:
     output:
         report    = join(DATAPATH, 'reports/figure2c_tumor_cells_UMAP.html'),
         rmd       = temp(join(DATAPATH, 'reports/figure2c_tumor_cells_UMAP.Rmd')),
-        figure2c  = join(DATAPATH, 'results/figures/figure2/figure2c_tumor_cells_SE_UMAP.pdf')
+        figure2c  = join(DATAPATH, 'results/figure2/figure2c_tumor_cells_SE_UMAP.pdf')
     params:
         script   = 'scripts/figure2/figure2c_tumor_cells_UMAP.Rmd'
     conda: '../envs/R3.5.yaml'
@@ -212,7 +212,7 @@ rule fig2b_cells_SE_heatmap:
         wmatrix_wnorm = join(DATAPATH, ('analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K' + optK_cc + '_Wmatrix_Wnorm.RDS')),
         nmf_features  = join(DATAPATH, ('analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K' + optK_cc + '_NMF_features.RDS')),
         hmatrix_hnorm = join(DATAPATH, ('analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K' + optK_cc + '_Hmatrix_hnorm.RDS')),
-        figure2b      = join(DATAPATH, 'results/figures/figure2/figure2b_cells_SE_hmatrix.pdf')
+        figure2b      = join(DATAPATH, 'results/figure2/figure2b_cells_SE_hmatrix.pdf')
     params:
         script   = 'scripts/figure2/figure2b_cells_ChIPseq_NMF.Rmd',
         optimalK = optK_cc
@@ -253,7 +253,7 @@ rule fig2a_tumor_SE_heatmap:
         wmatrix_wnorm = join(DATAPATH, ('analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K' + optK_tc + '_Wmatrix_Wnorm.RDS')),
         nmf_features  = join(DATAPATH, ('analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K' + optK_tc + '_NMF_features.RDS')),
         hmatrix_hnorm = join(DATAPATH, ('analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K' + optK_tc + '_Hmatrix_hnorm.RDS')),
-        figure2a      = join(DATAPATH, 'results/figures/figure2/figure2a_tumor_SE_hmatrix.pdf')
+        figure2a      = join(DATAPATH, 'results/figure2/figure2a_tumor_SE_hmatrix.pdf')
     params:
         script   = 'scripts/figure2/figure2a_tumor_ChIPseq_NMF.Rmd',
         optimalK = optK_tc
