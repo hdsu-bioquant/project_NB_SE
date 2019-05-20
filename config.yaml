@@ -58,6 +58,7 @@ phase02_NMF:
     
 compileFigs:
   figure2    : True
+  figure4    : True
   sup_figure2: True
 
 
@@ -94,3 +95,15 @@ NMFparams:
         optimalK:
             chipseq: 5
             rnaseq : 5
+
+
+#==============================================================================#
+#                              IGV plots regions                               #
+#==============================================================================#
+igv_plot:
+  figure4i:
+    chr   : chr2
+    start : 17100000
+    end   : 17840000
+    name  : RAD51AP2_VSNL1
+

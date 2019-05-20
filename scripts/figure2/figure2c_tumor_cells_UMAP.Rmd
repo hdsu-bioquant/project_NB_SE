@@ -119,6 +119,9 @@ print(h.heatmap)
 ##                                 run UMAP                                   ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 # Run umap with default params
+#set.seed(52)
+set.seed(14)
+#set.seed(20)
 chip_umap <- umap(t(se_signal))
 plot(chip_umap$layout)
 
@@ -146,9 +149,13 @@ hmatrix_zscores <- t(apply(hmatrix, MARGIN=1, function(exposure){
 
 MES_score <- hmatrix_zscores[which.max(hmatrix_zscores[,"P5"]),]
 
-MES_score <- hmatrix[which.max(hmatrix[,"P5"]),]
-MES_score <- (MES_score*10)/max(MES_score)
+# MES_score <- hmatrix[which.max(hmatrix[,"P5"]),]
+# MES_score <- (MES_score*10)/max(MES_score)
 
+MES_score <- hmatrix[which.max(hmatrix[,"P5"]),]
+MES_score <- log2(round(MES_score,2)+1)
+MES_score[MES_score<0] = -3
+  
 # assign MES score
 chip_umap_df$MES_score <- MES_score[match(chip_umap_df$ProjectID, names(MES_score))]
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
@@ -174,7 +181,9 @@ gg_umap <- ggplot(chip_umap_df, aes(x=UMAP1, y=UMAP2, color = MES_score)) +
   geom_point(aes(shape=Class),size=3) + 
   scale_shape_manual(values=c(15:20))+ 
   scale_colour_viridis(name = paste("MES","Score",sep="\n")) +
-  geom_text_repel(data = dplyr::filter(chip_umap_df, Type=="Cell line" & MES_score > 5), 
+  # geom_text_repel(data = dplyr::filter(chip_umap_df, Type=="Cell line" & MES_score > 5), 
+  #                 mapping = aes(label=ProjectID), size=3, color = "Black") +
+  geom_text_repel(data = dplyr::filter(chip_umap_df, Type=="Cell line" & MES_score > 9.5), 
                   mapping = aes(label=ProjectID), size=3, color = "Black") +
   tm
   # geom_text_repel(data = dplyr::filter(chip_umap_df, 

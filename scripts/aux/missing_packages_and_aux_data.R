@@ -30,6 +30,8 @@ path_TADs
 ##                        install missing R packages                          ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 devtools::install_github('andquintero/bratwurst', ref='dev_hdsu', upgrade = "never")
+devtools::install_github("thomasp85/patchwork", upgrade = "never")
+
 # if (!requireNamespace("BiocManager", quietly = TRUE))
 #   install.packages("BiocManager")
 
