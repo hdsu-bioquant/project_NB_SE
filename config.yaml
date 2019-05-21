@@ -102,8 +102,13 @@ NMFparams:
 #==============================================================================#
 igv_plot:
   figure4i:
-    chr   : chr2
-    start : 17100000
-    end   : 17840000
-    name  : RAD51AP2_VSNL1
+    chr   : chr12
+    start : 64910000
+    end   : 65100000
+    name  : RASSF3
+    window: 2000
+    ymax  : 35
+    width : 8
+    height: 6
+    
 

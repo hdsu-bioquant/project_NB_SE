@@ -1,0 +1,11 @@
+sampleID  order	type	color	trackID	labels	height	path
+CLB-GA 1 bedpe "#2FB47CFF" "CLB-GA HiChIP"	True	2.5	data/cells/hichip/mango/CLB-GA_HiChIP_mango.all
+CLB-GA 4	bw	"#2FB47CFF"	"CLB-GA H3K27ac"	True	3	data/cells/chipseq/H3K27ac/bw/CLB-GA_H3K27ac.bw
+NSP032-PT01 1	bw	"#2FB47CFF"	"NSP032-PT01 H3K27ac"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP032-PT01_H3K27ac.bw
+NSP032-RM01 2	bw	"#F76F5CFF"	"NSP032-RM01 H3K27ac"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP032-RM01_H3K27ac.bw
+NSP032-RT01 2	sumbw	"#420A68FF"	"NSP032 Relapse H3K27ac"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP032-RT01_H3K27ac.bw
+#NSP032-RT02 2	sumbw	"#420A68FF"	"NSP032 Relapse H3K27ac"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP032-RT02_H3K27ac.bw
+NSP032-RT03 2	sumbw	"#420A68FF"	"NSP032 Relapse H3K27ac"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP032-RT03_H3K27ac.bw
+SK-N-AS 3 bedpe "#420A68FF" "SK-N-AS HiChIP"	True	2.5	data/cells/hichip/mango/SK-N-AS_HiChIP_mango.all
+SK-N-AS 4	bw	"#420A68FF"	"SK-N-AS H3K27ac"	True	3	data/cells/chipseq/H3K27ac/bw/SK-N-AS_H3K27ac.bw
+TumorSE 3	bed	"black" "Tumor SE"	True	1	analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed

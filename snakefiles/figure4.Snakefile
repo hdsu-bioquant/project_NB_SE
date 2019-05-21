@@ -44,9 +44,9 @@ rule fig4i_IGV:
     params:
         script       = 'scripts/figure4/figure4i_IGV_plot.Rmd',
         work_dir     = DATAPATH,
-        path_config  = join(os.getcwd(), 'scripts/figure4/primary_metastasis_relapse_summarized_dropBadSample.txt'),
-        width_window = 1000,
-        ymax     = 35,
+        path_config  = join(os.getcwd(), 'scripts/figure4/figure4i_tracks.txt'),
+        width_window = config['igv_plot']['figure4i']['window'],
+        ymax     = config['igv_plot']['figure4i']['ymax'],
         gr_chr   = config['igv_plot']['figure4i']['chr'],
         gr_start = config['igv_plot']['figure4i']['start'],
         gr_end   = config['igv_plot']['figure4i']['end'],

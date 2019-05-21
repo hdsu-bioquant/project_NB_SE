@@ -17,7 +17,9 @@ params:
   start : 17100000
   end   : 17840000
   name  : "RAD51AP2_VSNL1"
-  figure : "results/figure..."
+  figure: "results/figure..."
+  width : 8
+  height: 4
 editor_options: 
   chunk_output_type: console
 ---
@@ -632,27 +634,15 @@ plot_tracks_from_config <- function(path_config, width_window){
       theme(legend.position="none",
             axis.text.y = element_text(size=5))
     
-    
+    ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+    ##                 Save Plot Tracks                       ##
+    ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
     ggsave(filename = params$figure,
        plot     = tracks.r,
-       width    = 8,
-       height   = 4)
+       width    = params$width,
+       height   = params$height)
 
     return(tracks.r)
-    # ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-    # ##                 Save Plot Tracks                       ##
-    # ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-    # path_plot <- paste0(out_dir, "/",
-    #                     names(region2plot), "_",
-    #                     paste(samples$sampleID, collapse = "_"), "_",
-    #                     length(tracks_config), "tracks.pdf")
-    # 
-    # ggsave(filename = path_plot,
-    #        plot     = tracks.r,
-    #        width    = 8, 
-    #        height   = 4)
-    # 
-    
     
   })
   
