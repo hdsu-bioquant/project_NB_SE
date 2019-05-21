@@ -1,5 +1,5 @@
 #==============================================================================#
-#            Analysis and figures included in manuscript figure 2              #
+#            Analysis and figures included in manuscript figure 4              #
 #==============================================================================#
 #workdir: "../../"
 #workdir: "~/"

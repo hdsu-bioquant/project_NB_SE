@@ -56,6 +56,7 @@ DATAPATH = config['main_working_directory']
 #                               Include extra rules                            #
 #==============================================================================#
 # Include snakefiles containing figure rules
+include: "snakefiles/figure1.Snakefile"
 include: "snakefiles/figure2.Snakefile"
 include: "snakefiles/figure4.Snakefile"
 include: "snakefiles/sup_figure2.Snakefile"
@@ -98,6 +99,8 @@ printExp()
 def inputall(wilcards):
     collectfiles = []
     # Compile figures
+    if config["compileFigs"]["figure1"]:
+        collectfiles.append(join(DATAPATH, 'results/figure1/figure1_paths.txt'))
     if config["compileFigs"]["figure2"]:
         collectfiles.append(join(DATAPATH, 'results/figure2/figure2_paths.txt'))
     if config["compileFigs"]["figure4"]:

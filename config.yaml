@@ -57,7 +57,9 @@ phase02_NMF:
     NMF_rnaseq  : True
     
 compileFigs:
+  figure1    : True
   figure2    : True
+  figure3    : False
   figure4    : True
   sup_figure2: True
 
@@ -101,6 +103,15 @@ NMFparams:
 #                              IGV plots regions                               #
 #==============================================================================#
 igv_plot:
+  figure1e:
+    chr   : chr4
+    start : 140500000
+    end   : 141270000
+    name  : MAML3
+    window: 5000
+    ymax  : max
+    width : 8
+    height: 6
   figure4i:
     chr   : chr12
     start : 64910000
