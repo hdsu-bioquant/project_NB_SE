@@ -1,11 +1,11 @@
 sampleID  order	type	color	trackID	labels	height	path
 SK-N-AS 1 bedpe "#420A68FF" "SK-N-AS HiChIP"	True	2.5	data/cells/hichip/mango/SK-N-AS_HiChIP_mango.all
 SK-N-AS 2	bw	"#420A68FF"	"SK-N-AS ATAC-seq"	True	3	data/cells/atacseq/bw/SK-N-AS_adjusted_RPKM.bw
-SK-N-AS 3	bw	"#56106E"	"SK-N-AS H3K27ac"	True	3	data/cells/chipseq/H3K27ac/bw/SK-N-AS_H3K27ac.bw
+SK-N-AS 3	bw	"#921BBA"	"SK-N-AS H3K27ac"	True	3	data/cells/chipseq/H3K27ac/bw/SK-N-AS_H3K27ac.bw
 SK-N-AS 4	bed	"#420A68FF" "SK-N-AS SE"	False	1	data/cells/chipseq/H3K27ac/SE/SK-N-AS_H3K27ac_ROSE_noH3K4me3_SuperEnhancers.bed
 CLB-GA 5 bedpe "#2FB47CFF" "CLB-GA HiChIP"	True	2.5	data/cells/hichip/mango/CLB-GA_HiChIP_mango.all
 CLB-GA 6	bw	"#2FB47CFF"	"CLB-GA ATACseq"	True	3	data/cells/atacseq/bw/CLB-GA_adjusted_RPKM.bw
-CLB-GA 7	bw	"#33A02C"	"CLB-GA H3K27ac"	True	3	data/cells/chipseq/H3K27ac/bw/CLB-GA_H3K27ac.bw
+CLB-GA 7	bw	"#B2DF8A"	"CLB-GA H3K27ac"	True	3	data/cells/chipseq/H3K27ac/bw/CLB-GA_H3K27ac.bw
 CLB-GA 8	bed	"#2FB47CFF" "CLB-GA SE"	False	1	data/cells/chipseq/H3K27ac/SE/CLB-GA_H3K27ac_ROSE_noH3K4me3_SuperEnhancers.bed
 NSP001-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP001-PT01_H3K27ac.bw
 NSP002-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP002-PT01_H3K27ac.bw
