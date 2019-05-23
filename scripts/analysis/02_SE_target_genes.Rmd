@@ -12,17 +12,20 @@ params:
   # Paths data
   # Paths external data
   # Paths misc data
-  work_dir:  "foo"
-  tumor_annot:    "annotation/annotation_tumor.RDS"
-  SE:             "analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed"
+  work_dir      : "foo"
+  tumor_annot   : "annotation/annotation_tumor.RDS"
+  SE            : "analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed"
   hichip_SK_N_AS: "data/cells/hichip/mango/SK-N-AS_HiChIP_mango.all"
-  hichip_CLB_GA:  "data/cells/hichip/mango/CLB-GA_HiChIP_mango.all"
-  SE_signal:      "analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS"
-  gene_exprs:     "data/tumor/rnaseq/exprs/tumor_RNAseq_Counts_Matrix.RDS"
-  hic:  "db/hic/GSE63525_K562_HiCCUPS_looplist.txt"
-  TADs: "db/TADs/hESC_domains_hg19.RDS"
+  hichip_CLB_GA : "data/cells/hichip/mango/CLB-GA_HiChIP_mango.all"
+  SE_signal     : "analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS"
+  gene_exprs    : "data/tumor/rnaseq/exprs/tumor_RNAseq_Counts_Matrix.RDS"
+  hic           : "db/hic/GSE63525_K562_HiCCUPS_looplist.txt"
+  TADs          : "db/TADs/hESC_domains_hg19.RDS"
   hsapiens_genes: "db/misc/EnsDb_Hsapiens_v75_genes.RDS"
-  SE_target_gr:    "analysis/tumor/SE_annot/tumor_consensusSE_target_annotation_df.RDS"
+  SE_target_gr  : "analysis/tumor/SE_annot/tumor_consensusSE_target_annotation_df.RDS"
+  gene_exprs_cells    : "path/to/..."
+  tumor_exprs_filtered: "path/to/..."
+  cells_exprs_filtered: "path/to/..."
 editor_options: 
   chunk_output_type: console
 ---
@@ -37,7 +40,7 @@ options(knitr.table.format="html")
 
 library(GenomicInteractions)
 library(tidyverse)
-library(edgeR)
+#library(edgeR)
 
 
 # Paths data
@@ -46,7 +49,7 @@ library(edgeR)
 #                hichip_SK_N_AS = "data/cells/hichip/mango/SK-N-AS_HiChIP_mango.all",
 #                hichip_CLB_GA  = "data/cells/hichip/mango/CLB-GA_HiChIP_mango.all",
 #                SE_signal      = "analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS",
-#                gene_exprs     = "data/tumor/rnaseq/exprs/tumor_RNAseq_Counts_Matrix.RDS",
+#                gene_exprs     = "data/tumor/rnaseq/exprs/tumor_RNAseq_TPM_Matrix.RDS",
 #                # Paths external data
 #                hic  = "db/hic/GSE63525_K562_HiCCUPS_looplist.txt",
 #                TADs = "db/TADs/hESC_domains_hg19.RDS",
@@ -68,7 +71,7 @@ names(path_hichip) <- sub("_HiChIP_mango.all", "", basename(path_hichip))
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##                                Params                                      ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-NCORES <- 10
+NCORES <- 20
 
 # For each SE find genes around this window size 
 SE_neighbor_genes_window <- 500000
@@ -118,16 +121,90 @@ dim(gene_exprs)
 gene_exprs <- gene_exprs[rowSums(gene_exprs) > 0,]
 dim(gene_exprs)
 
+
+
+```
+  
+  
+```{r rnaseqnorm}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+## Gene expression - Normalize - filter genes wo annot  ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# # RNAseq read-counts normalization
+# gene_exprs_norm <- DGEList(counts  = gene_exprs, 
+#                            samples = colnames(gene_exprs), 
+#                            remove.zeros = TRUE)
+# gene_exprs_norm$samples$group <- rep(1,ncol(gene_exprs_norm))
+# 
+# #identify the cpm value that corresponds to atleast 20 reads in the smallest library
+# cutoff <- (20/min(gene_exprs_norm$samples$lib.size)) * 10^6  
+# #cutoff cpm should be present in atleast 25% of samples
+# isexpr <- rowSums(cpm(gene_exprs_norm) > cutoff) > round(0.25 * ncol(gene_exprs_norm)) 
+# table(isexpr)
+# gene_exprs_norm <- gene_exprs_norm[isexpr, ,keep.lib.sizes=FALSE]
+# # normalize using voom
+# gene_exprs_norm <- calcNormFactors(gene_exprs_norm, method="TMM")
+# gene_exprs_norm <- voom(gene_exprs_norm, plot=TRUE)
+# gene_exprs_norm <- gene_exprs_norm$E
+
+# if the average cell has 200,000 mRNA molecules in it at any one time, 
+# then a TPM of 5 would translate to:
+# 1 molecule per cell on average at any one time.
+
+
+isexpr <- rowSums(gene_exprs > 1)  > round(0.05 * ncol(gene_exprs))
+table(isexpr)
+gene_exprs_norm <- log(gene_exprs[isexpr,] + 1)
+hist(gene_exprs_norm)
+dim(gene_exprs_norm)
+
+# Filter H.sapiens Granges keep only expressed genes
+hsapiens_genes_exprs  <- hsapiens_genes[hsapiens_genes$gene_id %in% rownames(gene_exprs_norm)]
+dim(gene_exprs_norm)
+length(hsapiens_genes_exprs)
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##        Save filtered and normalized gene expression matrix Tumors          ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+gene_exprs_norm_all <- gene_exprs_norm
+gene_exprs_norm_all[1:5,1:5]
+rownames(gene_exprs_norm_all) <- paste0(rownames(gene_exprs_norm_all), "|",
+                                        hsapiens_genes_exprs$symbol[match(rownames(gene_exprs_norm_all), hsapiens_genes_exprs$gene_id)])
+gene_exprs_norm_all[1:5,1:5]
+saveRDS(gene_exprs_norm_all, file = params$tumor_exprs_filtered)
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##      Save filtered and normalized gene expression matrix Cell lines        ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+cells_gene_exprs <- readRDS(params$gene_exprs_cells)
+
+# use only Ensembl ID to match gene names
+rownames(cells_gene_exprs) <- sapply(strsplit(rownames(cells_gene_exprs), "\\."), "[[", 1)
+cells_gene_exprs <- cells_gene_exprs[rownames(cells_gene_exprs) %in% rownames(gene_exprs_norm),]
+dim(cells_gene_exprs)
+dim(gene_exprs_norm)
+cells_gene_exprs <- log(cells_gene_exprs + 1)
+
+rownames(cells_gene_exprs) <- paste0(rownames(cells_gene_exprs), "|",
+                                     hsapiens_genes_exprs$symbol[match(rownames(cells_gene_exprs), hsapiens_genes_exprs$gene_id)])
+cells_gene_exprs[1:5,1:5]
+saveRDS(cells_gene_exprs, file = params$cells_exprs_filtered)
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##        Keep only expressed genes in the human genes granges                ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+
 # keep only genes in expression matrix
-hsapiens_genes  <- hsapiens_genes[hsapiens_genes$gene_id %in% rownames(gene_exprs)]
+hsapiens_genes  <- hsapiens_genes[hsapiens_genes$gene_id %in% rownames(gene_exprs_norm)]
 length(hsapiens_genes)
 
 # Find promoters
 proms <- promoters(hsapiens_genes, upstream = 5000, downstream = 1000) 
 
-
 ```
-  
+
 # Assignment based on SE signal and gene expression correlation
 
 ```{r assign_corr}
@@ -144,36 +221,14 @@ dim(tumor_annot)
 SE_signal   <- SE_signal[,tumor_annot$ProjectID]
 dim(SE_signal)
 # Gene expression
-gene_exprs  <- gene_exprs[,tumor_annot$ProjectID]
+gene_exprs      <- gene_exprs[,tumor_annot$ProjectID]
+gene_exprs_norm <- gene_exprs_norm[,tumor_annot$ProjectID]
 dim(gene_exprs)
-
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-## Gene expression - Normalize - filter genes wo annot  ##
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-# RNAseq read-counts normalization
-gene_exprs_norm <- DGEList(counts  = gene_exprs, 
-                           samples = colnames(gene_exprs), 
-                           remove.zeros = TRUE)
-gene_exprs_norm$samples$group <- rep(1,ncol(gene_exprs_norm))
-
-#identify the cpm value that corresponds to atleast 20 reads in the smallest library
-cutoff <- (20/min(gene_exprs_norm$samples$lib.size)) * 10^6  
-#cutoff cpm should be present in atleast 25% of samples
-isexpr <- rowSums(cpm(gene_exprs_norm) > cutoff) > round(0.25 * ncol(gene_exprs_norm)) 
-table(isexpr)
-gene_exprs_norm <- gene_exprs_norm[isexpr, ,keep.lib.sizes=FALSE]
-# normalize using voom
-gene_exprs_norm <- calcNormFactors(gene_exprs_norm, method="TMM")
-gene_exprs_norm <- voom(gene_exprs_norm, plot=TRUE)
-gene_exprs_norm <- gene_exprs_norm$E
-hist(gene_exprs_norm)
 dim(gene_exprs_norm)
 
-# Filter H.sapiens Granges keep only expressed genes
-hsapiens_genes_exprs  <- hsapiens_genes[hsapiens_genes$gene_id %in% rownames(gene_exprs_norm)]
-dim(gene_exprs_norm)
-length(hsapiens_genes_exprs)
-
+sum(rowSums(gene_exprs_norm > 0) == 0)
+min(rowSums(gene_exprs_norm > 0))
+hist(rowSums(gene_exprs_norm > 0))
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ## Overlap SE and genes regions - Corr. Signal-Exprs    ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––##
@@ -402,13 +457,15 @@ SE_GENE_same_TAD <- do.call(rbind, mclapply(split(ov_se_tad, ov_se_tad$SE), func
   # If gene is inside SE, annotate as same TAD
   hit_SE_GENE <- findOverlaps(SE_target[SE_ID], hsapiens_genes)
   hit_SE_GENE <- hsapiens_genes$gene_id[subjectHits(hit_SE_GENE)]
-  
+  hit_GENE <- ifelse(length(hit_GENE) == 0 & length(hit_SE_GENE) == 0,
+                     NA, hit_GENE)
   # Return SE and genes in the same TADs
   data.frame(SE      = SE_ID,
              ENSEMBL = unique(c(hit_GENE, hit_SE_GENE)), 
              stringsAsFactors = FALSE)
   
   #
+#}, mc.cores = 1))
 }, mc.cores = NCORES))
 
 
@@ -438,7 +495,7 @@ unique(SE_annot_df$method)
 # Define rank of possible annotation, from top to bottom
 all_evidence <- c("HiChIP", "HiC", "correlation", "nearest")
 # Combine all possible sources of annotation
-combn_evidence <- do.call(c, lapply(length(all_evidence):1, function(i){
+combn_evidence <- do.call("c", lapply(length(all_evidence):1, function(i){
   combn(all_evidence, m = i, simplify = FALSE)
 }))
 combn_evidence
@@ -448,7 +505,7 @@ combn_evidence
 # 2 HiC
 # 3 correlation
 # 4 nearest
-idx_evidence <- do.call(c, lapply(all_evidence, function(one_type){
+idx_evidence <- do.call("c", lapply(all_evidence, function(one_type){
   # return index if X type of annotation was found in this combination
   which(sapply(combn_evidence, function(evidence_list){
     one_type %in% evidence_list
@@ -511,6 +568,7 @@ SE_target_rank <- mclapply(split(SE_annot_df, SE_annot_df$SE), function(SE_annot
   
 }, mc.cores = NCORES )
 head(SE_target_rank)
+
 
 saveRDS(SE_target_rank, file.path(dirname(params$SE_target_gr), "tumor_consensusSE_target_rank_list.RDS"))
 

@@ -87,25 +87,25 @@ kable(tmp.dim)
   
 
 ```{r normalizeRNAseq, results="asis"}
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-##                              Normalize counts                              ##
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-rna.counts <- norm.mat
-
-# do DESeq2 size factor normalization
-sf <- estimateSizeFactorsForMatrix(rna.counts)
-rna.counts <- t( t(rna.counts) / sf )
-
-# do +1 log2 transformation
-rna.norm.mat <- apply(rna.counts + 1, 2, log2)
-hist(rna.norm.mat)
-
-norm.mat <- rna.norm.mat
-
+# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# ##                              Normalize counts                              ##
+# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# rna.counts <- norm.mat
+# 
+# # do DESeq2 size factor normalization
+# sf <- estimateSizeFactorsForMatrix(rna.counts)
+# rna.counts <- t( t(rna.counts) / sf )
+# 
+# # do +1 log2 transformation
+# rna.norm.mat <- apply(rna.counts + 1, 2, log2)
+# hist(rna.norm.mat)
+# 
+# norm.mat <- rna.norm.mat
+# 
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##           Filter matrix to keep only most variable geness                  ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-rownames(norm.mat) <- sapply(strsplit(rownames(norm.mat), "\\."), "[[", 1)
+rownames(norm.mat) <- sapply(strsplit(rownames(norm.mat), "\\|"), "[[", 1)
 
 # number of genes equal to the number of SE target genes
 ntop <- length(unique(SE$target_ENSEMBL))

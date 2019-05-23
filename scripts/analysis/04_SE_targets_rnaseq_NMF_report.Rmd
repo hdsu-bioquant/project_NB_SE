@@ -64,7 +64,7 @@ SE <- readRDS(params$SE)
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##               Filter matrix to keep only SE target genes                   ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-rownames(norm.mat) <- sapply(strsplit(rownames(norm.mat), "\\."), "[[", 1)
+rownames(norm.mat) <- sapply(strsplit(rownames(norm.mat), "\\|"), "[[", 1)
 norm.mat <- norm.mat[rownames(norm.mat) %in% SE$target_ENSEMBL,]
 
 
@@ -120,20 +120,20 @@ kable(tmp.dim)
 # norm.mat <- gene_exprs_norm
 # norm.mat[norm.mat < 0] <- 0
 
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-##                              Normalize counts                              ##
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-rna.counts <- norm.mat
-
-# do DESeq2 size factor normalization
-sf <- estimateSizeFactorsForMatrix(rna.counts)
-rna.counts <- t( t(rna.counts) / sf )
-
-# do +1 log2 transformation
-rna.norm.mat <- apply(rna.counts + 1, 2, log2)
-hist(rna.norm.mat)
-
-norm.mat <- rna.norm.mat
+# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# ##                              Normalize counts                              ##
+# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# rna.counts <- norm.mat
+# 
+# # do DESeq2 size factor normalization
+# sf <- estimateSizeFactorsForMatrix(rna.counts)
+# rna.counts <- t( t(rna.counts) / sf )
+# 
+# # do +1 log2 transformation
+# rna.norm.mat <- apply(rna.counts + 1, 2, log2)
+# hist(rna.norm.mat)
+# 
+# norm.mat <- rna.norm.mat
 ```
 
 

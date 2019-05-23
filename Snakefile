@@ -118,6 +118,7 @@ def inputall(wilcards):
     # Consensus SE
     if config["phase01_consensusSE"]["SE_target_gene"]:
         collectfiles.append(join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'))
+        collectfiles.append(join(DATAPATH, 'reports/02_SE_target_genes_report.html'))
     if config["phase01_consensusSE"]["consensus_tumor_SE"]:
         collectfiles.append(join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed'))
         collectfiles.append(join(DATAPATH, 'analysis/tumor_cells/chipseq/H3K27ac/consensusSE/tumor_cells_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS'))
@@ -154,8 +155,8 @@ rule placeh:
 rule NMF_report_rnaseq:
     input:
         SE_target  = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'),
-        #matrix     = join(DATAPATH, 'data/{type}/rnaseq/exprs/{type}_RNAseq_TPM_Matrix.RDS'),
-        matrix     = join(DATAPATH, 'data/{type}/rnaseq/exprs/{type}_RNAseq_Counts_Matrix.RDS'),
+        matrix     = join(DATAPATH, 'analysis/{type}/rnaseq/exprs/{type}_RNAseq_TPM_Matrix_filt_log.RDS'),
+        #matrix     = join(DATAPATH, 'data/{type}/rnaseq/exprs/{type}_RNAseq_Counts_Matrix.RDS'),
         annotation = join(DATAPATH, 'annotation/annotation_{type}.RDS')
     output:
         report    = join(DATAPATH, 'reports/04_{type}_SE_targets_rnaseq_NMF_report.html'),
@@ -200,7 +201,8 @@ rule NMF_report_rnaseq:
 rule NMF_report_rnaseq_mostVariable:
     input:
         SE_target  = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'),
-        matrix     = join(DATAPATH, 'data/{type}/rnaseq/exprs/{type}_RNAseq_Counts_Matrix.RDS'),
+        #matrix     = join(DATAPATH, 'data/{type}/rnaseq/exprs/{type}_RNAseq_Counts_Matrix.RDS'),
+        matrix     = join(DATAPATH, 'analysis/{type}/rnaseq/exprs/{type}_RNAseq_TPM_Matrix_filt_log.RDS'),
         annotation = join(DATAPATH, 'annotation/annotation_{type}.RDS')
     output:
         report    = join(DATAPATH, 'reports/05_{type}_mostVariable_rnaseq_NMF_report.html'),
@@ -346,6 +348,7 @@ rule NMF_report_chipseq:
 #================================================================================#
 #                                  SE target genes                               #
 #================================================================================#
+# Finds SE target gene, also saves RNAseq expression matrix (TPMs) for tumor and cells
 rule SE_target_genes:
     input:
         tumor_annot    = join(DATAPATH, 'annotation/annotation_tumor.RDS'),
@@ -353,14 +356,17 @@ rule SE_target_genes:
         hichip_SK_N_AS = join(DATAPATH, 'data/cells/hichip/mango/SK-N-AS_HiChIP_mango.all'),
         hichip_CLB_GA  = join(DATAPATH, 'data/cells/hichip/mango/CLB-GA_HiChIP_mango.all'),
         SE_signal      = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS'),
-        gene_exprs     = join(DATAPATH, 'data/tumor/rnaseq/exprs/tumor_RNAseq_Counts_Matrix.RDS'),
+        gene_exprs     = join(DATAPATH, 'data/tumor/rnaseq/exprs/tumor_RNAseq_TPM_Matrix.RDS'),
+        gene_exprs_cl  = join(DATAPATH, 'data/cells/rnaseq/exprs/cells_RNAseq_TPM_Matrix.RDS'),
         hic            = join(DATAPATH, 'db/hic/GSE63525_K562_HiCCUPS_looplist.txt'),
         TADs           = join(DATAPATH, 'db/TADs/hESC_domains_hg19.RDS'),
         hsapiens_genes = join(DATAPATH, 'db/misc/EnsDb_Hsapiens_v75_genes.RDS')
     output:
         report    = join(DATAPATH, 'reports/02_SE_target_genes_report.html'),
         rmd       = temp(join(DATAPATH, 'reports/02_SE_target_genes_report.Rmd')),
-        SE_target = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS')
+        SE_target = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'),
+        tumor_exprs_fil = join(DATAPATH, 'analysis/tumor/rnaseq/exprs/tumor_RNAseq_TPM_Matrix_filt_log.RDS'),
+        cells_exprs_fil = join(DATAPATH, 'analysis/cells/rnaseq/exprs/cells_RNAseq_TPM_Matrix_filt_log.RDS')
     params:
         script   = 'scripts/analysis/02_SE_target_genes.Rmd',
         workdir  = DATAPATH
@@ -385,7 +391,10 @@ rule SE_target_genes:
                 hic            = '{input.hic}', \
                 TADs           = '{input.TADs}', \
                 hsapiens_genes = '{input.hsapiens_genes}', \
-                SE_target_gr   = '{output.SE_target}' \
+                SE_target_gr   = '{output.SE_target}', \
+                gene_exprs_cells     = '{input.gene_exprs_cl}', \
+                tumor_exprs_filtered = '{output.tumor_exprs_fil}', \
+                cells_exprs_filtered = '{output.cells_exprs_fil}' \
                 ))"
         
         
