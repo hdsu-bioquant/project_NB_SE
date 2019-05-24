@@ -1,0 +1,95 @@
+sampleID  order	type	color	trackID	labels	height	path
+SK-N-AS 1 bedpe "#420A68FF" "SK-N-AS HiChIP"	True	2.5	data/cells/hichip/mango/SK-N-AS_HiChIP_mango.all
+SK-N-AS 2	bw	"#420A68FF"	"SK-N-AS ATAC-seq"	True	3	data/cells/atacseq/bw/SK-N-AS_adjusted_RPKM.bw
+SK-N-AS 4	footprint	"NA" "SK-N-AS TF footprint"	True	2	data/cells/atacseq/footprint/SK-N-AS_footprints.bed
+SK-N-AS 4	bed	"#420A68FF" "SK-N-AS SE"	False	1	data/cells/chipseq/H3K27ac/SE/SK-N-AS_H3K27ac_ROSE_noH3K4me3_SuperEnhancers.bed
+TumorSE 10	bed	"black" "Tumor SE"	True	1	analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed
+CLB-GA 5 bedpe "#2FB47CFF" "CLB-GA HiChIP"	True	2.5	data/cells/hichip/mango/CLB-GA_HiChIP_mango.all
+CLB-GA 6	bw	"#2FB47CFF"	"CLB-GA ATACseq"	True	3	data/cells/atacseq/bw/CLB-GA_adjusted_RPKM.bw
+CLB-GA 4	footprint	"NA" "CLB-GA TF footprint"	True	2	data/cells/atacseq/footprint/CLB-GA_footprints.bed
+CLB-GA 8	bed	"#2FB47CFF" "CLB-GA SE"	False	1	data/cells/chipseq/H3K27ac/SE/CLB-GA_H3K27ac_ROSE_noH3K4me3_SuperEnhancers.bed
+NSP001-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP001-PT01_H3K27ac.bw
+NSP002-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP002-PT01_H3K27ac.bw
+NSP003-RM01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP003-RM01_H3K27ac.bw
+NSP004-RT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP004-RT01_H3K27ac.bw
+NSP005-RT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP005-RT01_H3K27ac.bw
+NSP006-RM01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP006-RM01_H3K27ac.bw
+NSP007-RM01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP007-RM01_H3K27ac.bw
+NSP008-RT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP008-RT01_H3K27ac.bw
+NSP009-RM01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP009-RM01_H3K27ac.bw
+NSP010-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP010-PT01_H3K27ac.bw
+NSP011-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP011-PT01_H3K27ac.bw
+NSP012-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP012-PT01_H3K27ac.bw
+NSP013-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP013-PT01_H3K27ac.bw
+NSP014-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP014-PT01_H3K27ac.bw
+NSP015-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP015-PT01_H3K27ac.bw
+NSP016-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP016-PT01_H3K27ac.bw
+NSP017-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP017-PT01_H3K27ac.bw
+NSP018-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP018-PT01_H3K27ac.bw
+NSP019-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP019-PT01_H3K27ac.bw
+NSP020-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP020-PT01_H3K27ac.bw
+NSP021-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP021-PT01_H3K27ac.bw
+NSP022-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP022-PT01_H3K27ac.bw
+NSP023-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP023-PT01_H3K27ac.bw
+NSP024-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP024-PT01_H3K27ac.bw
+NSP025-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP025-PT01_H3K27ac.bw
+NSP026-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP026-PT01_H3K27ac.bw
+NSP027-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP027-PT01_H3K27ac.bw
+NSP028-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP028-PT01_H3K27ac.bw
+NSP029-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP029-PT01_H3K27ac.bw
+NSP030-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP030-PT01_H3K27ac.bw
+NSP031-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP031-PT01_H3K27ac.bw
+NSP032-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP032-PT01_H3K27ac.bw
+NSP032-RM01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP032-RM01_H3K27ac.bw
+NSP032-RT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP032-RT01_H3K27ac.bw
+NSP032-RT02	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP032-RT02_H3K27ac.bw
+NSP032-RT03	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP032-RT03_H3K27ac.bw
+NSP033-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP033-PT01_H3K27ac.bw
+NSP034-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP034-PT01_H3K27ac.bw
+NSP035-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP035-PT01_H3K27ac.bw
+NSP036-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP036-PT01_H3K27ac.bw
+NSP037-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP037-PT01_H3K27ac.bw
+NSP038-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP038-PT01_H3K27ac.bw
+NSP039-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP039-PT01_H3K27ac.bw
+NSP040-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP040-PT01_H3K27ac.bw
+NSP041-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP041-PT01_H3K27ac.bw
+NSP042-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP042-PT01_H3K27ac.bw
+NSP043-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP043-PT01_H3K27ac.bw
+NSP044-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP044-PT01_H3K27ac.bw
+NSP045-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP045-PT01_H3K27ac.bw
+NSP046-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP046-PT01_H3K27ac.bw
+NSP047-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP047-PT01_H3K27ac.bw
+NSP048-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP048-PT01_H3K27ac.bw
+NSP049-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP049-PT01_H3K27ac.bw
+NSP050-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP050-PT01_H3K27ac.bw
+NSP051-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP051-PT01_H3K27ac.bw
+NSP052-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP052-PT01_H3K27ac.bw
+NSP053-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP053-PT01_H3K27ac.bw
+NSP054-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP054-PT01_H3K27ac.bw
+NSP055-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP055-PT01_H3K27ac.bw
+NSP056-PT01	9	sumbw	"#00afaf"	"H3K27ac tumors"	True	3	data/tumor/chipseq/H3K27ac/bw/NSP056-PT01_H3K27ac.bw
+BE-2C	20	sumbw	"#00afaf"	"H3K27ac Cell lines"	True	3	data/cells/chipseq/H3K27ac/bw/BE-2C_H3K27ac.bw
+CHLA15	20	sumbw	"#00afaf"	"H3K27ac Cell lines"	True	3	data/cells/chipseq/H3K27ac/bw/CHLA15_H3K27ac.bw
+CHLA20	20	sumbw	"#00afaf"	"H3K27ac Cell lines"	True	3	data/cells/chipseq/H3K27ac/bw/CHLA20_H3K27ac.bw
+CHLA90	20	sumbw	"#00afaf"	"H3K27ac Cell lines"	True	3	data/cells/chipseq/H3K27ac/bw/CHLA90_H3K27ac.bw
+CLB-GA	20	sumbw	"#00afaf"	"H3K27ac Cell lines"	True	3	data/cells/chipseq/H3K27ac/bw/CLB-GA_H3K27ac.bw
+GI-ME-N	20	sumbw	"#00afaf"	"H3K27ac Cell lines"	True	3	data/cells/chipseq/H3K27ac/bw/GI-ME-N_H3K27ac.bw
+HD-N-33	20	sumbw	"#00afaf"	"H3K27ac Cell lines"	True	3	data/cells/chipseq/H3K27ac/bw/HD-N-33_H3K27ac.bw
+IMR32	20	sumbw	"#00afaf"	"H3K27ac Cell lines"	True	3	data/cells/chipseq/H3K27ac/bw/IMR32_H3K27ac.bw
+IMR575	20	sumbw	"#00afaf"	"H3K27ac Cell lines"	True	3	data/cells/chipseq/H3K27ac/bw/IMR575_H3K27ac.bw
+KELLY	20	sumbw	"#00afaf"	"H3K27ac Cell lines"	True	3	data/cells/chipseq/H3K27ac/bw/KELLY_H3K27ac.bw
+LAN2	20	sumbw	"#00afaf"	"H3K27ac Cell lines"	True	3	data/cells/chipseq/H3K27ac/bw/LAN2_H3K27ac.bw
+LAN6	20	sumbw	"#00afaf"	"H3K27ac Cell lines"	True	3	data/cells/chipseq/H3K27ac/bw/LAN6_H3K27ac.bw
+NB69	20	sumbw	"#00afaf"	"H3K27ac Cell lines"	True	3	data/cells/chipseq/H3K27ac/bw/NB69_H3K27ac.bw
+NBL-S	20	sumbw	"#00afaf"	"H3K27ac Cell lines"	True	3	data/cells/chipseq/H3K27ac/bw/NBL-S_H3K27ac.bw
+NGP	20	sumbw	"#00afaf"	"H3K27ac Cell lines"	True	3	data/cells/chipseq/H3K27ac/bw/NGP_H3K27ac.bw
+NMB	20	sumbw	"#00afaf"	"H3K27ac Cell lines"	True	3	data/cells/chipseq/H3K27ac/bw/NMB_H3K27ac.bw
+P4	20	sumbw	"#00afaf"	"H3K27ac Cell lines"	True	3	data/cells/chipseq/H3K27ac/bw/P4_H3K27ac.bw
+P5	20	sumbw	"#00afaf"	"H3K27ac Cell lines"	True	3	data/cells/chipseq/H3K27ac/bw/P5_H3K27ac.bw
+SH-EP	20	sumbw	"#00afaf"	"H3K27ac Cell lines"	True	3	data/cells/chipseq/H3K27ac/bw/SH-EP_H3K27ac.bw
+SK-N-AS	20	sumbw	"#00afaf"	"H3K27ac Cell lines"	True	3	data/cells/chipseq/H3K27ac/bw/SK-N-AS_H3K27ac.bw
+SK-N-DZ	20	sumbw	"#00afaf"	"H3K27ac Cell lines"	True	3	data/cells/chipseq/H3K27ac/bw/SK-N-DZ_H3K27ac.bw
+SK-N-FI	20	sumbw	"#00afaf"	"H3K27ac Cell lines"	True	3	data/cells/chipseq/H3K27ac/bw/SK-N-FI_H3K27ac.bw
+SMS-KCNR	20	sumbw	"#00afaf"	"H3K27ac Cell lines"	True	3	data/cells/chipseq/H3K27ac/bw/SMS-KCNR_H3K27ac.bw
+SY5Y	20	sumbw	"#00afaf"	"H3K27ac Cell lines"	True	3	data/cells/chipseq/H3K27ac/bw/SY5Y_H3K27ac.bw
+TR14	20	sumbw	"#00afaf"	"H3K27ac Cell lines"	True	3	data/cells/chipseq/H3K27ac/bw/TR14_H3K27ac.bw
