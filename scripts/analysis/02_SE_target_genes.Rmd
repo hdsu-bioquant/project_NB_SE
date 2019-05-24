@@ -152,9 +152,9 @@ dim(gene_exprs)
 # 1 molecule per cell on average at any one time.
 
 
-isexpr <- rowSums(gene_exprs > 1)  > round(0.05 * ncol(gene_exprs))
+isexpr <- rowSums(gene_exprs > 5)  > round(0.1 * ncol(gene_exprs))
 table(isexpr)
-gene_exprs_norm <- log(gene_exprs[isexpr,] + 1)
+gene_exprs_norm <- log2(gene_exprs[isexpr,] + 1)
 hist(gene_exprs_norm)
 dim(gene_exprs_norm)
 
@@ -183,7 +183,7 @@ rownames(cells_gene_exprs) <- sapply(strsplit(rownames(cells_gene_exprs), "\\.")
 cells_gene_exprs <- cells_gene_exprs[rownames(cells_gene_exprs) %in% rownames(gene_exprs_norm),]
 dim(cells_gene_exprs)
 dim(gene_exprs_norm)
-cells_gene_exprs <- log(cells_gene_exprs + 1)
+cells_gene_exprs <- log2(cells_gene_exprs + 1)
 
 rownames(cells_gene_exprs) <- paste0(rownames(cells_gene_exprs), "|",
                                      hsapiens_genes_exprs$symbol[match(rownames(cells_gene_exprs), hsapiens_genes_exprs$gene_id)])
@@ -525,7 +525,8 @@ SE_target_rank <- mclapply(split(SE_annot_df, SE_annot_df$SE), function(SE_annot
   ## Filter targets based on correlation by p.val or corr ##
   ##––––––––––––––––––––––––––––––––––––––––––––––––––––––##
   # remove target by corr that are not in the same TAD
-  SE_annot <- SE_annot[!(SE_annot$method == "correlation" & (!SE_annot$inSameTAD)), ,drop=FALSE]
+  #SE_annot <- SE_annot[!(SE_annot$method == "correlation" & (!SE_annot$inSameTAD)), ,drop=FALSE]
+  SE_annot <- SE_annot[!(SE_annot$method == "correlation" & is.na(SE_annot$corr)), ,drop=FALSE]
   #idx <- which(SE_annot$method == "correlation" & SE_annot$method > 0.05)
   # Filter targets based on correlation
   idx <- which((SE_annot$method == "correlation" & abs(SE_annot$corr) < 0.1 ))
