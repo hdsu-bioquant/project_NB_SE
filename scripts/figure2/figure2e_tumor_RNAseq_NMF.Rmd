@@ -40,14 +40,8 @@ library(knitr)
 
 # params <- list(K         = 4,
 #                annot     = "annotation/annotation_tumor.RDS",
-#                nmf       = "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_SignalScore_NMF.RDS",
-#                norm_nmfW = "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_SignalScore_normNMF_W.RDS",
-#                norm_nmfH = "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_SignalScore_normNMF_H.RDS",
-#                hmatrix_wnorm = "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS",
-#                wmatrix_wnorm = "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Wmatrix_Wnorm.RDS",
-#                nmf_features  = "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_NMF_features.RDS",
-#                hmatrix_hnorm = "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS",
-#                figure2a      = "results/figures/figure2/figure2a_tumor_SE_hmatrix.pdf")
+#                norm_nmfW = "analysis/tumor/rnaseq/NMF/tumor_consensusSE_targetExprs_normNMF_W.RDS",
+#                norm_nmfH = "analysis/tumor/rnaseq/NMF/tumor_consensusSE_targetExprs_normNMF_H.RDS")
 
 ```
 
@@ -158,16 +152,14 @@ signature_idx
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 rec_MYCN <- recovery_annot(hmatrix, annot, "MYCN")
 signature_idx$MYCN <- which(rec_MYCN$Amp$p < 0.05 & rec_MYCN$Amp$z > 0)
-
+signature_idx
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##                 Find High and Low  Risk Signatures                         ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-rec_risk <- recovery_annot(hmatrix, annot, "Stage")
-signature_idx$`MNA-LR` <- which(rec_risk$`4`$p < 0.05 & rec_risk$`4`$z < 0)
-
 rec_gsub <- recovery_annot(hmatrix, annot, "GenomicSubtype")
+signature_idx$`MNA-LR` <- which(rec_gsub$A$p < 0.05 & rec_gsub$A$z > 0)
 signature_idx$`MNA-HR` <- which(rec_gsub$D$p < 0.05 & rec_gsub$D$z > 0)
-
+signature_idx
 
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##                        Assign MES Signature                                ##

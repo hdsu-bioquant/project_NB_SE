@@ -55,6 +55,10 @@ phase01_consensusSE:
 phase02_NMF:
     NMF_chipseq : True
     NMF_rnaseq  : True
+
+phase03_ARACNe:
+    input_matrix : True
+
     
 compileFigs:
   figure1    : True

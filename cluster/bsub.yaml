@@ -15,7 +15,7 @@ __default__:
 #                         Consensus SE                                         #
 #==============================================================================#
 SE_target_genes:
-    cores    : 10
+    cores    : 20
     walltime : 01:30
     memory   : 10240
   

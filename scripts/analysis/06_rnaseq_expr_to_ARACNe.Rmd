@@ -1,0 +1,68 @@
+---
+title: "RNAseq gene expression matrix to ARACNe"
+author: "Health Data Science Unit"
+date: "`r date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    number_sections: false
+params:
+  assayID       : "foo"
+  matrix        : "path/to/..."
+  matrix_symbol : "path/to/..."
+  
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+#this chunk sets global options for Rmarkdown
+knitr::opts_chunk$set(echo = FALSE)
+options(knitr.table.format="html")
+
+
+```
+
+# `r params$assayID`
+
+## Data loading
+  
+Read  matrix
+  
+```{r dataloading, results="asis", cache=FALSE, message=FALSE}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                         Read normalized data                               ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# read normalized matrix
+norm_mat <- readRDS(params$matrix)
+
+# Extracting only gene symbols
+symbols <- sapply(strsplit(rownames(norm_mat),"|", fixed=TRUE),function(x) x[2])
+
+# Find duplicates
+dups <- norm_mat[symbols %in% symbols[duplicated(symbols)],]
+dups <- split(as.data.frame(dups), factor(sapply(strsplit(rownames(dups),"|", fixed=TRUE),function(x) x[2])))
+
+# Keep one among the duplicates that has the highest median expression across all samples
+dim(norm_mat)
+rmv      <- as.character(unlist(sapply(dups, function(x){x = apply(x,1,median); x= names(x)[x < max(x)]})))
+norm_mat <- norm_mat[- which(rownames(norm_mat) %in% rmv),]
+rm(dups,rmv)
+dim(norm_mat)
+
+norm_mat[1:5,1:5]
+
+# Writing NB exp data in ARACNe format for downstream processing
+symbols  <- sapply(strsplit(rownames(norm_mat),"|",fixed=TRUE),function(x) x[2])
+norm_mat <- data.frame(Gene=symbols,norm_mat,stringsAsFactors=FALSE, check.names=FALSE)
+rownames(norm_mat) <- c(1:nrow(norm_mat))
+norm_mat[1:5,1:5]
+
+write.table(norm_mat, params$matrix_symbol, row.names=FALSE, quote=FALSE, sep="\t")
+
+
+```
+

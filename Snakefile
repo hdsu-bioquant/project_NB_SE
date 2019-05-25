@@ -107,6 +107,9 @@ def inputall(wilcards):
         collectfiles.append(join(DATAPATH, 'results/figure4/figure4_paths.txt'))
     if config["compileFigs"]["sup_figure2"]:
         collectfiles.append(join(DATAPATH, 'results/sup_figure2/sup_figure2_paths.txt'))
+    # ARACNe
+    if config["phase03_ARACNe"]["input_matrix"]:
+        collectfiles.extend(expand(join(DATAPATH, 'analysis/{type}/rnaseq/exprs/{type}_RNAseq_SYMBOL_TPM_Matrix_filt_log.txt'), zip, type = ["tumor", "cells"]))        
     # NMF
     if config["phase02_NMF"]["NMF_rnaseq"]:
         collectfiles.extend(expand(join(DATAPATH, 'reports/04_{type}_SE_targets_rnaseq_NMF_report.html'), zip, type = ["tumor", "cells"]))
@@ -146,6 +149,38 @@ rule placeh:
         """
         Rscript {params.script} {output.outtmp} {input.consensusSE} 
         """
+
+#================================================================================#
+#                                       ARACNe                                   #
+#================================================================================#
+rule expr_to_ARACNe:
+    input:
+        matrix  = join(DATAPATH, 'analysis/{type}/rnaseq/exprs/{type}_RNAseq_TPM_Matrix_filt_log.RDS')
+    output:
+        report  = join(DATAPATH, 'reports/06_{type}_rnaseq_expr_to_ARACNe.html'),
+        rmd     = temp(join(DATAPATH, 'reports/06_{type}_rnaseq_expr_to_ARACNe.Rmd')),
+        mat_sym = join(DATAPATH, 'analysis/{type}/rnaseq/exprs/{type}_RNAseq_SYMBOL_TPM_Matrix_filt_log.txt')
+    params:
+        script   = 'scripts/analysis/06_rnaseq_expr_to_ARACNe.Rmd',
+        assayID  = '{type}_rnaseq'
+    wildcard_constraints:
+        type = "[a-z]+"
+    conda: 'envs/R3.5.yaml'
+    shell:
+        """
+    
+        cp {params.script} {output.rmd}
+
+        Rscript -e "rmarkdown::render( '{output.rmd}', \
+                params = list( \
+                  assayID       = '{params.assayID}', \
+                  matrix        = '{input.matrix}', \
+                  matrix_symbol = '{output.mat_sym}' \
+                ))"
+        
+        
+        """
+
 
 
 #================================================================================#
