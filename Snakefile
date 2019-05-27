@@ -109,7 +109,9 @@ def inputall(wilcards):
         collectfiles.append(join(DATAPATH, 'results/sup_figure2/sup_figure2_paths.txt'))
     # ARACNe
     if config["phase03_ARACNe"]["input_matrix"]:
-        collectfiles.extend(expand(join(DATAPATH, 'analysis/{type}/rnaseq/exprs/{type}_RNAseq_SYMBOL_TPM_Matrix_filt_log.txt'), zip, type = ["tumor", "cells"]))        
+        collectfiles.extend(expand(join(DATAPATH, 'analysis/{type}/rnaseq/exprs/{type}_RNAseq_SYMBOL_TPM_Matrix_filt_log.txt'), zip, type = ["tumor", "cells"]))
+    if config["phase03_ARACNe"]["run_ARACNe"]:
+        collectfiles.append(join(DATAPATH, 'analysis/tumor/ARACNe/network.txt'))
     # NMF
     if config["phase02_NMF"]["NMF_rnaseq"]:
         collectfiles.extend(expand(join(DATAPATH, 'reports/04_{type}_SE_targets_rnaseq_NMF_report.html'), zip, type = ["tumor", "cells"]))
@@ -153,6 +155,86 @@ rule placeh:
 #================================================================================#
 #                                       ARACNe                                   #
 #================================================================================#
+#-------------------------------------------------------------------------------
+# ARACNe-AP (https://github.com/califano-lab/ARACNe-AP) is used for constructing
+# the transcription factor (TF) - target gene regulome network from -
+#
+# (1) A given gene expression matrix
+# (2) List of transcription factors (can be any other regulator too)
+#
+# ARACNe-AP has three major sequential steps -
+#
+# (a) Calculate the mutual information threshold
+# (b) Perform Bootstrapping
+# (c) Consolidate the bootstrapping results
+#-------------------------------------------------------------------------------
+
+#================================================================================#
+#   ARACNE-AP - Algorithm for the Reconstruction of Accurate Cellular Networks   #
+#   with Adaptive Partitioning (https://doi.org/10.1093/bioinformatics/btw216)   #
+#================================================================================#
+
+rule runAracneAP:
+    input:
+        exprMat = join(DATAPATH, 'analysis/tumor/rnaseq/exprs/tumor_RNAseq_SYMBOL_TPM_Matrix_filt_log.txt'),
+        regList = join(DATAPATH, 'db/misc/fantom5_humanTF_hg19.csv')
+    output: 
+        tf_list = join(DATAPATH, 'analysis/tumor/ARACNe/tf_regulators.txt'),
+        network = join(DATAPATH, 'analysis/tumor/ARACNe/network.txt')
+    params:
+        outdir          = join(DATAPATH, 'analysis/tumor/ARACNe/'),
+        aracneap        = join(DATAPATH, 'src/softwares/Aracne.jar'),
+        miPval          = config['ARACNe']['mi_pval_cutoff'],
+        consolidatePval = config['ARACNe']['consolidation_pval_cutoff'],
+        cores           = config['ARACNe']['cpus']
+    conda:
+        "envs/aracneap.yaml"
+    shell:
+        """
+        
+        #-----------------------------------------------------------------------
+        # Cleaning TF regulators file
+        #-----------------------------------------------------------------------
+        tail -n +3 {input.regList} | cut -f 2 -d ',' | sed -e 's/"//g' > {output.tf_list}
+        
+        #-----------------------------------------------------------------------
+        # Computing the mutual information threshold
+        #-----------------------------------------------------------------------
+
+        java -Xmx5G -jar {params.aracneap} \
+        -e {input.exprMat} \
+        --tfs {output.tf_list} \
+        --pvalue {params.miPval} \
+        --seed 1  \
+        -o {params.outdir} \
+        --calculateThreshold
+
+        #-----------------------------------------------------------------------
+        # Running 100 Bootstrapping
+        #-----------------------------------------------------------------------
+
+        for i in {{1..100}}
+        do
+        java -Xmx5G -jar {params.aracneap} \
+        -e {input.exprMat} \
+        --tfs {output.tf_list} \
+        --pvalue {params.miPval} \
+        --threads {params.cores}\
+        --seed $i  \
+        -o {params.outdir}
+        done
+
+        #-----------------------------------------------------------------------
+        # Consolidating the bootstrap results
+        #-----------------------------------------------------------------------
+
+        java -Xmx5G -jar {params.aracneap} \
+        -o {params.outdir} \
+        --consolidate --consolidatepvalue {params.consolidatePval}
+
+        """
+
+
 rule expr_to_ARACNe:
     input:
         matrix  = join(DATAPATH, 'analysis/{type}/rnaseq/exprs/{type}_RNAseq_TPM_Matrix_filt_log.RDS')
@@ -501,12 +583,32 @@ rule SE_bigwigaverageoverbed:
         bigWigAverageOverBed {input.bw} {input.consensusSE} {output.bw_over_bed}
         """
 
+#================================================================================#
+#                     TUMORS CONSENSUS ENHANCERS  FILTER H3K4me3                 #
+#================================================================================#
+### Compute consensus enhancer list from enhancers called by rose for each sample after H3K4me3 filtering
+rule tumors_consensus_enhancers_noH3K4me3:
+    input:
+        enH3K27ac_noH3K4me3 = expand(join(DATAPATH, 'data/tumor/chipseq/H3K27ac/SE/{sample}_H3K27ac_ROSE_noH3K4me3_Enhancers.bed'), zip, sample=TUMOR_SAMPLES_CHIP)
+    output:
+        consensusbed        = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusEnhancers/tumor_H3K27ac_noH3K4me3_consensusEnhancers.bed')
+    conda:
+        'envs/generaltools.yaml'
+    shell:
+        """
+        # Merge all SE
+        cat {input.enH3K27ac_noH3K4me3}| sortBed | bedtools merge -c 4,4 -o distinct,count_distinct | 
+        awk '$5 > 1' |sed -e 's/$/\tEnhancer_/' | sed -n 'p;=' |
+        paste -d "" - - | awk 'BEGIN{{FS="\t";OFS="\t"}} {{ t = $4; $4 = $6; $6 = t; print;}} ' > {output.consensusbed}
+        """
+
+
 
 
 #================================================================================#
 #                TUMORS CONSENSUS SUPER ENHANCERS  FILTER H3K4me3                #
 #================================================================================#
-### Compute consensus SE list from SE called by rose for each sample ater H3K4me3 filtering
+### Compute consensus SE list from SE called by rose for each sample after H3K4me3 filtering
 rule tumors_consensus_SE_noH3K4me3:
     input:
         seH3K27ac_noH3K4me3 = expand(join(DATAPATH, 'data/tumor/chipseq/H3K27ac/SE/{sample}_H3K27ac_ROSE_noH3K4me3_SuperEnhancers.bed'), zip, sample=TUMOR_SAMPLES_CHIP)

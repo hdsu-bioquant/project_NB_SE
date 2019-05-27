@@ -529,7 +529,8 @@ SE_target_rank <- mclapply(split(SE_annot_df, SE_annot_df$SE), function(SE_annot
   SE_annot <- SE_annot[!(SE_annot$method == "correlation" & is.na(SE_annot$corr)), ,drop=FALSE]
   #idx <- which(SE_annot$method == "correlation" & SE_annot$method > 0.05)
   # Filter targets based on correlation
-  idx <- which((SE_annot$method == "correlation" & abs(SE_annot$corr) < 0.1 ))
+  #idx <- which((SE_annot$method == "correlation" & abs(SE_annot$corr) < 0.1 ))
+  idx <- which((SE_annot$method == "correlation" & SE_annot$corr < 0.1 ))
   #print(SE_annot)
   if (length(idx) > 0) {
     SE_annot <- SE_annot[-idx,,drop = FALSE]
@@ -548,7 +549,8 @@ SE_target_rank <- mclapply(split(SE_annot_df, SE_annot_df$SE), function(SE_annot
     # Find max corr
     if (sum(annot_gene$method == "correlation") > 0) {
       corr <- annot_gene$corr[annot_gene$method == "correlation"]
-      corr <- corr[which.max(abs(corr))]
+      #corr <- corr[which.max(abs(corr))]
+      corr <- corr[which.max(corr)]
     } else {
       corr <- NA
     }

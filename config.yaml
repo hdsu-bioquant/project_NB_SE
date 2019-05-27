@@ -58,6 +58,7 @@ phase02_NMF:
 
 phase03_ARACNe:
     input_matrix : True
+    run_ARACNe   : True
 
     
 compileFigs:
@@ -101,6 +102,16 @@ NMFparams:
         optimalK:
             chipseq: 5
             rnaseq : 5
+
+
+#==============================================================================#
+#                                ARACNE-AP                                     #
+#==============================================================================#
+ARACNe:
+  mi_pval_cutoff           : 1E-8
+  consolidation_pval_cutoff: 1E-3
+  cpus                     : 10
+
 
 
 #==============================================================================#
