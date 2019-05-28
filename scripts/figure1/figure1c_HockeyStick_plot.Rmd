@@ -1,0 +1,467 @@
+---
+title: "Figure 1a - Hockey Stick plot"
+author: "Health Data Science Unit"
+date: "`r date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    number_sections: false
+params:
+  work_dir  : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO"
+  annot     : "annotation/annotation_tumor.RDS"
+  SE_target : "analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS"
+  enhancers : "analysis/tumor/chipseq/H3K27ac/consensusEnhancers/tumor_H3K27ac_noH3K4me3_consensusEnhancers.bed"
+  figure    : "results/figure1/figure1c_HockeyStick_plot.pdf"
+  #figure_mean : "results/figure1/figure1c_HockeyStick_plot_mean.pdf"
+  #figure_median : "results/figure1/figure1c_HockeyStick_plot_median.pdf"
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+#this chunk sets global options for Rmarkdown
+knitr::opts_chunk$set(echo = TRUE)
+#setting working directory. Should be home directory of the project
+knitr::opts_knit$set(root.dir=params$work_dir)
+options(knitr.table.format="html")
+
+
+library(tidyverse)
+library(viridis)
+library(rtracklayer)
+library(ggrepel)
+library(matrixStats)
+
+
+NCORES <- 30L
+```
+
+# Data loading
+
+
+```{r dataloading, cache=FALSE}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                             Read data                                      ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# params <- list(work_dir  = "",
+#                annot     = "annotation/annotation_tumor.RDS",
+#                SE_target = "analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS",
+#                enhancers = "analysis/tumor/chipseq/H3K27ac/consensusEnhancers/tumor_H3K27ac_noH3K4me3_consensusEnhancers.bed",
+#                figure_mean = "results/figure1/figure1c_HockeyStick_plot_mean.pdf",
+#                figure_median = "results/figure1/figure1c_HockeyStick_plot_median.pdf")
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                    Read annotation                     ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+annot <-readRDS(params$annot)
+annot <- annot[annot$avail.ChIPseq,]
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                        Read SE                         ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+SE <- readRDS(params$SE_target)
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                    Read enhancers                      ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+enhancers <- read.table(params$enhancers, as.is=TRUE)
+head(enhancers)
+enhancers <- enhancers[,1:4]
+colnames(enhancers) = c('chr','start','end','ID')
+enhancers <-  makeGRangesFromDataFrame(enhancers, keep.extra.column = TRUE)
+enhancers
+
+# Drop enhancers overlaping with SE
+# Since overlapping regions are nearly 100% identical, 
+# we remove them from consensus enhancer regions
+enhancers <- enhancers[!enhancers %over% SE]
+
+
+
+bind_rows(data.frame(width = width(enhancers), class = "Enhancer", stringsAsFactors = F),
+          data.frame(width = width(SE),        class = "SE",       stringsAsFactors = F)) %>% 
+  ggplot(aes(x = width, color = class)) +
+  geom_density() 
+
+```
+
+# Total signal over ranges
+
+```{r totalSignalOverRanges, cache=FALSE}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                          Paths to BigWig files                             ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+bw_paths <- paste0("data/tumor/chipseq/H3K27ac/bw/", annot$ProjectID,"_H3K27ac.bw")
+names(bw_paths) <- annot$ProjectID
+names(bw_paths)
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                          Total Signal over SE                              ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+SE_total_Signal <- do.call(cbind, mclapply(bw_paths, function(bw_path){
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##                       Read file                        ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  bwf <- BigWigFile(bw_path)
+  bw  <- rtracklayer::import(bwf)
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##             Find total signal over each SE             ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  # signal over SE regions
+  bw         <- subsetByOverlaps(bw, SE)
+  bw_SE_over <- findOverlaps(bw, SE)
+  bw         <- bw[from(bw_SE_over)]
+  # Summarize by SE target SYMBOL
+  #bw$ID <- SE$ID[to(bw_SE_over)]
+  bw$ID <- SE$target_SYMBOL[to(bw_SE_over)]
+  sapply(split(bw, bw$ID), function(SE_sig){
+    sum(SE_sig$score)
+  })
+}, mc.cores = NCORES))
+
+SE_total_Signal[1:5, 1:5]
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                        Total Signal over enhancers                         ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+enhancers_total_Signal <- do.call(cbind, mclapply(bw_paths, function(bw_path){
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##                       Read file                        ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  bwf <- BigWigFile(bw_path)
+  bw  <- rtracklayer::import(bwf)
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##         Find total signal over each enhancer           ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  # signal over each enhancer
+  bw         <- subsetByOverlaps(bw, enhancers)
+  bw_en_over <- findOverlaps(bw, enhancers)
+  bw         <- bw[from(bw_en_over)]
+  bw$ID      <- enhancers$ID[to(bw_en_over)]
+  
+  sapply(split(bw, bw$ID), function(SE_sig){
+    sum(SE_sig$score)
+  })
+}, mc.cores = NCORES))
+
+enhancers_total_Signal[1:5, 1:5]
+
+
+
+
+```
+
+# Hockey stick plots
+
+```{r helper_functions}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                        Mean signal over samples                            ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+totalSignal_to_hockey <- function(totalSignal, summarization = "mean", classID){
+  summ_list <- list(mean = rowMeans, median = rowMedians, max = rowMaxs)
+  summ_signal <- summ_list[[summarization]](totalSignal)
+  names(summ_signal) <- rownames(totalSignal)
+  data.frame(ID     = names(summ_signal),
+             signal = summ_signal,
+             rank   = rank(summ_signal),
+             class  = classID, 
+             stringsAsFactors = FALSE)
+}
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                           basic ggplot theme                               ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+tm <- theme_bw() +
+  theme(
+    #legend.text = element_text(size=5),
+    #axis.line=element_blank(),
+    #axis.line = element_line(size = .1, colour = "grey20"),
+    axis.title.y = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    #panel.border = element_blank(),
+    panel.background = element_blank())
+
+
+```
+
+
+
+```{r}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                           Hockey stick plot                                ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+plot_hockey <- function(signal_list = list(SE       = SE_total_Signal, 
+                                           enhancer = enhancers_total_Signal), 
+                        summarization = "mean"){
+  
+  
+  SE_summ        <- totalSignal_to_hockey(signal_list$SE, summarization, "SE")
+  enhancers_summ <- totalSignal_to_hockey(signal_list$enhancer, summarization, "Enhancers")
+  
+  bind_rows(enhancers_summ, SE_summ) %>% 
+    mutate(rank = rank(signal)) %>% 
+    ggplot(aes(x = rank, y = signal, color = class)) +
+    geom_point() +
+    scale_color_manual(values = c("#969696", magma(10)[6])) +
+    tm
+}
+
+# Mean
+plot_hockey(summarization = "mean")
+
+# Median
+plot_hockey(summarization = "median")
+
+# Max
+plot_hockey(summarization = "max")
+
+
+
+```
+
+
+# Metric comparison
+
+```{r}
+
+data.frame(Median = totalSignal_to_hockey(SE_total_Signal, "median", "SE")$signal,
+           Mean   = totalSignal_to_hockey(SE_total_Signal, "mean", "SE")$signal,
+           ID = rownames(SE_total_Signal)) %>% 
+  gather(Summarization, Signal, - ID) %>% 
+  mutate(Summarization = factor(Summarization, levels = unique(Summarization))) %>% 
+  ggplot(aes(x = Summarization, y = Signal)) +
+  #geom_jitter(width = 0.3, height = 0.3, aes(color = as.factor(Summarization))) +
+  geom_point(aes(color = as.factor(Summarization))) +
+  geom_line(aes(group = ID), lty = 1, colour = "purple")
+
+
+data.frame(Median = totalSignal_to_hockey(SE_total_Signal, "median", "SE")$signal,
+           Max    = totalSignal_to_hockey(SE_total_Signal, "max", "SE")$signal,
+           ID = rownames(SE_total_Signal)) %>% 
+  gather(Summarization, Signal, - ID) %>% 
+  mutate(Summarization = factor(Summarization, levels = unique(Summarization))) %>% 
+  ggplot(aes(x = Summarization, y = Signal)) +
+  #geom_jitter(width = 0.3, height = 0.3, aes(color = as.factor(Summarization))) +
+  geom_point(aes(color = as.factor(Summarization))) +
+  geom_line(aes(group = ID), lty = 2, colour = "purple") +
+  scale_y_log10()
+
+```
+
+# Top 50 boxplot
+
+```{r}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                               Top 50 SE                                    ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# Find top 50 SE
+summ_SE_signal <- totalSignal_to_hockey(SE_total_Signal, "mean", "SE")
+head(summ_SE_signal)
+top_SE <- names(sort(setNames(summ_SE_signal$rank, summ_SE_signal$ID), decreasing = TRUE)[1:50])
+top_SE
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                      extract total signal of top SE                        ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# Find SE target annotation evidence
+evidence_rank <- setNames(1:4, c("HiChIP", "HiC", "correlation", "nearest"))
+top_SEdf <- as.data.frame(SE[SE$target_SYMBOL %in% top_SE])
+table(top_SEdf$target_main_evidence)
+
+evidence_top_SE <- top_SEdf %>% 
+  group_by(target_SYMBOL) %>% 
+  mutate(evidence_rank = evidence_rank[match(target_main_evidence, names(evidence_rank))]) %>% 
+  top_n(-1, evidence_rank) %>% 
+  ungroup() %>% 
+  select(target_SYMBOL, target_main_evidence) %>% 
+  unique()
+
+table(evidence_top_SE$target_main_evidence)
+
+
+# extract total signal of top SE
+top_SE_total_Signal <- SE_total_Signal[top_SE,]
+dim(top_SE_total_Signal)
+
+top_SE_total_Signal <- data.frame(ID = rownames(top_SE_total_Signal),
+                                  Median = rowMedians(top_SE_total_Signal),
+                                  Evidence = evidence_top_SE$target_main_evidence[match(rownames(top_SE_total_Signal),
+                                                                                        evidence_top_SE$target_SYMBOL)],
+                                  top_SE_total_Signal)
+top_SE_total_Signal[1:5,1:5]
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                            Boxplot of top 50 SE                            ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+
+top50_box <- top_SE_total_Signal %>% 
+  arrange(Median) %>% 
+  mutate(ID = factor(ID, levels= ID)) %>% 
+  gather(SampleID, Signal, -ID, -Median, -Evidence) %>% 
+  filter(Signal >= 0) %>% 
+  filter(Signal <= 150000) %>% 
+  ggplot(aes(x = ID, y = Signal, color = Evidence)) +
+  geom_boxplot() +
+  coord_flip() +
+  tm +
+  theme(axis.ticks.y = element_blank(),
+        axis.title = element_blank(),
+        legend.title = element_blank(),
+        legend.background = element_blank(),
+        legend.position = c(0.8, 0.3))
+top50_box
+
+
+plot_hockey(summarization = "mean") +
+  annotation_custom(ggplotGrob(top50_box), xmin = -100, xmax = 20000, 
+                       ymin = 5000, ymax = 47000)
+
+# top_SEgr <- SE[SE$target_SYMBOL %in% top_SE]
+# table(top_SEgr$target_main_evidence)
+```
+
+# Hockey stick with annotation
+
+```{r hockeyMean}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                            Hockey stick Mean                               ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+# listt of Know SE
+knownSE = c("MYCN","PHOX2A","PHOX2B","GATA3","TBX2","HAND2","ALK", "MAML3","RUNX3","PBX1","SMAD2","KLF6","ETS2","SOX11","SOX9","SOX6","LMO1","HIF1A","NFIB","FOSL2","MYT1L","MYT1", "MYC","IRF2BPL","IRF2BP2","GLI2")
+
+# extract signal
+SE_summ        <- totalSignal_to_hockey(SE_total_Signal, "mean", "SE")
+enhancers_summ <- totalSignal_to_hockey(enhancers_total_Signal, "mean", "Enhancers")
+
+knownSE[!knownSE %in% SE_summ$ID ]
+
+# add label tag
+bind_rows(enhancers_summ, SE_summ) %>% 
+  mutate(rank = rank(signal)) %>% 
+  mutate(knownSE = ID %in% knownSE) -> 
+  hockey_df
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                            Hockey stick with annot                         ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+highlight50 <- data.frame(ymin = sort(hockey_df$signal[hockey_df$class == "SE"], decreasing = TRUE)[1:50][50],
+                    ymax = sort(hockey_df$signal[hockey_df$class == "SE"], decreasing = TRUE)[1:50][1] + 400,
+                    xmin = mean(sort(hockey_df$rank[hockey_df$class == "SE"], decreasing = TRUE)[1:50])-1000,
+                    xmax = mean(sort(hockey_df$rank[hockey_df$class == "SE"], decreasing = TRUE)[1:50])+1000)
+highlight50
+
+
+top_SE <- names(sort(setNames(summ_SE_signal$rank, summ_SE_signal$ID), decreasing = TRUE)[1:50])
+
+
+hockey <- ggplot(hockey_df, aes(x = rank, y = signal, color = class)) +
+  geom_point() +
+  geom_text_repel(data=filter(hockey_df, knownSE), aes(label=ID), color = "black", size =3) + 
+  scale_color_manual(values = c("#969696", magma(10)[6])) +
+  geom_rect(data = highlight50, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            color="grey20", alpha=0.5, fill = NA, inherit.aes = FALSE) +
+  ylab("Average H3K27ac signal") +
+  xlab("Rank by H3K27ac signal") +
+  theme_bw() +
+  theme(legend.position = "none",
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank())
+hockey
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                               Embed boxplot                                ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+hockey_box <- hockey +
+  annotation_custom(ggplotGrob(top50_box), xmin = -100, xmax = 22000, 
+                       ymin = 5000, ymax = 47000)
+
+hockey_box
+
+
+
+```
+
+
+```{r hockeyMedian}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                            Hockey stick Median                             ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+# listt of Know SE
+knownSE = c("MYCN","PHOX2A","PHOX2B","GATA3","TBX2","HAND2","ALK", "MAML3","RUNX3","PBX1","SMAD2","KLF6","ETS2","SOX11","SOX9","SOX6","LMO1","HIF1A","NFIB","FOSL2","MYT1L","MYT1", "MYC","IRF2BPL","IRF2BP2","GLI2")
+
+# extract signal
+SE_summ        <- totalSignal_to_hockey(SE_total_Signal, "median", "SE")
+enhancers_summ <- totalSignal_to_hockey(enhancers_total_Signal, "median", "Enhancers")
+
+knownSE[!knownSE %in% SE_summ$ID ]
+
+# add label tag
+bind_rows(enhancers_summ, SE_summ) %>% 
+  mutate(rank = rank(signal)) %>% 
+  mutate(knownSE = ID %in% knownSE) -> 
+  hockey_df
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                            Hockey stick with annot                         ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+highlight50 <- data.frame(ymin = sort(hockey_df$signal[hockey_df$class == "SE"], decreasing = TRUE)[1:50][50],
+                    ymax = sort(hockey_df$signal[hockey_df$class == "SE"], decreasing = TRUE)[1:50][1] + 400,
+                    xmin = mean(sort(hockey_df$rank[hockey_df$class == "SE"], decreasing = TRUE)[1:50])-1000,
+                    xmax = mean(sort(hockey_df$rank[hockey_df$class == "SE"], decreasing = TRUE)[1:50])+1000)
+highlight50
+
+
+top_SE <- names(sort(setNames(summ_SE_signal$rank, summ_SE_signal$ID), decreasing = TRUE)[1:50])
+
+
+hockey <- ggplot(hockey_df, aes(x = rank, y = signal, color = class)) +
+  geom_point() +
+  geom_text_repel(data=filter(hockey_df, knownSE), aes(label=ID), color = "black", size =3) + 
+  scale_color_manual(values = c("#969696", magma(10)[6])) +
+  geom_rect(data = highlight50, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            color="grey20", alpha=0.5, fill = NA, inherit.aes = FALSE) +
+  ylab("Average H3K27ac signal") +
+  xlab("Rank by H3K27ac signal") +
+  theme_bw() +
+  theme(legend.position = "none",
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank())
+hockey
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                               Embed boxplot                                ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+hockey_box <- hockey +
+  annotation_custom(ggplotGrob(top50_box), xmin = -100, xmax = 22000, 
+                       ymin = 3000, ymax = 27000)
+
+hockey_box
+
+
+
+```
+
+
+```{r saveplot}
+# ggsave(params$figure_median, hockey_box, width = 6, height = 7)
+# ggsave(params$figure_mean,   hockey_box, width = 6, height = 7)
+
+ggsave(params$figure, hockey_box, width = 6, height = 7)
+
+```

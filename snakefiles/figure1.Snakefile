@@ -7,7 +7,7 @@ rule compile_figure1:
     input:
         #figure1a = join(DATAPATH, 'results/figure1/figure1a_tumor_SE_hmatrix.pdf'),
         #figure1b = join(DATAPATH, 'results/figure1/figure1b_cells_SE_hmatrix.pdf'),
-        #figure1c = join(DATAPATH, 'results/figure1/figure1c_tumor_cells_SE_UMAP.pdf'),
+        figure1c = join(DATAPATH, 'results/figure1/figure1c_HockeyStick_plot.pdf'),
         #figure1d = join(DATAPATH, 'results/figure1/figure1d_01_tumor_riverplot.pdf'),
         figure1e = join(DATAPATH, 'results/figure1/figure1e_IGV_plot.pdf')
     output: join(DATAPATH, 'results/figure1/figure1_paths.txt')
@@ -16,7 +16,7 @@ rule compile_figure1:
         touch {output}
         #echo 'Figure 1a {input.figure1e}' >> {output}
         #echo 'Figure 1b {input.figure1e}' >> {output}
-        #echo 'Figure 1c {input.figure1e}' >> {output}
+        #echo 'Figure 1c {input.figure1c}' >> {output}
         #echo 'Figure 1d {input.figure1e}' >> {output}
         echo 'Figure 1e {input.figure1e}' >> {output}
         
@@ -25,7 +25,7 @@ rule compile_figure1:
 
 
 #================================================================================#
-#                      Figure 4i - VSNL1 loci                                    #
+#                      Figure 1e - MAML3 loci                                    #
 #================================================================================#
 rule fig1e_IGV:
     input:
@@ -60,6 +60,40 @@ rule fig1e_IGV:
                   end   = {params.gr_end}, \
                   name  = '{params.gr_name}', \
                   figure = '{output.figure}' \
+                ))"
+
+
+        """
+
+
+#================================================================================#
+#                      Figure 1a - Hockey Stick plot                             #
+#================================================================================#
+rule fig1a_Hockey:
+    input:
+        tumor_annot = join(DATAPATH, 'annotation/annotation_tumor.RDS'),
+        SE_target   = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'),
+        enhancers   = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusEnhancers/tumor_H3K27ac_noH3K4me3_consensusEnhancers.bed'),
+        bw = expand(join(DATAPATH, 'data/tumor/chipseq/H3K27ac/bw/{sample}_H3K27ac.bw'), zip, sample=TUMOR_SAMPLES_CHIP)
+    output:
+        report = join(DATAPATH, 'reports/figure1c_HockeyStick_plot.html'),
+        rmd    = temp(join(DATAPATH, 'reports/figure1c_HockeyStick_plot.Rmd')),
+        figure = join(DATAPATH, 'results/figure1/figure1c_HockeyStick_plot.pdf')
+    params:
+        script       = 'scripts/figure1/figure1c_HockeyStick_plot.Rmd',
+        work_dir     = DATAPATH
+    conda: '../envs/R3.5.yaml'
+    shell:
+        """
+        cp {params.script} {output.rmd}
+
+        Rscript -e "rmarkdown::render( '{output.rmd}', \
+                params = list( \
+                  work_dir  = '{params.work_dir}', \
+                  annot     = '{input.tumor_annot}', \
+                  SE_target = '{input.SE_target}', \
+                  enhancers = '{input.enhancers}', \
+                  figure    = '{output.figure}' \
                 ))"
 
 
