@@ -42,7 +42,7 @@ library(Homo.sapiens)
 library(GenomicInteractions)
 library(knitr)
 
-NCORES <- 20L
+NCORES <- 30L
 ```
 
 ## Data loading
@@ -212,7 +212,7 @@ track_summary_BW <- function(files, region2plot, color){
     val <- data.frame(m = m, v = v, n = rep(name, length(m)))
     
     # split regions into bins
-    nBins  <- 800
+    nBins  <- 2000
     breaks <- seq(start(region2plot), end(region2plot), length.out = nBins)
     
     val$bin <- cut(val$m, breaks = breaks, labels = F, include.lowest = T)
