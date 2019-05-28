@@ -8,7 +8,7 @@ rule compile_figure1:
         #figure1a = join(DATAPATH, 'results/figure1/figure1a_tumor_SE_hmatrix.pdf'),
         #figure1b = join(DATAPATH, 'results/figure1/figure1b_cells_SE_hmatrix.pdf'),
         figure1c = join(DATAPATH, 'results/figure1/figure1c_HockeyStick_plot.pdf'),
-        #figure1d = join(DATAPATH, 'results/figure1/figure1d_01_tumor_riverplot.pdf'),
+        figure1d = join(DATAPATH, 'results/figure1/GO_BP_enrichment_SE_target_genes.pdf'),
         figure1e = join(DATAPATH, 'results/figure1/figure1e_IGV_plot.pdf')
     output: join(DATAPATH, 'results/figure1/figure1_paths.txt')
     shell:
@@ -17,7 +17,7 @@ rule compile_figure1:
         #echo 'Figure 1a {input.figure1e}' >> {output}
         #echo 'Figure 1b {input.figure1e}' >> {output}
         #echo 'Figure 1c {input.figure1c}' >> {output}
-        #echo 'Figure 1d {input.figure1e}' >> {output}
+        #echo 'Figure 1d {input.figure1d}' >> {output}
         echo 'Figure 1e {input.figure1e}' >> {output}
         
         """
@@ -65,11 +65,31 @@ rule fig1e_IGV:
 
         """
 
+#================================================================================#
+#                      Figure 1 - Enrichment analysis                            #
+#================================================================================#
+
+rule fig1_SEenrichmentAnalysis:
+    input:
+        SE_target = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS')
+    output:
+        table  = join(DATAPATH, 'results/suppltables/GO_BP_enrichment_SE_target_genes.txt'),
+        figure = join(DATAPATH, 'results/figure1/GO_BP_enrichment_SE_target_genes.pdf')
+    params:
+        script   = 'scripts/figure1/SEenrichmentAnalysis.R',
+        work_dir = DATAPATH
+    conda: '../envs/R3.5.yaml'
+    shell:
+        """
+        Rscript {params.script} {params.work_dir} {input.SE_target}
+        """
+
+
 
 #================================================================================#
-#                      Figure 1a - Hockey Stick plot                             #
+#                      Figure 1 - Hockey Stick plot                              #
 #================================================================================#
-rule fig1a_Hockey:
+rule fig1_Hockey:
     input:
         tumor_annot = join(DATAPATH, 'annotation/annotation_tumor.RDS'),
         SE_target   = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'),
