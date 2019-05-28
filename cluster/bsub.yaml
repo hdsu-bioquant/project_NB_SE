@@ -57,7 +57,7 @@ fig1a_Hockey:
     memory   : 10240
 
 fig1e_IGV:
-    cores    : 20
+    cores    : 30
     walltime : 01:30
     memory   : 10240
 

@@ -123,7 +123,7 @@ igv_plot:
     start : 140500000
     end   : 141270000
     name  : MAML3
-    window: 5000
+    window: 1500
     ymax  : max
     width : 8
     height: 6

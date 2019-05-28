@@ -278,7 +278,7 @@ evidence_top_SE <- top_SEdf %>%
   mutate(evidence_rank = evidence_rank[match(target_main_evidence, names(evidence_rank))]) %>% 
   top_n(-1, evidence_rank) %>% 
   ungroup() %>% 
-  select(target_SYMBOL, target_main_evidence) %>% 
+  dplyr::select(target_SYMBOL, target_main_evidence) %>% 
   unique()
 
 table(evidence_top_SE$target_main_evidence)
@@ -399,8 +399,8 @@ hockey_box
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 
 # listt of Know SE
-knownSE = c("MYCN","PHOX2A","PHOX2B","GATA3","TBX2","HAND2","ALK", "MAML3","RUNX3","PBX1","SMAD2","KLF6","ETS2","SOX11","SOX9","SOX6","LMO1","HIF1A","NFIB","FOSL2","MYT1L","MYT1", "MYC","IRF2BPL","IRF2BP2","GLI2")
-
+#knownSE = c("MYCN","PHOX2A","PHOX2B","GATA3","TBX2","HAND2","ALK", "MAML3","RUNX3","PBX1","SMAD2","KLF6","ETS2","SOX11","SOX9","SOX6","LMO1","HIF1A","NFIB","FOSL2","MYT1L","MYT1", "MYC","IRF2BPL","IRF2BP2","GLI2")
+knownSE = c("MYCN","PHOX2A","PHOX2B","GATA3","TBX2","HAND2","ALK", "MAML3","RUNX3","PBX1","SMAD2","KLF6","ETS2","SOX11","SOX9","SOX6","LMO1","HIF1A", "FOSL2","MYT1L","MYT1", "MYC","IRF2BPL","IRF2BP2","GLI2")
 # extract signal
 SE_summ        <- totalSignal_to_hockey(SE_total_Signal, "median", "SE")
 enhancers_summ <- totalSignal_to_hockey(enhancers_total_Signal, "median", "Enhancers")
@@ -426,8 +426,8 @@ highlight50
 
 top_SE <- names(sort(setNames(summ_SE_signal$rank, summ_SE_signal$ID), decreasing = TRUE)[1:50])
 
-
-hockey <- ggplot(hockey_df, aes(x = rank, y = signal, color = class)) +
+head(hockey_df)
+hockey <- ggplot(hockey_df, aes(x = rank, y = signal, color = knownSE)) +
   geom_point() +
   geom_text_repel(data=filter(hockey_df, knownSE), aes(label=ID), color = "black", size =3) + 
   scale_color_manual(values = c("#969696", magma(10)[6])) +
@@ -440,6 +440,25 @@ hockey <- ggplot(hockey_df, aes(x = rank, y = signal, color = class)) +
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
         panel.background = element_blank())
+
+
+hockey <- ggplot(hockey_df, aes(x = rank, y = signal)) +
+  geom_point(color = "grey70") +
+  geom_point(data = filter(hockey_df, knownSE), color = magma(10)[6]) +
+  geom_text_repel(data=filter(hockey_df, knownSE), aes(label=ID), color = "black", size =3) + 
+  #scale_color_manual(values = c("#969696", magma(10)[6])) +
+  geom_rect(data = highlight50, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            color="grey20", alpha=0.5, fill = NA, inherit.aes = FALSE) +
+  ylab("Average H3K27ac signal") +
+  xlab("Rank by H3K27ac signal") +
+  theme_bw() +
+  theme(legend.position = "none",
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank())
+
+
+
 hockey
 
 
@@ -463,5 +482,7 @@ hockey_box
 # ggsave(params$figure_mean,   hockey_box, width = 6, height = 7)
 
 ggsave(params$figure, hockey_box, width = 6, height = 7)
+
+#ggsave("results/figure1/figure1c_HockeyStick_plot.pdf", hockey_box, width = 6, height = 7)
 
 ```
