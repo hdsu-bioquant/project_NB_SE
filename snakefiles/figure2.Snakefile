@@ -13,7 +13,8 @@ rule compile_figure2:
         figure2d02 = join(DATAPATH, 'results/figure2/figure2d_02_cells_riverplot.pdf'),
         figure2e   = join(DATAPATH, 'results/figure2/figure2e_tumor_SE_targets_hmatrix.pdf'),
         figure2f   = join(DATAPATH, 'results/figure2/figure2f_tumor_cells_density.pdf'),
-        figure2g  = join(DATAPATH, 'results/figure2/figure2g_tumor_SE_targets_NMF_recovery.pdf')
+        figure2g   = join(DATAPATH, 'results/figure2/figure2g_tumor_SE_targets_NMF_recovery.pdf'),
+        figure2h   = join(DATAPATH, 'results/figure2/figure2h_SEtargetExprs_mouseE12.5.pdf')
     output: join(DATAPATH, 'results/figure2/figure2_paths.txt')
     shell:
         """
@@ -26,8 +27,45 @@ rule compile_figure2:
         echo 'Figure 2e {input.figure2e}' >> {output}
         echo 'Figure 2f {input.figure2f}' >> {output}
         echo 'Figure 2g {input.figure2g}' >> {output}
+        echo 'Figure 2h {input.figure2h}' >> {output}
         
         """
+
+#================================================================================#
+#           Figure 2h - expression mapped to Mouse GSE99933 E12.5                #
+#================================================================================#
+optK_tc = str(config['NMFparams']['tumor']['optimalK']['chipseq'])
+rule fig2h_SEexprs_mouse:
+    input:
+        SE_target    = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'),
+        w_tumor      = join(DATAPATH, ('analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K' + optK_tc + '_Wmatrix_Wnorm.RDS')),
+        f_tumor      = join(DATAPATH, ('analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K' + optK_tc + '_NMF_features.RDS')),
+        mouse_pstime = join(DATAPATH, 'db/GSE99933_E12.5/GSE99933_E12.5.txt'),
+        mouse_exprs  = join(DATAPATH, 'db/GSE99933_E12.5/GSE99933_E12.5_exprs_Zscore.txt')
+    output:
+        report = join(DATAPATH, 'reports/figure2h_SEtargetExprs_mouseE12.5.html'),
+        rmd    = temp(join(DATAPATH, 'reports/figure2h_SEtargetExprs_mouseE12.5.Rmd')),
+        figure = join(DATAPATH, 'results/figure2/figure2h_SEtargetExprs_mouseE12.5.pdf')
+    params:
+        script   = 'scripts/figure2/figure2h_SEtargetExprs_mouseE12.5.Rmd'
+    conda: '../envs/R3.5.yaml'
+    shell:
+        """
+        cp {params.script} {output.rmd}
+
+        Rscript -e "rmarkdown::render( '{output.rmd}', \
+                params = list( \
+                  SE_target    = '{input.SE_target}', \
+                  w_tumor      = '{input.w_tumor}', \
+                  f_tumor      = '{input.f_tumor}', \
+                  mouse_pstime = '{input.mouse_pstime}', \
+                  mouse_exprs  = '{input.mouse_exprs}', \
+                  figure = '{output.figure}' \
+                ))"
+
+
+        """
+
 
 #================================================================================#
 #          Figure 2g - Tumor SE Target RNAseq NMF recovery plots                 #
