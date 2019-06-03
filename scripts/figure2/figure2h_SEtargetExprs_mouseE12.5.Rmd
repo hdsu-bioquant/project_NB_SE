@@ -208,5 +208,8 @@ man_hr <- projection_plot("MNA-HR")
 
 projection_gg <- mycn + mes + man_lr + man_hr + plot_layout(ncol = 2)
 projection_gg
+
+ggsave(params$figure, projection_gg, width = 10, height = 10)
+
 ```
 

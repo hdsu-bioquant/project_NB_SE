@@ -14,7 +14,8 @@ rule compile_figure2:
         figure2e   = join(DATAPATH, 'results/figure2/figure2e_tumor_SE_targets_hmatrix.pdf'),
         figure2f   = join(DATAPATH, 'results/figure2/figure2f_tumor_cells_density.pdf'),
         figure2g   = join(DATAPATH, 'results/figure2/figure2g_tumor_SE_targets_NMF_recovery.pdf'),
-        figure2h   = join(DATAPATH, 'results/figure2/figure2h_SEtargetExprs_mouseE12.5.pdf')
+        figure2h   = join(DATAPATH, 'results/figure2/figure2h_SEtargetExprs_mouseE12.5.pdf'),
+        figure_pan = join(DATAPATH, 'results/figure2/figure2panels_signature_enrichment.pdf')
     output: join(DATAPATH, 'results/figure2/figure2_paths.txt')
     shell:
         """
@@ -28,6 +29,7 @@ rule compile_figure2:
         echo 'Figure 2f {input.figure2f}' >> {output}
         echo 'Figure 2g {input.figure2g}' >> {output}
         echo 'Figure 2h {input.figure2h}' >> {output}
+        echo 'Figure pan {input.figure_pan}' >> {output}
         
         """
 
@@ -125,6 +127,51 @@ rule fig2f_tumor_cells_density:
 
 
         """
+
+#================================================================================#
+#            Figure 2 panels - Top NMF Signature's feature enrichment            #
+#================================================================================#
+optK_tc = str(config['NMFparams']['tumor']['optimalK']['chipseq'])
+optK_cc = str(config['NMFparams']['cells']['optimalK']['chipseq'])
+optK_tr = str(config['NMFparams']['tumor']['optimalK']['rnaseq'])
+
+
+rule fig2panels_signature_enrichment:
+    input:
+        SE_target   = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'),
+        terms       = join(DATAPATH, 'results/suppltables/GO_BP_enrichment_SE_target_genes.txt'),
+        wChIP_tumor = join(DATAPATH, ('analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K' + optK_tc + '_Wmatrix_Wnorm.RDS')),
+        wChIP_cells = join(DATAPATH, ('analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K' + optK_cc + '_Wmatrix_Wnorm.RDS')),
+        wRNAs_tumor = join(DATAPATH, ('analysis/tumor/rnaseq/NMF/tumor_consensusSE_K' + optK_tr + '_Wmatrix_Wnorm.RDS')),
+        wRNAv_tumor = join(DATAPATH, ('analysis/tumor/rnaseq/NMF_mostVariable/tumor_mostVariable_K' + optK_tr + '_Wmatrix_Wnorm.RDS'))
+    output:
+        report     = join(DATAPATH, 'reports/figure2panels_signature_enrichment.html'),
+        rmd        = temp(join(DATAPATH, 'reports/figure2panels_signature_enrichment.Rmd')),
+        figure     = join(DATAPATH, 'results/figure2/figure2panels_signature_enrichment.pdf'),
+        sup_figure = join(DATAPATH, 'results/sup_figure2/sup_figure2_MostVariable_signature_enrichment.pdf')
+    params:
+        script   = 'scripts/figure2/figure2panels_signature_enrichment.Rmd',
+        optimalK = optK_tr
+    conda: '../envs/R3.5.yaml'
+    shell:
+        """
+        cp {params.script} {output.rmd}
+
+        Rscript -e "rmarkdown::render( '{output.rmd}', \
+                params = list( \
+                  SE     = '{input.SE_target}', \
+                  terms     = '{input.terms}', \
+                  wChIP_tumor = '{input.wChIP_tumor}', \
+                  wChIP_cells = '{input.wChIP_cells}', \
+                  wRNAs_tumor = '{input.wRNAs_tumor}', \
+                  wRNAv_tumor = '{input.wRNAv_tumor}', \
+                  figure      = '{output.figure}', \
+                  sup_figure      = '{output.sup_figure}' \
+                ))"
+
+
+        """
+
 
 #================================================================================#
 #                    Figure 2e - Tumor SE Target RNAseq NMF                      #
