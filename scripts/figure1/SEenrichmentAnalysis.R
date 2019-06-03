@@ -4,8 +4,11 @@ args <- commandArgs(TRUE)
 library(enrichR)
 library(ggplot2)
 library(ggrepel)
+library(ggbeeswarm)
 
-path = as.character(args[1])
+#path = as.character(args[1])
+
+path = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/"
 
 # Super enhancers target genes
 se = readRDS(paste0(path, "analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS"))
@@ -15,7 +18,8 @@ se = as.character(unique(se$target_SYMBOL))
 enr =  enrichr(se, "GO_Biological_Process_2018")
 GOenrich = enr$GO_Biological_Process_2018[,c(1:4,9)]
 GOenrich = GOenrich[GOenrich$Adjusted.P.value < 0.05,]
-GOenrich$Adjusted.P.value = round(GOenrich$Adjusted.P.value, 3)
+GOenrich$P.value = signif(GOenrich$Adjusted.P.value, digits = 4)
+GOenrich$Adjusted.P.value = signif(GOenrich$Adjusted.P.value, digits = 4)
 rm(enr,se)
 
 # Going through the enriched geneset lists and manually assigning metageneset tags
@@ -53,18 +57,27 @@ GOenrich = cbind(GOenrich, Class=tmp); rm(tmp)
 GOenrich = GOenrich[order(GOenrich$Class),]
 GOenrich = GOenrich[,c(1:4,6,5)]
 GOenrich = split(GOenrich,GOenrich$Class)
-GOenrich = lapply(GOenrich, function(x){x[order(x$Adjusted.P.value),]}) # ordering by fdr
-GOenrich = GOenrich[order(sapply(GOenrich, function(x) median(x$Adjusted.P.value)))] # ordering by average fdr of each broad group
+
+GOenrich = lapply(GOenrich, function(x){
+  x = x[order(x$Adjusted.P.value),]
+  x = cbind(x, Rank = 1:nrow(x))
+}) # ordering by fdr
+
+avgFDR = sapply(GOenrich, function(x) median(x$Adjusted.P.value))
+GOenrich = GOenrich[order(avgFDR)] # ordering by average fdr of each broad group
+avgFDR = names(sort(avgFDR))
 GOenrich = do.call("rbind", GOenrich)
+GOenrich$Class = factor(as.character(GOenrich$Class), levels = avgFDR)
 rownames(GOenrich) = c(1:nrow(GOenrich))
+rm(avgFDR)
+
+GOenrich$Term = sapply(strsplit(GOenrich$Term, " (", fixed=TRUE), function(x)x[1])
+GOenrich$Value = round(-log10(GOenrich$Adjusted.P.value), 4)
 
 # Writing the results
-write.table(GOenrich, paste0(path,"results/suppltables/GO_BP_enrichment_SE_target_genes.txt"), row.names=F, quote=F, sep="\t")
+write.table(GOenrich[,1:6], paste0(path,"results/suppltables/GO_BP_enrichment_SE_target_genes.txt"), row.names=F, quote=F, sep="\t")
 
 # Plotting the enrichment analysis results
-GOenrich$Term = sapply(strsplit(GOenrich$Term, " (", fixed=TRUE), function(x)x[1])
-GOenrich$value = round(-log10(GOenrich$Adjusted.P.value), 2)
-
 toShow = rep("No",nrow(GOenrich))
 toShow[GOenrich$Term %in% c("positive regulation of epithelial cell migration",
                        "positive regulation of epithelial to mesenchymal transition",
@@ -76,19 +89,13 @@ toShow[GOenrich$Term %in% c("positive regulation of epithelial cell migration",
                        "positive regulation of macromolecule metabolic process"
                        )] = "Yes"
 
-p = ggplot(GOenrich, aes(x=Class, y=value, size = value, color = Class)) + theme_void(base_size = 9) + coord_flip() + labs(size = expression(paste(-log[10],"(FDR)")), colour = "Meta-genesets") +
-geom_point() + geom_text_repel(data=subset(GOenrich, toShow == "Yes"), nudge_x = 0.5, aes(label=Term), size=2.5, color="grey60") + 
-guides(colour = guide_legend(nrow = 3, ncol=2, byrow = F, title.position = "top"), 
-       size = guide_legend(nrow = 3, ncol=1, byrow = F, title.position = "top")) +
-theme(legend.position = "bottom") + scale_colour_brewer(palette = "Set1")
+p = ggplot(GOenrich, aes(x = Class, y = Rank, size = Value, color = Class)) + theme_void(base_size = 9) + scale_y_reverse() +
+    labs(size = expression(paste(-log[10],"(FDR)")), colour = "Meta-genesets") +
+    geom_quasirandom(shape=21) + 
+    geom_text_repel(data=subset(GOenrich, toShow == "Yes"), nudge_y = 0.5, aes(label=Term), size=2.5) + 
+    guides(colour = guide_legend(nrow = 3, ncol=2, byrow = F, title.position = "top"), 
+           size = guide_legend(nrow = 3, ncol=1, byrow = F, title.position = "top")) +
+    theme(legend.position = "bottom") + scale_colour_brewer(palette = "Set1") 
 
-# + scale_size_continuous(range  = c(1,4),
-#                      breaks = -log10(c(0.05, 0.01, 0.001)),
-#                      labels = c("0.05","0.01","0.001"))
-
-
-pdf(paste0(path,"results/figure1/GO_BP_enrichment_SE_target_genes.pdf"), width=7, height=5)
-print(p)
-dev.off()
-
-
+ggsave(filename = paste0(path,"results/figure1/GO_BP_enrichment_SE_target_genes.pdf"), 
+       plot = p, width=4.2, height=3.5)

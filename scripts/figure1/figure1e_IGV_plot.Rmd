@@ -18,7 +18,7 @@ params:
   end   : 17840000
   name  : "RAD51AP2_VSNL1"
   figure: "results/figure..."
-  width : 8
+  width : 13
   height: 4
 editor_options: 
   chunk_output_type: console

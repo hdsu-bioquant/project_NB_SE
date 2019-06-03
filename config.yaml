@@ -123,9 +123,9 @@ igv_plot:
     start : 140500000
     end   : 141270000
     name  : MAML3
-    window: 1500
+    window: 2000
     ymax  : max
-    width : 8
+    width : 11
     height: 6
   figure4i:
     chr   : chr12
