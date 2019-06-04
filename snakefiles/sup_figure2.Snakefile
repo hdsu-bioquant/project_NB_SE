@@ -9,18 +9,53 @@ rule compile_sup_figure2:
         sup_figure2a = join(DATAPATH, 'results/sup_figure2/sup_figure2a_tumor_cells_SE_heatmap.pdf'),
         sup_figure2c = join(DATAPATH, 'results/sup_figure2/sup_figure2c_tumor_cells_SE_hmatrix.pdf'),
         sup_figure2d = join(DATAPATH, 'results/sup_figure2/sup_figure2d_tumor_corr_SEvsExprs_exposure.pdf'),
-        sup_figure2e = join(DATAPATH, 'results/sup_figure2/sup_figure2e_tumor_mostVariablehmatrix.pdf')
+        sup_figure2e = join(DATAPATH, 'results/sup_figure2/sup_figure2e_tumor_mostVariablehmatrix.pdf'),
+        sup_figure2g = join(DATAPATH, 'results/sup_figure2/sup_figure2g_tumor_purity_vs_exposure.pdf')
     output: join(DATAPATH, 'results/sup_figure2/sup_figure2_paths.txt')
     shell:
         """
         touch {output}
         echo 'Sup. Figure 2a {input.sup_figure2a}' >> {output}
-        #echo 'Sup. Figure 2b {input.sup_figure2c}' >> {output}
         echo 'Sup. Figure 2c {input.sup_figure2c}' >> {output}
         echo 'Sup. Figure 2d {input.sup_figure2d}' >> {output}
         echo 'Sup. Figure 2e {input.sup_figure2e}' >> {output}
+        echo 'Sup. Figure 2g {input.sup_figure2g}' >> {output}
         
         """
+    
+    
+#================================================================================#
+#                    Sup. Figure 2g tumor purity vs exposure                     #
+#================================================================================#
+optK_tc = str(config['NMFparams']['tumor']['optimalK']['chipseq'])
+optK_tr = str(config['NMFparams']['tumor']['optimalK']['rnaseq'])
+rule sup_figure2g_tumor_purity_vs_exposure:
+    input:
+        h_SEsig = join(DATAPATH, ('analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K' + optK_tc + '_Hmatrix_wnorm.RDS')),
+        h_exprs = join(DATAPATH, ('analysis/tumor/rnaseq/NMF/tumor_consensusSE_K' + optK_tr + '_Hmatrix_wnorm.RDS')),
+        purity  =  join(DATAPATH, 'annotation/purity_tumor.csv')
+    output:
+        report = join(DATAPATH, 'reports/sup_figure2g_tumor_purity_vs_exposure.html'),
+        rmd    = temp(join(DATAPATH, 'reports/sup_figure2g_tumor_purity_vs_exposure.Rmd')),
+        figure = join(DATAPATH, 'results/sup_figure2/sup_figure2g_tumor_purity_vs_exposure.pdf')
+    params:
+        script   = 'scripts/sup_figure2/sup_figure2g_tumor_purity_vs_exposure.Rmd'
+    conda: '../envs/R3.5.yaml'
+    shell:
+        """
+        cp {params.script} {output.rmd}
+
+        Rscript -e "rmarkdown::render( '{output.rmd}', \
+                params = list( \
+                  h_SEsig = '{input.h_SEsig}', \
+                  h_exprs = '{input.h_exprs}', \
+                  purity  = '{input.purity}', \
+                  figure  = '{output.figure}' \
+                ))"
+
+
+        """
+
     
 #================================================================================#
 #          Sup. Figure 2e - Tumor Most Variable Genes RNAseq NMF                 #

@@ -1,0 +1,152 @@
+---
+title: "Sup. Figure 2d - Correlation of SE signal exposure to SE target exposure"
+author: "Health Data Science Unit"
+date: "`r date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    number_sections: false
+params:
+  h_SEsig : "path/to/data"
+  h_exprs : "path/to/data"
+  purity  : "path/to/data"
+  figure  : "results/figures..."
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+#this chunk sets global options for Rmarkdown
+knitr::opts_chunk$set(echo = TRUE)
+#setting working directory. Should be home directory of the project
+options(knitr.table.format="html")
+
+library(tidyverse)
+library(viridis)
+library(ggplot2)
+library(patchwork)
+library(ggpubr)
+
+```
+
+## Data loading
+  
+  
+```{r dataloading}
+# 
+# params <- list(h_SEsig = '/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS',
+#                h_exprs = '/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS',
+#                purity = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/annotation/purity_tumor.csv",
+#                figure = "results/sup_figure2/sup_figure2g_tumor_purity_vs_exposure.pdf")
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                             Read data                                      ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# Read NMF H matrices
+h_SEsig <- readRDS(params$h_SEsig)
+h_exprs <- readRDS(params$h_exprs)
+
+# Read purity scores
+purity <- read.csv(params$purity, stringsAsFactors = FALSE)
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                           basic ggplot theme                               ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+tm <- theme_bw() +
+  theme(#axis.line=element_line(colour = "black"),
+    #axis.line = element_line(size = .1, colour = "grey20"),
+    legend.text = element_text(size=5),
+    #axis.line=element_blank(),
+    axis.title.y = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    #panel.border = element_blank(),
+    panel.background = element_blank())
+
+
+```
+
+```{r scatterPlot}
+
+assign_signature <- function(h){
+  is_h <- t(apply(h, 1, function(x){
+    k <- kmeans(x, 2)
+    max_idx <- which.max(k$centers)
+    if_else(k$cluster == max_idx, "High", "Low")
+  }))
+  colnames(is_h) <- colnames(h)
+  rownames(is_h) <- rownames(h)
+  is_h
+}
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##               SE signal exposure vs tumor purity                           ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+purdf_SEsig <- as.data.frame(t(h_SEsig)) %>% 
+  rownames_to_column("ProjectID") %>% 
+  mutate(Purity = purity$Purity[match(ProjectID, purity$ProjectID)]) %>% 
+  gather(Signature, Exposure, -ProjectID, -Purity)
+
+
+gg_SEsig <- as.data.frame(t(assign_signature(h_SEsig))) %>% 
+  rownames_to_column("ProjectID") %>% 
+  gather(Signature, IsSignature, -ProjectID) %>% 
+  full_join(y = purdf_SEsig, by = c("ProjectID", "Signature")) %>% 
+  mutate(Signature = factor(Signature, levels = unique(Signature))) %>% 
+  filter(!is.na(Purity)) %>% 
+  ggplot(aes(x = Purity, y = Exposure)) +
+  geom_point(aes(color = IsSignature)) +
+  geom_vline(xintercept = 0.5) +
+  facet_wrap(.~Signature,  nrow = 1, scales = "free") +
+  stat_cor(method = "pearson") +
+  tm +
+  theme(legend.title = element_blank())
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                 Expression exposure vs tumor purity                        ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+purdf_exprs <- as.data.frame(t(h_exprs)) %>% 
+  rownames_to_column("ProjectID") %>% 
+  mutate(Purity = purity$Purity[match(ProjectID, purity$ProjectID)]) %>% 
+  gather(Signature, Exposure, -ProjectID, -Purity)
+
+
+gg_exprs <- as.data.frame(t(assign_signature(h_exprs))) %>% 
+  rownames_to_column("ProjectID") %>% 
+  gather(Signature, IsSignature, -ProjectID) %>% 
+  full_join(y = purdf_exprs, by = c("ProjectID", "Signature")) %>% 
+  mutate(Signature = factor(Signature, levels = unique(Signature))) %>% 
+  filter(!is.na(Purity)) %>% 
+  ggplot(aes(x = Purity, y = Exposure)) +
+  geom_point(aes(color = IsSignature)) +
+  geom_vline(xintercept = 0.5) +
+  facet_wrap(.~Signature,  nrow = 1, scales = "free") +
+  stat_cor(method = "pearson") +
+  tm +
+  theme(legend.title = element_blank())
+
+
+
+
+gg_SEsig 
+gg_exprs
+
+
+ggExpVsPurity <- gg_SEsig + gg_exprs + plot_layout(ncol = 1)
+
+ggsave(params$figure, ggExpVsPurity, width=8, height=4)
+
+
+
+
+
+```
+
+
