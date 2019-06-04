@@ -10,12 +10,10 @@ output:
     number_sections: false
 params:
   work_dir     : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/"
-  path_config  : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/src/project_NB_SE/scripts/figure3/figure3g_tracks.txt"
   path_high_bed: "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/src/project_NB_SE/scripts/figure3/figure3g_highlight_ranges.bed"
   cells_h      : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K3_Hmatrix_hnorm.RDS"
   tumor_h      : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS"
   width_window : 3000
-  ymax  : "max" 
   chr   : "chr11"
   start : 68776977
   end   : 69667477
@@ -45,7 +43,7 @@ library(Homo.sapiens)
 library(GenomicInteractions)
 library(knitr)
 
-NCORES_tracks <- 2L
+NCORES_tracks <- 1L
 NCORES_summ   <- 20L
 ```
 
