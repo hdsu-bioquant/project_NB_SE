@@ -17,6 +17,7 @@ params:
   wRNAv_tumor : "results/figure2/figure2panels_signature_enrichment.pdf"
   figure : "results/figure2/figure2panels_signature_enrichment.pdf"
   sup_figure : "results/sup_figure2/sup_figure2_MostVariable_signature_enrichment.pdf"
+  targetannot_df : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/analysis/tumor/SE_annot/tumor_consensusSE_target_annotation_df.RDS"
   
 editor_options: 
   chunk_output_type: console
@@ -34,10 +35,12 @@ library(viridis)
 library(ggplot2)
 library(patchwork)
 library(ggbeeswarm)
+library(matrixStats)
+
 
 ```
 
-# Figure 2.f MES density
+
 
 ## Data loading
   
@@ -70,7 +73,7 @@ head(gene_sets)
 ##                             Read data                                      ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 SE <- readRDS(params$SE)
-
+targetannot_df <- readRDS(params$targetannot_df)
 
 wChIP_cells <- readRDS(params$wChIP_cells)
 wChIP_tumor <- readRDS(params$wChIP_tumor)
@@ -86,14 +89,26 @@ wRNAv_tumor <- readRDS(params$wRNAv_tumor)
 
 
 ```{r}
+
 fisher.test.Signatures.Sets <- function(wmatrix, SE, sets, gene.symbols, Specific=TRUE, view="ChIPseq"){
   # Top features
   nmf.feat <- lapply(setNames(colnames(wmatrix), colnames(wmatrix)), function(sigID){
-    sign_expo  <- wmatrix[,sigID]
-    sig_SE_IDs <- names(sign_expo[sign_expo > quantile(sign_expo, 0.80)])
+    selec_wmatrix <- do.call(cbind, lapply(as.data.frame(wmatrix), function(sign_expo){
+      sign_expo[sign_expo < quantile(sign_expo, 0.90)] <- NA
+      sign_expo
+    }))
+    rownames(selec_wmatrix) <- rownames(wmatrix)
+    selec_wmatrix <- selec_wmatrix[!is.na(selec_wmatrix[,sigID]),,drop=FALSE]
+    # Keep only the top feature if there's an overlap
+    sig_SE_IDs <- rownames(selec_wmatrix[rowMaxs(selec_wmatrix, na.rm = TRUE) == selec_wmatrix[,sigID],])
+    
+    
+    # sign_expo  <- wmatrix[,sigID]
+    # sig_SE_IDs <- names(sign_expo[sign_expo > quantile(sign_expo, 0.80)])
     
     if(view=="RNAseq"){
-      unique(SE$target_SYMBOL[match(sig_SE_IDs, SE$target_ENSEMBL)])
+      unique(targetannot_df$SYMBOL[match(sig_SE_IDs, targetannot_df$ENSEMBL)])
+      #unique(SE$target_SYMBOL[match(sig_SE_IDs, SE$target_ENSEMBL)])
     } else if (view=="ChIPseq"){
       unique(SE$target_SYMBOL[match(sig_SE_IDs, SE$ID)])
     }
@@ -136,14 +151,7 @@ fisher.test.Signatures.Sets <- function(wmatrix, SE, sets, gene.symbols, Specifi
   #return(fish.df)
   #print(head(fish.df))
   
-  # ggplot(fish.df, aes(x = Class, y = p.val, color = Class))+
-  #   geom_jitter(width = .2) +
-  #   coord_flip() +
-  #   #facet_grid(Signature~Class) +
-  #   facet_grid(Signature~.) +
-  #   geom_hline(yintercept = 1.3) +
-  #   theme_bw() + theme(panel.grid.major = element_blank(),
-  #                      panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+  
   equal_breaks <- function(n = 3, s = 0.05, ...){
     function(x){
       # rescaling
@@ -154,35 +162,39 @@ fisher.test.Signatures.Sets <- function(wmatrix, SE, sets, gene.symbols, Specifi
     }
   }
   
+  #print(fish.df)
   
+  if (ncol(wmatrix) == 4) {
+    colorscale <- c("firebrick", "#00afaf", "#420A68FF", "#2FB47CFF")
+  } else {
+    colorscale <- c("firebrick", "#420A68FF", "#2FB47CFF")
+  }
   
   ggplot(fish.df, aes(x = Signature, y = p.val, color = Signature))+
     geom_boxplot(outlier.size=NA, outlier.shape = NA) +
     geom_quasirandom(size = .5)+
-    
-    
-    #scale_y_continuous(breaks = equal_breaks(n=2, s=0.05), limits = c(0, NA)) +
-    
+    scale_y_continuous(breaks = equal_breaks(n=2, s=0.05), limits = c(0, NA)) +
     
     facet_grid(.~Class, scales = "free") +
     geom_hline(yintercept = 1.3) +
     ylab(bquote("-log"[10] ~ "(p-value)") ) +
-    
-    
+    #scale_color_manual(values = c("#2FB47CFF", "#2FB47CFF", "#420A68FF", "#2FB47CFF")) +
+    scale_color_manual(values = colorscale) +
+    #scale_color_hue(direction = -1, h.start=90) +
+    #scale_color_brewer(type = 'qual', palette = 'Dark2') +
     coord_flip()+
     theme_bw() + 
     theme(panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(), 
           panel.border = element_rect(colour="black"), 
           legend.position = "none"
-          )
+    )
   
   
   
 }
 
 
-fisher.test.Signatures.Sets(wChIP_tumor, SE, gene_sets, unique(SE$target_ENSEMBL), Specific=T)
 
 ```
 
@@ -199,6 +211,9 @@ ggRNAv_tumor <- fisher.test.Signatures.Sets(wRNAv_tumor, SE, gene_sets, unique(S
 
 main <- ggChIP_tumor + ggChIP_cells+ ggRNAs_tumor + plot_layout(ncol = 1)
 sup <- ggRNAv_tumor
+
+main
+sup
 
 ggsave(params$figure, main, width = 3, height = 6)
 ggsave(params$sup_figure, sup, width = 6, height = 5)

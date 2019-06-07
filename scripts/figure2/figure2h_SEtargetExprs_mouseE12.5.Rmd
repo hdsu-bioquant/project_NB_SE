@@ -33,6 +33,7 @@ library(biomaRt)
 library(scales)
 library(patchwork)
 library(rtracklayer)
+library(matrixStats)
 
 ```
 
@@ -158,9 +159,20 @@ ggsave(params$figure, projection_gg, width = 10, height = 10)
 
 ```{r}
 projection_plot <- function(sigID){
+  wmatrix <- w_tumor
   # Extract signature specific gens
-  sign_expo  <- w_tumor[,sigID]
-  sig_SE_IDs <- names(sign_expo[sign_expo > quantile(sign_expo, 0.8)])
+  selec_wmatrix <- do.call(cbind, lapply(as.data.frame(wmatrix), function(sign_expo){
+    sign_expo[sign_expo < quantile(sign_expo, 0.90)] <- NA
+    sign_expo
+  }))
+  rownames(selec_wmatrix) <- rownames(wmatrix)
+  selec_wmatrix <- selec_wmatrix[!is.na(selec_wmatrix[,sigID]),,drop=FALSE]
+  # Keep only the top feature if there's an overlap
+  sig_SE_IDs <- rownames(selec_wmatrix[rowMaxs(selec_wmatrix, na.rm = TRUE) == selec_wmatrix[,sigID],])
+
+  
+  #sign_expo  <- w_tumor[,sigID]
+  #sig_SE_IDs <- names(sign_expo[sign_expo > quantile(sign_expo, 0.8)])
   sig_geneIDs <- unique(SE[sig_SE_IDs]$target_SYMBOL)
   # Find Mouse Homologous
   mouseIDs    <- convertHumanGeneList(sig_geneIDs)
