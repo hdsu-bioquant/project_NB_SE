@@ -32,6 +32,9 @@ path_TADs
 devtools::install_github('andquintero/bratwurst', ref='dev_hdsu', upgrade = "never")
 devtools::install_github("thomasp85/patchwork", upgrade = "never")
 
+#BiocManager::install("viper")
+
+
 # if (!requireNamespace("BiocManager", quietly = TRUE))
 #   install.packages("BiocManager")
 

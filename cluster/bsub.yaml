@@ -46,7 +46,11 @@ runAracneAP:
     cores    : 10
     walltime : 10:00
     memory   : 46080
-
+    
+viperTF:
+    cores    : 40
+    walltime : 24:00
+    memory   : 46080
 
 #==============================================================================#
 #                              Compile Figures                                 #
@@ -58,6 +62,11 @@ fig1a_Hockey:
 
 fig1e_IGV:
     cores    : 30
+    walltime : 01:30
+    memory   : 10240
+    
+fig3_IGV:
+    cores    : 20
     walltime : 01:30
     memory   : 10240
 

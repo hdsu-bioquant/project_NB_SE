@@ -58,6 +58,7 @@ DATAPATH = config['main_working_directory']
 # Include snakefiles containing figure rules
 include: "snakefiles/figure1.Snakefile"
 include: "snakefiles/figure2.Snakefile"
+include: "snakefiles/figure3.Snakefile"
 include: "snakefiles/figure4.Snakefile"
 include: "snakefiles/sup_figure2.Snakefile"
 
@@ -103,6 +104,8 @@ def inputall(wilcards):
         collectfiles.append(join(DATAPATH, 'results/figure1/figure1_paths.txt'))
     if config["compileFigs"]["figure2"]:
         collectfiles.append(join(DATAPATH, 'results/figure2/figure2_paths.txt'))
+    if config["compileFigs"]["figure3"]:
+        collectfiles.append(join(DATAPATH, 'results/figure3/figure3_paths.txt'))
     if config["compileFigs"]["figure4"]:
         collectfiles.append(join(DATAPATH, 'results/figure4/figure4_paths.txt'))
     if config["compileFigs"]["sup_figure2"]:
@@ -112,6 +115,9 @@ def inputall(wilcards):
         collectfiles.extend(expand(join(DATAPATH, 'analysis/{type}/rnaseq/exprs/{type}_RNAseq_SYMBOL_TPM_Matrix_filt_log.txt'), zip, type = ["tumor", "cells"]))
     if config["phase03_ARACNe"]["run_ARACNe"]:
         collectfiles.append(join(DATAPATH, 'analysis/tumor/ARACNe/network.txt'))
+    if config["phase03_ARACNe"]["run_VIPER"]:
+        collectfiles.append(join(DATAPATH, 'analysis/tumor/VIPER/networkViper.txt'))
+        collectfiles.append(join(DATAPATH, 'analysis/tumor/VIPER/NBpersampleTFactivity.RDS'))
     # NMF
     if config["phase02_NMF"]["NMF_rnaseq"]:
         collectfiles.extend(expand(join(DATAPATH, 'reports/04_{type}_SE_targets_rnaseq_NMF_report.html'), zip, type = ["tumor", "cells"]))
@@ -152,6 +158,7 @@ rule placeh:
         Rscript {params.script} {output.outtmp} {input.consensusSE} 
         """
 
+
 #================================================================================#
 #                                       ARACNe                                   #
 #================================================================================#
@@ -168,6 +175,34 @@ rule placeh:
 # (b) Perform Bootstrapping
 # (c) Consolidate the bootstrapping results
 #-------------------------------------------------------------------------------
+
+#==============================================================================#
+#              Viper based transcription factor activity calculation           #
+#==============================================================================#
+
+rule viperTF:
+    input:
+        exprMat = join(DATAPATH, 'analysis/tumor/rnaseq/exprs/tumor_RNAseq_SYMBOL_TPM_Matrix_filt_log.txt'),
+        regulon = join(DATAPATH, 'analysis/tumor/ARACNe/network.txt'),
+        NMFexpo = join(DATAPATH, 'analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS')
+    output:
+        network  = join(DATAPATH, 'analysis/tumor/VIPER/networkViper.txt'),
+        viperout = join(DATAPATH, 'analysis/tumor/VIPER/NBpersampleTFactivity.RDS')
+    params:
+        script = 'scripts/analysis/07_viperTFactivity.R',
+        outdir = join(DATAPATH, 'analysis/tumor/VIPER')
+    conda:
+        'envs/R3.5.yaml'
+    shell:
+        """
+
+        # Cleaning ARACNE regulome file to make it compatible for viper
+        sed '1d' {input.regulon} > {output.network}
+
+        # Viper script
+        Rscript {params.script} {input.exprMat} {output.network} {input.NMFexpo} {params.outdir}
+
+        """
 
 #================================================================================#
 #   ARACNE-AP - Algorithm for the Reconstruction of Accurate Cellular Networks   #

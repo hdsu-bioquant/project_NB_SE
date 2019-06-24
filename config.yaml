@@ -59,12 +59,13 @@ phase02_NMF:
 phase03_ARACNe:
     input_matrix : True
     run_ARACNe   : True
+    run_VIPER    : True
 
     
 compileFigs:
   figure1    : True
   figure2    : True
-  figure3    : False
+  figure3    : True
   figure4    : True
   sup_figure2: True
 
@@ -126,6 +127,14 @@ igv_plot:
     window: 2000
     ymax  : max
     width : 11
+    height: 6
+  figure3_CCND1:
+    chr   : chr11
+    start : 68776977
+    end   : 69667477
+    name  : CCND1
+    window: 3000
+    width : 8
     height: 6
   figure4i:
     chr   : chr12
