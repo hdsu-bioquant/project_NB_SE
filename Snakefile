@@ -118,6 +118,7 @@ def inputall(wilcards):
     if config["phase03_ARACNe"]["run_VIPER"]:
         collectfiles.append(join(DATAPATH, 'analysis/tumor/VIPER/networkViper.txt'))
         collectfiles.append(join(DATAPATH, 'analysis/tumor/VIPER/NBpersampleTFactivity.RDS'))
+        collectfiles.append(join(DATAPATH, 'analysis/cells/crcGIEMSAkd/nbKDinhouse.RDS'))
     # NMF
     if config["phase02_NMF"]["NMF_rnaseq"]:
         collectfiles.extend(expand(join(DATAPATH, 'reports/04_{type}_SE_targets_rnaseq_NMF_report.html'), zip, type = ["tumor", "cells"]))
@@ -158,9 +159,26 @@ rule placeh:
         Rscript {params.script} {output.outtmp} {input.consensusSE} 
         """
 
+#================================================================================#
+#  siRNA based knockdown of putative CRCs in GIMEN and NMB cells (in house data) #
+#================================================================================#
+
+rule GIEMSA_siRNA_CRC:
+    input:
+        KDdata = join(DATAPATH, 'data/cells/CRCsiRNAknockdown/')
+    output:
+        KDresult = join(DATAPATH, 'analysis/cells/crcGIEMSAkd/nbKDinhouse.RDS')
+    params:
+        script  = 'scripts/analysis/08_allKDanalysis.R'
+    conda: 'envs/R3.5.yaml'
+    shell:
+        """
+        Rscript {params.script} {input.KDdata} {output.KDresult}
+        """
+
 
 #================================================================================#
-#                                       ARACNe                                   #
+#                                    ARACNe                                      #
 #================================================================================#
 #-------------------------------------------------------------------------------
 # ARACNe-AP (https://github.com/califano-lab/ARACNe-AP) is used for constructing
@@ -661,7 +679,76 @@ rule tumors_consensus_SE_noH3K4me3:
 
 
 
-# Download auxiliary data and install missing R packages in conda env
+#================================================================================#
+#    Download auxiliary data and install missing R packages in conda env         #
+#================================================================================#
+
+
+
+# Download and preprocessing of TCGA, TARGET and GTex data
+
+rule TCGA_TARGET_Gtex_Download:
+    output:
+        expr = join(DATAPATH, 'db/TCGA_TARGET_GTex/TcgaTargetGtex_log2_fpkm.RDS'),
+        samp = join(DATAPATH, 'db/TCGA_TARGET_GTex/TcgaTargetGtex_sample_informtion.RDS')
+    params:
+        allExpr  = 'https://toil.xenahubs.net/download/TcgaTargetGtex_rsem_gene_tpm.gz',
+        sampDesp = 'https://toil.xenahubs.net/download/TcgaTargetGTEX_phenotype.txt.gz',
+        geneAnno = 'https://toil.xenahubs.net/download/probeMap/gencode.v23.annotation.gene.probemap',
+        script   = 'src/project_NB_SE/scripts/aux/TCGA_TARGET_GTeX_data_download_and_processing.R',
+        outpath  = join(DATAPATH, 'db/')
+    conda: 'envs/R3.5.yaml'
+    shell:
+        """
+        Rscript {params.script} {params.allExpr} {params.sampDesp} {params.geneAnno} {params.outpath}
+        """
+
+
+# Download and preprocessing of super enhancers from multiple tissues
+
+rule SEDownload:
+    output:
+        SErange = join(DATAPATH, 'db/SEmultiTisuues/mmc7.zip'),
+        SEdesp  = join(DATAPATH, 'db/SEmultiTisuues/mmc2.xlsx')
+    params:
+        urlSErange = 'https://www.cell.com/cms/10.1016/j.cell.2013.09.053/attachment/c44ace85-27a5-4f4f-b7e4-db375a76f583/mmc7.zip',
+        urlSEdesp  = 'https://ars.els-cdn.com/content/image/1-s2.0-S0092867413012270-mmc2.xlsx',
+        script     = 'scripts/aux/download_super_enhancers_multiple_tissues.R',
+        outpath    = join(DATAPATH, 'db/')
+    conda: 'envs/R3.5.yaml'
+    shell:
+        """
+        Rscript {params.script} {params.urlSErange} {params.urlSEdesp} {params.outpath}
+        """
+
+
+# Download and preprocessing of DeepMap cell-line data
+
+rule DeepMapDownload:
+    output:
+        desp = join(DATAPATH, 'db/DeepMap19Q2/README.txt'),
+        anno = join(DATAPATH, 'db/DeepMap19Q2/cellAnnotation.RDS'),
+        expr = join(DATAPATH, 'db/DeepMap19Q2/cellExpression.RDS'),
+        kval = join(DATAPATH, 'db/DeepMap19Q2/cellKnockdownCERES.RDS'),
+        kpro = join(DATAPATH, 'db/DeepMap19Q2/cellKnockdownProb.RDS')
+    params:
+        projDesp = "https://ndownloader.figshare.com/files/15023474",
+        cellAnno = "https://ndownloader.figshare.com/files/15023525",
+        cellExpr = "https://ndownloader.figshare.com/files/15023486",
+        valsKD   = "https://ndownloader.figshare.com/files/15023465",
+        probsKD  = "https://ndownloader.figshare.com/files/15023459",
+        script   = 'scripts/aux/processDeepMap.R',
+        outpath  = join(DATAPATH, 'db/')
+    conda: 'envs/R3.5.yaml'
+    shell:
+        """
+        Rscript {params.script} {params.projDesp} {params.cellAnno} {params.cellExpr} {params.valsKD} {params.probsKD} {params.outpath}
+        """
+
+
+
+# Download HiC data and H. sapiens genes GRanges
+
 rule down_misc_install_missing_R:
     output:
         hsapiens_genes = join(DATAPATH, 'db/misc/EnsDb_Hsapiens_v75_genes.RDS'),
