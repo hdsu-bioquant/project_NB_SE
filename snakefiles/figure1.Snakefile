@@ -5,21 +5,91 @@
 
 rule compile_figure1:
     input:
-        #figure1a = join(DATAPATH, 'results/figure1/figure1a_tumor_SE_hmatrix.pdf'),
-        #figure1b = join(DATAPATH, 'results/figure1/figure1b_cells_SE_hmatrix.pdf'),
+        figure1a = join(DATAPATH, 'results/figure1/cohortDespFig.pdf'),
+        figure1b = join(DATAPATH, 'results/figure1/SE_multiple_tissue_overlap_to_NB_SE_MainFig.pdf'),
         figure1c = join(DATAPATH, 'results/figure1/figure1c_HockeyStick_plot.pdf'),
         figure1d = join(DATAPATH, 'results/figure1/GO_BP_enrichment_SE_target_genes.pdf'),
-        figure1e = join(DATAPATH, 'results/figure1/figure1e_IGV_plot.pdf')
+        figure1e = join(DATAPATH, 'results/figure1/figure1e_IGV_plot.pdf'),
+        figure1f = join(DATAPATH, 'results/figure1/SEsaturationAnalysis_coverage_with_extrapolation.pdf')
     output: join(DATAPATH, 'results/figure1/figure1_paths.txt')
     shell:
         """
         touch {output}
-        #echo 'Figure 1a {input.figure1e}' >> {output}
-        #echo 'Figure 1b {input.figure1e}' >> {output}
-        #echo 'Figure 1c {input.figure1c}' >> {output}
-        #echo 'Figure 1d {input.figure1d}' >> {output}
+        echo 'Figure 1a {input.figure1a}' >> {output}
+        echo 'Figure 1b {input.figure1b}' >> {output}
+        echo 'Figure 1c {input.figure1c}' >> {output}
+        echo 'Figure 1d {input.figure1d}' >> {output}
         echo 'Figure 1e {input.figure1e}' >> {output}
+        echo 'Figure 1f {input.figure1f}' >> {output}
         
+        """
+
+#================================================================================#
+# Neuroblastoma study cohort description and Chipseq QC metrics                  #
+#================================================================================#
+
+rule fig1_cohortDespChipQC:
+    input:
+        tumorQCvals = join(DATAPATH, 'data/tumor/chipseq/H3K27ac/quality_control_metrics_tumors.RDS'),
+        cellQCvals  = join(DATAPATH, 'data/cells/chipseq/H3K27ac/quality_control_metrics_cells.RDS'),
+        tumorNMF    = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS'),
+        cellNMF     = join(DATAPATH, 'analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K3_Hmatrix_hnorm.RDS')
+    output:
+        figMain = join(DATAPATH, 'results/figure1/cohortDespFig.pdf'),
+        figSupp = join(DATAPATH, 'results/sup_figure1/CHIPqc.pdf')
+    params:
+        script  = 'scripts/figure1/chipQCandCohortDesp.R',
+        outpath = join(DATAPATH, 'results/')
+    conda: '../envs/R3.5.yaml'
+    shell:
+        """
+        Rscript {params.script} {input.tumorQCvals} {input.cellQCvals} {input.tumorNMF} {input.cellNMF} {params.outpath}
+        """
+
+#================================================================================#
+# Neuroblastoma super enhancer target gene expression across multiple tissues    #
+# Neuroblastoma super enhancer overlap with multiple other tissues               #
+#================================================================================#
+
+rule fig1_NBSEcomparison:
+    input:
+        expdata  = join(DATAPATH, 'db/TCGA_TARGET_GTex/TcgaTargetGtex_log2_fpkm.RDS'),
+        sampInfo = join(DATAPATH, 'db/TCGA_TARGET_GTex/TcgaTargetGtex_sample_information.RDS'),
+        SEnbs    = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'),
+        SEothers = join(DATAPATH, 'db/SEmultiTisuues/')
+    output:
+        figMain  = join(DATAPATH, 'results/figure1/SE_multiple_tissue_overlap_to_NB_SE_MainFig.pdf'),
+        figSupp1 = join(DATAPATH, 'results/sup_figure1/TCGA_TARGET_GTex_NB_SE_target_genes_expression_comparision.pdf'),
+        figSupp2 = join(DATAPATH, 'results/sup_figure1/SE_multiple_tissue_overlap_to_NB_SE_SupplFig.pdf')
+    params:
+        script  = 'scripts/figure1/NBpancanOtherTissuesSEcomparision.R',
+        outpath = join(DATAPATH, 'results/')
+    conda: '../envs/R3.5.yaml'
+
+    shell:
+        """
+          Rscript {params.script} {input.expdata} {input.sampInfo} {input.SEnbs} {input.SEothers} {params.outpath}
+        """
+
+
+
+
+#================================================================================#
+# Neuroblastoma Super enhancers saturation analysis                              #
+#================================================================================#
+
+rule fig1_NBsaturationAnalysis:
+    input:
+        SEbedPath = join(DATAPATH, 'data/tumor/chipseq/H3K27ac/SE')
+    output:
+        SEsaturation = join(DATAPATH, 'analysis/tumor/SE_saturation/saturation.RDS'),
+        figMain      = join(DATAPATH, 'results/figure1/SEsaturationAnalysis_coverage_with_extrapolation.pdf')
+    params:
+        script  = 'scripts/figure1/saturationAnalysis.R'
+    conda: '../envs/R3.5.yaml'
+    shell:
+        """
+          Rscript {params.script} {input.SEbedPath} {output.SEsaturation} {output.figMain}
         """
 
 
@@ -73,7 +143,7 @@ rule fig1_SEenrichmentAnalysis:
     input:
         SE_target = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS')
     output:
-        table  = join(DATAPATH, 'results/suppltables/GO_BP_enrichment_SE_target_genes.txt'),
+        table  = join(DATAPATH, 'results/supptables/GO_BP_enrichment_SE_target_genes.txt'),
         figure = join(DATAPATH, 'results/figure1/GO_BP_enrichment_SE_target_genes.pdf')
     params:
         script   = 'scripts/figure1/SEenrichmentAnalysis.R',
