@@ -1,5 +1,5 @@
 ---
-title: "Figure 2b"
+title: "Sup Figure 2"
 author: "Health Data Science Unit"
 date: "`r date()`"
 output: 
@@ -11,13 +11,13 @@ output:
 params:
   K         : 3
   annot     : "annotation/annotation_cells.RDS"
-  norm_nmfW : "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_SignalScore_normNMF_W.RDS"
-  norm_nmfH : "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_SignalScore_normNMF_H.RDS"
+  norm_nmfW : "analysis/cells/rnaseq/NMF/cells_consensusSE_targetExprs_normNMF_W.RDS"
+  norm_nmfH : "analysis/cells/rnaseq/NMF/cells_consensusSE_targetExprs_normNMF_H.RDS"
   hmatrix_wnorm : "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K4_Hmatrix_wnorm.RDS"
   wmatrix_wnorm : "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K4_Wmatrix_Wnorm.RDS"
   nmf_features  : "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K4_NMF_features.RDS"
   hmatrix_hnorm : "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K4_Hmatrix_hnorm.RDS"
-  figure2b      : "results/figures/figure2/figure2b_cells_SE_hmatrix.pdf"
+  figure      : "results/figures/figure2/figure2b_cells_SE_hmatrix.pdf"
 editor_options: 
   chunk_output_type: console
 ---
@@ -38,15 +38,10 @@ library(ggplot2)
 library(knitr)
 
 
-# params <- list(K         = 3,
+# params <- list(K         = 4,
 #                annot     = "annotation/annotation_cells.RDS",
-#                norm_nmfW = "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_SignalScore_normNMF_W.RDS",
-#                norm_nmfH = "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_SignalScore_normNMF_H.RDS",
-#                hmatrix_wnorm = "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K4_Hmatrix_wnorm.RDS",
-#                wmatrix_wnorm = "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K4_Wmatrix_Wnorm.RDS",
-#                nmf_features  = "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K4_NMF_features.RDS",
-#                hmatrix_hnorm = "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K4_Hmatrix_hnorm.RDS",
-#                figure2a      = "results/figures/figure2/figure2b_cells_SE_hmatrix.pdf")
+#                norm_nmfW = "analysis/cells/rnaseq/NMF/cells_consensusSE_targetExprs_normNMF_W.RDS",
+#                norm_nmfH = "analysis/cells/rnaseq/NMF/cells_consensusSE_targetExprs_normNMF_H.RDS")
 
 ```
 
@@ -149,7 +144,7 @@ colnames(hmatrix) <- colnames(norm.nmf.exp)
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##          Assign Signature Names according to annotation                    ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-signatureIDs <- c("MYCN", "MES", "MNA")
+signatureIDs <- c("MYCN", "MES", "MNA1", "MNA2")
 names(signatureIDs) <- signatureIDs
 signature_idx <- lapply(signatureIDs,function(x) 0)
 signature_idx
@@ -164,8 +159,8 @@ signature_idx$MYCN
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##                       Find MYCN NA Signature                               ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-signature_idx$MNA <- which(rec_MYCN$Amp$z < 0 & rec_MYCN$NonAmp$z > 0 & rec_MYCN$Amp$p > 0.05)
-signature_idx$MNA
+signature_idx$MES <- which(rec_MYCN$Amp$z < 0 & rec_MYCN$NonAmp$z > 0 & rec_MYCN$NonAmp$p < 0.05)
+signature_idx$MES
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##                        Assign MES Signature                                ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
@@ -277,7 +272,7 @@ h.heatmap <- Heatmap(norm.nmf.hmatrix,
 print(h.heatmap)
 
 #save H matrix heatmap
-pdf(file = params$figure2b, width=10, height=7)
+pdf(file = params$figure, width=10, height=7)
 #print(h.heatmap)
 #draw(h.heatmap)
 h.heatmap
