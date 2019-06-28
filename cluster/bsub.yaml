@@ -55,6 +55,10 @@ viperTF:
 #==============================================================================#
 #                              Compile Figures                                 #
 #==============================================================================#
+fig1_NBsaturationAnalysis:
+    walltime : 10:00
+    memory   : 4096
+
 fig1a_Hockey:
     cores    : 30
     walltime : 01:30
@@ -69,6 +73,12 @@ fig3_IGV:
     cores    : 20
     walltime : 01:30
     memory   : 10240
+
+fig3_MES_vs_ADRN_footprint:
+    cores    : 20
+    walltime : 01:30
+    memory   : 46080
+
 
 fig4i_IGV:
     cores    : 2

@@ -6,7 +6,8 @@ library(readr)
 library(tidyverse)
 library(ggrepel)
 library(tibble)
-library(preprocessCore)
+library(RColorBrewer)
+#library(preprocessCore)
 
 
 # filemap <- read.table("/icgc/dkfzlsdf/analysis/B080/quintera/Projects/neuroblastoma/src/fig3c/filemap.txt", header = TRUE, stringsAsFactors = FALSE)
@@ -77,9 +78,6 @@ sort(CRCvector)
 #================================================================================#
 
 filter      <-  TRUE
-#loadSEfile  = T
-#ncores      <- 20
-#Tumor       = F
 quantileNormal <-  FALSE
 
 
@@ -183,11 +181,9 @@ head(TTT)
 #tf = gsub('-calls.all.csv','',gsub('.*- ','',basename(cl1.files)))
 #names(TTT) = tf
 
-lapply((TTT[[1]]), class)
-
 
 #==============================================================================#
-#                         organize by t statistic                              #
+#                         bind to data frame                                   #
 #==============================================================================#
 
 # Remove NAs
@@ -201,7 +197,7 @@ dim(df)
 head(df)
 
 #==============================================================================#
-#                              Format TF SYMBOL                                #
+#                     Format TF SYMBOL and keep only CRCs                      #
 #==============================================================================#
 # remove string after _
 df$symb <- sapply(strsplit(df$symb, "_"), "[[", 1)
@@ -215,21 +211,32 @@ df$symb
 df <- df[order(df$statistic.t),]
 df$pos <-1:nrow(df)
 
-x <- df[df$symb %in% CRCvector,]
+
+# only CRCs
+df <- df[df$symb %in% CRCvector,]
+
+
+#==============================================================================#
+#                     threshold and organize by t statistic                    #
+#==============================================================================#
+
+# threshold by p val
+length(unique(df$symb))
+df <- df[df$p.value < 0.05,]
+unique(df$symb)
+length(unique(df$symb))
+
 
 # split by TF and find the max
 df.perTF = split(df,df$symb)
-lapply(df.perTF[1:2], as.data.frame)
-as.data.frame(df.perTF$IRF8)
-as.data.frame(df.perTF$MAFK)
-#Keep only TFs that are consistently different
+names(df.perTF)
+
+df.perTF$MAFK
+
+
+# Keep only max
 max.T = sapply(df.perTF,function(x) {
-  if(sum(x$statistic.t>0)*sum(x$statistic.t<0) ==0) {
-    max.t = sign(x$statistic.t[1])*max(abs(x$statistic.t))
-  }else {
-    max.t = NA
-  }
-  return(max.t)
+  x$statistic.t[which.max(abs(x$statistic.t))]
 })
 
 
@@ -238,57 +245,47 @@ med.T = sapply(df.perTF,function(x) {
 })
 
 
-#lookup <- read_tsv(file.path('data','lookup_motif_TF.txt'), col_names = F)
-#d <- sapply(df$tf, function(n){
-#  n <- strsplit(n, split = " ")[[1]][2]
-#  m <- match(n, lookup$X1)
-#  print(m)
-#  m <- m[1]
-#  lookup[m,]$X2
-#  })
-#df$names <- d
 
-df$logt = sign(df$statistic.t)*log(abs(df$statistic.t))
+#df$logt = sign(df$statistic.t)*log(abs(df$statistic.t))
 
 ddf = data.frame(pos=1:length(sort(max.T)),val=sort(max.T))
-if(quantileNormal){
-  ddf = data.frame(pos=1:length(sort(med.T)),val=sort(med.T))
-}
-
+ddf$name <- rownames(ddf)
+# if(quantileNormal){
+#   ddf = data.frame(pos=1:length(sort(med.T)),val=sort(med.T))
+# }
 head(ddf)
 
 
 # flip around:
-ddf.flipped = data.frame(pos=1:length(sort(max.T)),val=sort(max.T))
-head(ddf.flipped)
-identical(ddf.flipped,ddf)
-
-
-if(quantileNormal){
-  ddf.flipped = data.frame(pos=1:length(sort(med.T)),val=sort(med.T))
-}
+ddf.flipped <- ddf
 ddf.flipped$pos <- rev(ddf.flipped$pos)
 ddf.flipped$val <- -ddf.flipped$val
+
+# ddf.flipped = data.frame(pos=1:length(sort(max.T)),val=sort(max.T))
+# ddf.flipped$pos <- rev(ddf.flipped$pos)
+# ddf.flipped$val <- -ddf.flipped$val
+head(ddf.flipped)
+
 
 m <- ggplot(ddf, aes(pos, val)) + geom_point() + 
   geom_text_repel(aes(label=as.character(rownames(ddf)))) +
   xlab("")+  ylab("t.statistic")
-
+m
 m.flipped <- ggplot(ddf.flipped, aes(pos, val)) + geom_point() + 
   geom_text_repel(aes(label=as.character(rownames(ddf)))) +
   xlab("")+
   ylab("t.statistic")
+m.flipped
 
-
-ddf$name <- rownames(ddf)
-fName <- ""
-if(filter){
-  message("filtered")
-  fName <- ".seFiltered"
-}
-if(quantileNormal){
-  fName <- paste0(fName, "_quantile")
-}
+#
+# fName <- ""
+# if(filter){
+#   message("filtered")
+#   fName <- ".seFiltered"
+# }
+# if(quantileNormal){
+#   fName <- paste0(fName, "_quantile")
+# }
 
 # write.table(ddf, file = paste0('/icgc/dkfzlsdf/analysis/B080/quintera/Projects/neuroblastoma/src/fig3c/atac.tstat_',cl1.name,'_',cl2.name,fName,'.csv'), row.names = F)
 # ggsave(paste0('/icgc/dkfzlsdf/analysis/B080/quintera/Projects/neuroblastoma/src/fig3c/atac.tstat_',cl1.name,'_',cl2.name,fName,'.pdf'), m, width = 7, height = 3.5)
@@ -307,90 +304,83 @@ if(quantileNormal){
 #                         plot for figure 3C                                     #
 #================================================================================#
 
-filter      = T
-loadSEfile  = T
-ncores      <- 1
-Tumor       = F
-quantileNormal = F
-
-
-# flip around:
-ddf.flipped = ddf
-
-ddf.flipped$pos <- rev(ddf.flipped$pos)
-ddf.flipped$val <- -ddf.flipped$val
+# # flip around:
+# ddf.flipped = ddf
+# 
+# ddf.flipped$pos <- rev(ddf.flipped$pos)
+# ddf.flipped$val <- -ddf.flipped$val
 
 
 
-library(RColorBrewer)
 col = rev(colorRampPalette(brewer.pal(11,"PRGn"))(100)) # spectrum of green(nonMes) to purple(Mes)
 ddf.flipped$name <- sub("_.*", "", ddf.flipped$name)
-idx <- match(ddf.flipped$name, names(MES_activity))
-table(is.na(idx))
-
-
-
+# idx <- match(ddf.flipped$name, names(MES_activity))
+# table(is.na(idx))
 ddf.flipped$mes  <- MES_activity[match( ddf.flipped$name, names(MES_activity))]
 
 
 
 
-
 co.v <- cor(ddf.flipped$val, ddf.flipped$mes, method = "spearman", use = "pairwise.complete.obs") 
-
 cor.df <- data.frame(x = 35, y = -400, text = paste0("Spearman = ", round(co.v, 2)))
 
 m <- ggplot(ddf.flipped, aes(pos, val, color = mes)) + 
   geom_text_repel(aes(label=ddf.flipped$name), color = "black") +
   geom_point(size = 2) + 
   xlab("")+
-  geom_text(data = cor.df, aes(x,y, label = text), color  = "black", size = 5)+ 
-  ylab("t.statistic") +  expand_limits(x = 50, y = 500) + scale_colour_gradientn(colours = col)#+ scale_colour_brewer(palette = "PRGn", type = "seq")
-m
-#figure 4
-#ggsave("/icgc/dkfzlsdf/analysis/B080/quintera/Projects/neuroblastoma/src/fig3c/SKNAS-CLBGA.pdf",m,width = 7, height = 3.5)
-
-
-
-
-
-#CRCvector <- readLines("/icgc/dkfzlsdf/analysis/B080/quintera/Projects/neuroblastoma/src/fig3c/CRClist.txt")
-
-
-dfSubset <- ddf.flipped[rownames(ddf.flipped) %in% CRCvector,]
-dfSubset <- df[rownames(df) %in% CRCvector,]
-
-dim(dfSubset)
-summary(dfSubset)
-
-dfSubset <- dfSubset[order(dfSubset$val, decreasing = TRUE),]
-dfSubset <- dfSubset[order(dfSubset$val, decreasing = FALSE),]
-
-
-co.v <- cor.test(dfSubset$val, dfSubset$mes, method = "spearman", use = "pairwise.complete.obs") 
-
-m2 <- ggplot(dfSubset, aes(pos, val, color = mes, label = name)) + 
-  #geom_text_repel(data = subset(dfSubset, mes>0), color = "black", nudge_y = 50) +
-  #geom_text_repel(data = subset(dfSubset, mes<=0), color = "black", nudge_y = -50) +
-  
-  geom_text_repel(aes(label=dfSubset$name), color = "black") +
-  #geom_text_repel(data = subset(dfSubset, mes>0), color = "black", nudge_y = 15 - subset(dfSubset, mes>0)$val) +
-  #geom_text_repel(data = subset(dfSubset, mes>0), color = "black", nudge_y = c(seq(from=-100, by=5, length.out = sum(dfSubset$mes>0)) - subset(dfSubset, mes>0)$val) ) +
-  #geom_text_repel(data = subset(dfSubset, mes>0), color = "black",  direction="x", nudge_y = c(seq(from=3, by=3, length.out = sum(dfSubset$mes>0))) ) +
-  #geom_text_repel(data = subset(dfSubset, mes>0), color = "black", nudge_y = c(seq(from=5, by=4, length.out = sum(dfSubset$mes>0)) ) ) +
-  #geom_text_repel(data = subset(dfSubset, mes<=0), color = "black", nudge_y = c(seq(from=-100, by=5, length.out = sum(dfSubset$mes<=0))) ) +
-  #geom_text_repel(data = subset(dfSubset, mes>0), color = "black", nudge_y = c(15:(15 +sum(dfSubset$mes>0) -1)) - subset(dfSubset, mes>0)$val ) +
-  
-  #geom_text_repel(data = subset(dfSubset, mes<=0), color = "black", nudge_y = 30 + subset(dfSubset, mes<=0)$val) +
-  geom_point(size = 2) + 
-  xlab("")+
   #geom_text(data = cor.df, aes(x,y, label = text), color  = "black", size = 5)+ 
   ylab("t.statistic") +  
-  #ylim(-250, 50) +
-  #expand_limits(x = 50, y = 200) + 
+  #expand_limits(x = 50, y = 500) + 
   scale_colour_gradientn(colours = col)#+ scale_colour_brewer(palette = "PRGn", type = "seq")
-m2
-ggsave("results/figure3/figure3c_footprint.pdf", m2, width = 12, height = 8)
+m
+
+ggsave("results/figure3/figure3c_footprint.pdf", m, width = 12, height = 8)
+
+
+# #figure 4
+# #ggsave("/icgc/dkfzlsdf/analysis/B080/quintera/Projects/neuroblastoma/src/fig3c/SKNAS-CLBGA.pdf",m,width = 7, height = 3.5)
+# 
+# 
+# 
+# 
+# 
+# #CRCvector <- readLines("/icgc/dkfzlsdf/analysis/B080/quintera/Projects/neuroblastoma/src/fig3c/CRClist.txt")
+# 
+# 
+# dfSubset <- ddf.flipped[rownames(ddf.flipped) %in% CRCvector,]
+# dfSubset <- df[rownames(df) %in% CRCvector,]
+# 
+# dim(dfSubset)
+# summary(dfSubset)
+# 
+# dfSubset <- dfSubset[order(dfSubset$val, decreasing = TRUE),]
+# dfSubset <- dfSubset[order(dfSubset$val, decreasing = FALSE),]
+# 
+# 
+# co.v <- cor.test(dfSubset$val, dfSubset$mes, method = "spearman", use = "pairwise.complete.obs") 
+# 
+# m2 <- ggplot(dfSubset, aes(pos, val, color = mes, label = name)) + 
+#   #geom_text_repel(data = subset(dfSubset, mes>0), color = "black", nudge_y = 50) +
+#   #geom_text_repel(data = subset(dfSubset, mes<=0), color = "black", nudge_y = -50) +
+#   
+#   geom_text_repel(aes(label=dfSubset$name), color = "black") +
+#   #geom_text_repel(data = subset(dfSubset, mes>0), color = "black", nudge_y = 15 - subset(dfSubset, mes>0)$val) +
+#   #geom_text_repel(data = subset(dfSubset, mes>0), color = "black", nudge_y = c(seq(from=-100, by=5, length.out = sum(dfSubset$mes>0)) - subset(dfSubset, mes>0)$val) ) +
+#   #geom_text_repel(data = subset(dfSubset, mes>0), color = "black",  direction="x", nudge_y = c(seq(from=3, by=3, length.out = sum(dfSubset$mes>0))) ) +
+#   #geom_text_repel(data = subset(dfSubset, mes>0), color = "black", nudge_y = c(seq(from=5, by=4, length.out = sum(dfSubset$mes>0)) ) ) +
+#   #geom_text_repel(data = subset(dfSubset, mes<=0), color = "black", nudge_y = c(seq(from=-100, by=5, length.out = sum(dfSubset$mes<=0))) ) +
+#   #geom_text_repel(data = subset(dfSubset, mes>0), color = "black", nudge_y = c(15:(15 +sum(dfSubset$mes>0) -1)) - subset(dfSubset, mes>0)$val ) +
+#   
+#   #geom_text_repel(data = subset(dfSubset, mes<=0), color = "black", nudge_y = 30 + subset(dfSubset, mes<=0)$val) +
+#   geom_point(size = 2) + 
+#   xlab("")+
+#   #geom_text(data = cor.df, aes(x,y, label = text), color  = "black", size = 5)+ 
+#   ylab("t.statistic") +  
+#   #ylim(-250, 50) +
+#   #expand_limits(x = 50, y = 200) + 
+#   scale_colour_gradientn(colours = col)#+ scale_colour_brewer(palette = "PRGn", type = "seq")
+# m2
+
 
 
 

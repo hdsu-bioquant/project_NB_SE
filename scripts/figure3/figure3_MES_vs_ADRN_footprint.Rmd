@@ -1,0 +1,326 @@
+---
+title: "Figure MES vs ADRN footprint"
+author: "Health Data Science Unit"
+date: "`r date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    number_sections: false
+params:
+  SE             : "analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS"
+  cellline1_foot : "data/cells/atacseq/footprint/KELLY_footprints_calls_GrangesList.RDS"
+  cellline2_foot : "data/cells/atacseq/footprint/SK-N-AS_footprints_calls_GrangesList.RDS"
+  MES_activity   : "analysis/tumor/VIPER/MES_TFactivity.RDS"
+  tumor_CRCs     : "data/tumor/chipseq/H3K27ac/CRC"
+  cells_CRCs     : "data/cells/chipseq/H3K27ac/CRC"
+  figure         : "results/figure3/figure3c_footprint.pdf"
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+#this chunk sets global options for Rmarkdown
+knitr::opts_chunk$set(echo = TRUE)
+#setting working directory. Should be home directory of the project
+knitr::opts_knit$set(root.dir=params$work_dir)
+options(knitr.table.format="html")
+
+
+library(limma)
+library(parallel)
+library(GenomicRanges)
+library(cowplot)
+library(readr)
+library(tidyverse)
+library(ggrepel)
+library(tibble)
+library(RColorBrewer)
+
+```
+
+
+
+## Data loading
+  
+
+  
+```{r dataloading}
+# params <- list(SE             = "analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS",
+#                cellline1_foot = "data/cells/atacseq/footprint/KELLY_footprints_calls_GrangesList.RDS",
+#                cellline2_foot = "data/cells/atacseq/footprint/SK-N-AS_footprints_calls_GrangesList.RDS",
+#                MES_activity   = "analysis/tumor/VIPER/MES_TFactivity.RDS",
+#                tumor_CRCs     = "data/tumor/chipseq/H3K27ac/CRC",
+#                cells_CRCs     = "data/cells/chipseq/H3K27ac/CRC",
+#                figure         = "results/figure3/figure3c_footprint.pdf")
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                             Read data                                      ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+SE <- readRDS(params$SE)
+MES_activity <- readRDS(params$MES_activity)
+names(MES_activity$es$p.value)[MES_activity$es$p.value < 0.05]
+
+MES_activity <- MES_activity$es$nes
+
+
+footprint_path <- setNames(c(params$cellline1_foot, params$cellline2_foot),
+         sub("_.*", "", basename(c(params$cellline1_foot, params$cellline2_foot))))
+
+footprint_list <- lapply(footprint_path, function(fppath){
+  readRDS(fppath)
+})
+
+# use only common footprints
+footIDs <- Reduce(intersect, lapply(footprint_list, names))
+names(footIDs) <- footIDs
+
+footprint_list <- lapply(footIDs, function(footID){
+  lapply(footprint_list, '[[', footID)
+})
+
+
+gc()
+
+footprint_list[[1]]
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                       Read CRC list                                        ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+crcpath <- c(list.files(params$tumor_CRCs, pattern = ".*_H3K27ac_ROSE_noH3K4me3_500Kb_CRC.txt$", full.names = TRUE),
+             list.files(params$cells_CRCs, pattern = ".*_H3K27ac_ROSE_noH3K4me3_500Kb_CRC.txt$", full.names = TRUE))
+
+CRCvector <- unique(do.call(c, lapply(crcpath, function(path){
+  x <- lapply(strsplit(readLines(path), split = '\t'), '[[', 1)
+  do.call(c, strsplit(gsub('\\[\'|\'\\]', '', x), "\\', \\'"))
+})))
+sort(CRCvector)
+
+
+```
+
+
+
+```{r ttest}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                                   Params                                   ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+filter      <-  TRUE
+quantileNormal <-  FALSE
+
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+#                           T test purity score                                  #
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+min.mot = ifelse(filter,10,100)
+
+TTT <- mclapply(footprint_list,function(t) {
+  #print(names(t))
+  cl1 = t[[1]]
+  cl2 = t[[2]]
+  ##
+  #A =normalizeQuantiles(data.frame(cl1=cl1$mfrow.purity,cl2=cl2$mfrow.purity))
+  A = data.frame(cl1=cl1$mfrow.purity,cl2=cl2$mfrow.purity)
+  ##
+  cl1$score = A$cl1
+  cl2$score = A$cl2
+  ##
+  if (filter) {
+    ov1 = findOverlaps(cl1,SE)
+    ov2 = findOverlaps(cl2,SE)
+    ##
+    if (length(queryHits(ov1))>0 & length(queryHits(ov2))>0) {
+      cl1 = cl1[queryHits(ov1)]
+      cl2 = cl2[queryHits(ov2)]
+    }
+  }
+  ##                      
+  ## get top 10% but not less than 0.75
+  ##combined_purity <- c(cl1$mfrow.purity, cl2$mfrow.purity)
+  ##cutOff <- min(head(rev(sort(combined_purity)), n = round(0.1*length(cl1))))
+  ##
+  combined_score <- c(cl1$score, cl2$score)
+  cutOff <- min(head(rev(sort(combined_score)), n = round(0.1*length(cl1))))
+  ##           
+  ##                       cutOff <- min(head(rev(sort(combined_purity)), n = 500))
+  ##
+  if(cutOff < 0.7 ){
+    cutOff <- 0.7
+  }else{
+    # check if the large cutoff reduces the number of hits to much:
+    n <- length(cl1[cl1$score>=  cutOff | cl2$score >= cutOff]$score)
+    iterated <- F
+    
+    while(n < min.mot & cutOff >= 0.705 & is.finite(cutOff)){
+      cutOff   <- cutOff - 0.05
+      n        <- length(cl1[cl1$score>=  cutOff | cl2$score >= cutOff]$score)
+      iterated <- T
+      #message(paste(n, cutOff))
+    }
+    if(n >= min.mot){
+      if(iterated) message("iterativly defined cutoff")
+    }
+    if(cutOff < 0.7 ){
+      cutOff <- 0.7
+      
+    }    
+  }
+  
+  x     = cl1[cl1$score>=  cutOff | cl2$score >= cutOff]$score
+  y     = cl2[cl1$score>= cutOff | cl2$score >= cutOff]$score
+  ##
+  n = length(x)
+  ##
+  m <- matrix(c(x,y), ncol = 2, byrow = F)
+  if (length(x) >= min.mot) { # at least 10 motives
+    if(quantileNormal){
+      m <- normalize.quantiles(m)
+    }
+    #print(m)
+    res <- t.test(m[,1],m[,2],paired=TRUE)
+    
+    # print(res)
+    # print(res$p.value)
+    # print(res$statistic)
+    
+    res <- data.frame(statistic.t = res$statistic,
+                      p.value     = res$p.value)
+    
+
+    res$symb <- unique(t[[1]]$ID)
+    return(res)
+  } else {
+    return(NA)
+  }
+},mc.cores=20)
+message("finished t-testing")
+#TTT
+head(TTT)
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                         bind to data frame                                 ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+# Remove NAs
+length(TTT)
+TTT = TTT[!is.na(TTT)]
+length(TTT)
+# make data frame
+df <- do.call(rbind, TTT)
+dim(df)
+
+head(df)
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                    Format TF SYMBOL and keep only CRCs                     ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# remove string after _
+df$symb <- sapply(strsplit(df$symb, "_"), "[[", 1)
+# to upper
+df$symb <- toupper(df$symb)
+# remove duplicated strings
+df$symb <- sub(pattern = "^(.+?)\\1+$", "\\1", df$symb)
+df$symb
+
+# sort by t stat
+df <- df[order(df$statistic.t),]
+df$pos <-1:nrow(df)
+
+
+# only CRCs
+df <- df[df$symb %in% CRCvector,]
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                  threshold and organize by t statistic                     ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+# threshold by p val
+length(unique(df$symb))
+df <- df[df$p.value < 0.05,]
+unique(df$symb)
+length(unique(df$symb))
+
+
+# split by TF and find the max
+df.perTF = split(df,df$symb)
+names(df.perTF)
+
+df.perTF$MAFK
+
+
+# Keep only max
+max.T = sapply(df.perTF,function(x) {
+  x$statistic.t[which.max(abs(x$statistic.t))]
+})
+
+
+med.T = sapply(df.perTF,function(x) {
+  return(mean(x$statistic.t,  na.rm = T))
+})
+
+
+ddf = data.frame(pos=1:length(sort(max.T)),val=sort(max.T))
+ddf$name <- rownames(ddf)
+head(ddf)
+
+
+# flip around:
+ddf.flipped <- ddf
+ddf.flipped$pos <- rev(ddf.flipped$pos)
+ddf.flipped$val <- -ddf.flipped$val
+
+head(ddf.flipped)
+
+```
+
+
+```{r}
+m <- ggplot(ddf, aes(pos, val)) + geom_point() + 
+  geom_text_repel(aes(label=as.character(rownames(ddf)))) +
+  xlab("")+  ylab("t.statistic")
+m
+m.flipped <- ggplot(ddf.flipped, aes(pos, val)) + geom_point() + 
+  geom_text_repel(aes(label=as.character(rownames(ddf)))) +
+  xlab("")+
+  ylab("t.statistic")
+m.flipped
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##            Plot figure with MES activity score                             ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+col = rev(colorRampPalette(brewer.pal(11,"PRGn"))(100)) # spectrum of green(nonMes) to purple(Mes)
+ddf.flipped$name <- sub("_.*", "", ddf.flipped$name)
+ddf.flipped$mes  <- MES_activity[match( ddf.flipped$name, names(MES_activity))]
+
+
+
+co.v <- cor(ddf.flipped$val, ddf.flipped$mes, method = "spearman", use = "pairwise.complete.obs") 
+cor.df <- data.frame(x = 35, y = -400, text = paste0("Spearman = ", round(co.v, 2)))
+
+m <- ggplot(ddf.flipped, aes(pos, val, color = mes)) + 
+  geom_text_repel(aes(label=ddf.flipped$name), color = "black") +
+  geom_point(size = 2) + 
+  xlab("")+
+  #geom_text(data = cor.df, aes(x,y, label = text), color  = "black", size = 5)+ 
+  ylab("t.statistic") +  
+  #expand_limits(x = 50, y = 500) + 
+  scale_colour_gradientn(colours = col)#+ scale_colour_brewer(palette = "PRGn", type = "seq")
+m
+
+ggsave(params$figure, m, width = 12, height = 8)
+
+
+```
+
+

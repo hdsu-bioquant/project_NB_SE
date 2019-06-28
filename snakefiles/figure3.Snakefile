@@ -11,6 +11,7 @@ rule compile_figure3:
         figure3_CRC4 = join(DATAPATH, 'results/figure3/crcTF_oncoprints_SignatureSpecific.pdf'),
         figure3_CCND11 = join(DATAPATH,"results/figure3/SEtargetGenes_DiffKDprofileNBcellsVsRest.pdf"),
         figure3_CCND12 = join(DATAPATH,"results/figure3/Kelly_SKNA_KDprofile_topHits.pdf"),
+        figure3_foot   = join(DATAPATH, 'results/figure3/figure3_MES_vs_ADRN_footprint.pdf'),
         figure3g    = join(DATAPATH, 'results/figure3/figure3g_IGV_plot.pdf')
     output: join(DATAPATH, 'results/figure3/figure3_paths.txt')
     shell:
@@ -22,8 +23,48 @@ rule compile_figure3:
         echo 'Figure 3 CRC4 {input.figure3_CRC4}' >> {output}
         echo 'Figure 3 CCND1 1 {input.figure3_CCND11}' >> {output}
         echo 'Figure 3 CCND1 2 {input.figure3_CCND12}' >> {output}
+        echo 'Figure 3 footprint {input.figure3_foot}' >> {output}
         echo 'Figure 3g {input.figure3g}' >> {output}
         
+        """
+
+
+
+#================================================================================#
+#                      Figure 3 - CCND1 loci                                     #
+#================================================================================#
+rule fig3_MES_vs_ADRN_footprint:
+    input:
+        consensusSE    = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'),
+        cellline1_foot = join(DATAPATH, 'data/cells/atacseq/footprint/KELLY_footprints_calls_GrangesList.RDS'),
+        cellline2_foot = join(DATAPATH, 'data/cells/atacseq/footprint/SK-N-AS_footprints_calls_GrangesList.RDS'),
+        MES_activity   = join(DATAPATH, 'analysis/tumor/VIPER/MES_TFactivity.RDS'),
+        tumor_CRCs     = join(DATAPATH, 'data/tumor/chipseq/H3K27ac/CRC/'),
+        cells_CRCs     = join(DATAPATH, 'data/cells/chipseq/H3K27ac/CRC/')
+    output:
+        report = join(DATAPATH, 'reports/figure3_MES_vs_ADRN_footprint.html'),
+        rmd    = temp(join(DATAPATH, 'reports/figure3_MES_vs_ADRN_footprint.Rmd')),
+        figure = join(DATAPATH, 'results/figure3/figure3_MES_vs_ADRN_footprint.pdf')
+    params:
+        script   = 'scripts/figure3/figure3_MES_vs_ADRN_footprint.Rmd',
+        work_dir = DATAPATH
+    conda: '../envs/R3.5.yaml'
+    shell:
+        """
+        cp {params.script} {output.rmd}
+
+        Rscript -e "rmarkdown::render( '{output.rmd}', \
+                params = list( \
+                  SE             = '{input.consensusSE}', \
+                  cellline1_foot = '{input.cellline1_foot}', \
+                  cellline2_foot = '{input.cellline2_foot}', \
+                  MES_activity   = '{input.MES_activity}', \
+                  tumor_CRCs     = '{input.tumor_CRCs}', \
+                  cells_CRCs     = '{input.cells_CRCs}', \
+                  figure         = '{output.figure}' \
+                ))"
+
+
         """
 
 

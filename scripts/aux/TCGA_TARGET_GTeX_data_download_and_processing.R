@@ -60,7 +60,7 @@ library(R.utils)
 #    "idType":"gene"
 #  }
 #--------------------------------------------------------------------------------------
-
+url1
 allexp = data.frame(fread(url1), stringsAsFactors = F)
 allexp[1:5,1:5]
 rownames(allexp) = allexp$sample
@@ -70,6 +70,7 @@ allexp = allexp[,-1]
 #[1] 60498 19131
 
 # Clean sample assignment
+url2
 sampInfo = data.frame(fread(url2), stringsAsFactors = F)
 sampInfo = sampInfo[,-2]
 colnames(sampInfo) = c("Sample", "Primary_Disease_or_Tissue", "PrimarySite", "SampleType","Gender", "Study")

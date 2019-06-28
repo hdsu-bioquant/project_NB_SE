@@ -118,7 +118,6 @@ def inputall(wilcards):
     if config["phase03_ARACNe"]["run_VIPER"]:
         collectfiles.append(join(DATAPATH, 'analysis/tumor/VIPER/networkViper.txt'))
         collectfiles.append(join(DATAPATH, 'analysis/tumor/VIPER/NBpersampleTFactivity.RDS'))
-        collectfiles.append(join(DATAPATH, 'analysis/cells/crcGIEMSAkd/nbKDinhouse.RDS'))
     # NMF
     if config["phase02_NMF"]["NMF_rnaseq"]:
         collectfiles.extend(expand(join(DATAPATH, 'reports/04_{type}_SE_targets_rnaseq_NMF_report.html'), zip, type = ["tumor", "cells"]))
@@ -690,14 +689,14 @@ rule tumors_consensus_SE_noH3K4me3:
 rule TCGA_TARGET_Gtex_Download:
     output:
         expr = join(DATAPATH, 'db/TCGA_TARGET_GTex/TcgaTargetGtex_log2_fpkm.RDS'),
-        samp = join(DATAPATH, 'db/TCGA_TARGET_GTex/TcgaTargetGtex_sample_informtion.RDS')
+        samp = join(DATAPATH, 'db/TCGA_TARGET_GTex/TcgaTargetGtex_sample_information.RDS')
     params:
         allExpr  = 'https://toil.xenahubs.net/download/TcgaTargetGtex_rsem_gene_tpm.gz',
         sampDesp = 'https://toil.xenahubs.net/download/TcgaTargetGTEX_phenotype.txt.gz',
         geneAnno = 'https://toil.xenahubs.net/download/probeMap/gencode.v23.annotation.gene.probemap',
-        script   = 'src/project_NB_SE/scripts/aux/TCGA_TARGET_GTeX_data_download_and_processing.R',
+        script   = 'scripts/aux/TCGA_TARGET_GTeX_data_download_and_processing.R',
         outpath  = join(DATAPATH, 'db/')
-    conda: 'envs/R3.5.yaml'
+    conda: 'envs/R3.5_2.yaml'
     shell:
         """
         Rscript {params.script} {params.allExpr} {params.sampDesp} {params.geneAnno} {params.outpath}
@@ -708,8 +707,7 @@ rule TCGA_TARGET_Gtex_Download:
 
 rule SEDownload:
     output:
-        SErange = join(DATAPATH, 'db/SEmultiTisuues/mmc7.zip'),
-        SEdesp  = join(DATAPATH, 'db/SEmultiTisuues/mmc2.xlsx')
+        SEdir   = directory(join(DATAPATH, 'db/SEmultiTisuues/'))
     params:
         urlSErange = 'https://www.cell.com/cms/10.1016/j.cell.2013.09.053/attachment/c44ace85-27a5-4f4f-b7e4-db375a76f583/mmc7.zip',
         urlSEdesp  = 'https://ars.els-cdn.com/content/image/1-s2.0-S0092867413012270-mmc2.xlsx',
@@ -745,6 +743,20 @@ rule DeepMapDownload:
         Rscript {params.script} {params.projDesp} {params.cellAnno} {params.cellExpr} {params.valsKD} {params.probsKD} {params.outpath}
         """
 
+# Download and preprocessing of RAS target genes
+
+rule RAS_Download:
+    output:
+        rasrds = join(DATAPATH, 'publicGeneSigs/ras_target_genes.RDS')
+    params:
+        urlras = 'https://static-content.springer.com/esm/art%3A10.1186%2F1755-8794-3-26/MediaObjects/12920_2010_161_MOESM3_ESM.XLS',
+        script  = 'scripts/aux/download_RAS_signature.R',
+        outpath = join(DATAPATH, 'db/')
+    conda: 'envs/R3.5.yaml'
+    shell:
+        """
+        Rscript {params.script} {params.urlras} {params.outpath}
+        """
 
 
 # Download HiC data and H. sapiens genes GRanges

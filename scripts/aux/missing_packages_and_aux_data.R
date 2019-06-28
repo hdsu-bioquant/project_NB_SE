@@ -44,6 +44,9 @@ devtools::install_github("thomasp85/patchwork", upgrade = "never")
 #install.packages("pkgconfig")
 # library(TxDb.Hsapiens.UCSC.hg19.knownGene)
 # library(Homo.sapiens)
+#install.packages("pheatmap")
+#install.packages("R.utils")
+
 
 #BiocManager::install("GenomicInteractions", version = "3.8")
 

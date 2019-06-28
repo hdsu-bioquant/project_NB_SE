@@ -21,7 +21,7 @@ library(utils)
 #Download the super enahancers and uzip
 download.file(url = url1, destfile = paste0(outpath, "SEmultiTisuues/mmc7.zip"))
 unzip(paste0(outpath, "SEmultiTisuues/mmc7.zip"), exdir = paste0(outpath,"SEmultiTisuues/"))
-unlink(exdir = paste0(outpath,"SEmultiTisuues/mmc7.zip"))
+unlink(paste0(outpath,"SEmultiTisuues/mmc7.zip"))
 
 # Download the super enhancers description file
 download.file(url2, destfile = paste0(outpath,"SEmultiTisuues/mmc2.xlsx"))
