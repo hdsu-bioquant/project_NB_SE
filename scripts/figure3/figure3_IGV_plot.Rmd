@@ -10,17 +10,18 @@ output:
     number_sections: false
 params:
   work_dir     : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/"
-  path_high_bed: "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/src/project_NB_SE/scripts/figure3/figure3g_highlight_ranges.bed"
+  path_high_bed: "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/src/project_NB_SE/scripts/figure3/figure3_IGV_highlight_ranges.bed"
   cells_h      : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K3_Hmatrix_hnorm.RDS"
   tumor_h      : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS"
-  width_window : 3000
+  MES_activity : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/analysis/tumor/VIPER/MES_TFactivity.RDS"
+  width_window : 2000
   chr   : "chr11"
   start : 68776977
   end   : 69667477
   name  : "CCND1"
   figure: "results/figure3/figure3g_IGV.pdf"
-  width : 8
-  height: 4
+  width : 11
+  height: 6
 editor_options: 
   chunk_output_type: console
 ---
@@ -332,14 +333,25 @@ highlight_ranges
 
 
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                      Read TF MES activity                                  ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+#MES_activity <- readRDS("analysis/tumor/VIPER/MES_TFactivity.RDS")
+MES_activity <- readRDS(params$MES_activity)
+MES_activity <- MES_activity$es$nes
+
+tf_activity <- data.frame(Activity.Mes = MES_activity, 
+                          row.names    = names(MES_activity) )
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##                              Read Track info                               ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 # ymax <- params$ymax
 # ymax <- ifelse(ymax == "max", ymax, as.numeric(ymax))
 
-plot_tracks_from_config(tracks_config, roi, width_window = 5000)
-# gg_tracks <- plot_tracks_from_config(tracks_df, width_window = params$width_window)
-# gg_tracks
+#plot_tracks_from_config(tracks_config, roi, width_window = 5000)
+plot_tracks_from_config(tracks_config, roi, width_window = params$width_window)
+
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##                 Save Plot Tracks                       ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
@@ -921,7 +933,8 @@ plot_tracks_from_config <- function(tracks_config, roi, width_window = 5000){
                    "\n use unique trackID for different plot classes of the same sample"))
       }
       # read data
-      read_track[[classID]](config, region2plot, width_window=width_window, tf_activity = NA)
+      #read_track[[classID]](config, region2plot, width_window=width_window, tf_activity = NA)
+      read_track[[classID]](config, region2plot, width_window=width_window, tf_activity = tf_activity)
     }, mc.cores = NCORES_tracks)
     
     ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##

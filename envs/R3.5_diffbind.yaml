@@ -3,6 +3,7 @@ channels:
  - conda-forge
 dependencies:
  - r-base=3.5.1
+ - rstudio
  - r-data.table=1.12.2
  - r-tidyverse
  - r-r.utils

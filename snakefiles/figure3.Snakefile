@@ -12,6 +12,7 @@ rule compile_figure3:
         figure3_CCND11 = join(DATAPATH,"results/figure3/SEtargetGenes_DiffKDprofileNBcellsVsRest.pdf"),
         figure3_CCND12 = join(DATAPATH,"results/figure3/Kelly_SKNA_KDprofile_topHits.pdf"),
         figure3_foot   = join(DATAPATH, 'results/figure3/figure3_MES_vs_ADRN_footprint.pdf'),
+        figure_enhan= join(DATAPATH, 'results/figure3/Enhancer_Comparison_using_HiChIP.pdf'),
         figure3g    = join(DATAPATH, 'results/figure3/figure3g_IGV_plot.pdf')
     output: join(DATAPATH, 'results/figure3/figure3_paths.txt')
     shell:
@@ -28,10 +29,48 @@ rule compile_figure3:
         
         """
 
+#================================================================================#
+#             Figure 3 - Enhancer Comparison using HiChIP                        #
+#================================================================================#
+optK_tc = str(config['NMFparams']['tumor']['optimalK']['chipseq'])
+optK_cc = str(config['NMFparams']['cells']['optimalK']['chipseq'])
+rule fig3_Enhancer_Comparison_using_HiChIP:
+    input:
+        consensusSE  = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed'),
+        cells_h      = join(DATAPATH, 'analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K' + optK_cc + '_Hmatrix_hnorm.RDS'),
+        cells_w      = join(DATAPATH, 'analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K' + optK_cc + '_Wmatrix_Wnorm.RDS'),
+        tumor_h      = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K' + optK_tc + '_Hmatrix_hnorm.RDS'),
+        SKNAS_HiChIP = join(DATAPATH, 'data/cells/hichip/mango/SK-N-AS_HiChIP_mango.all'),
+        CLBGA_HiChIP = join(DATAPATH, 'data/cells/hichip/mango/CLB-GA_HiChIP_mango.all')
+    output:
+        report = join(DATAPATH, 'reports/Enhancer_Comparison_using_HiChIP.html'),
+        rmd    = temp(join(DATAPATH, 'reports/Enhancer_Comparison_using_HiChIP.Rmd')),
+        figure = join(DATAPATH, 'results/figure3/Enhancer_Comparison_using_HiChIP.pdf')
+    params:
+        script   = 'scripts/figure3/Enhancer_Comparison_using_HiChIP.Rmd',
+        work_dir = DATAPATH
+    conda: '../envs/R3.5_diffbind.yaml'
+    shell:
+        """
+        cp {params.script} {output.rmd}
 
+        Rscript -e "rmarkdown::render( '{output.rmd}', \
+                params = list( \
+                  work_dir     = '{params.work_dir}', \
+                  SE           = '{input.consensusSE}', \
+                  cells_h      = '{input.cells_h}', \
+                  cells_w      = '{input.cells_w}', \
+                  tumor_h      = '{input.tumor_h}', \
+                  SKNAS_HiChIP = '{input.SKNAS_HiChIP}', \
+                  CLBGA_HiChIP = '{input.CLBGA_HiChIP}', \
+                  figure = '{output.figure}' \
+                ))"
+
+
+        """
 
 #================================================================================#
-#                      Figure 3 - CCND1 loci                                     #
+#                      Figure 3 - MES vs. ADRN footprint                         #
 #================================================================================#
 rule fig3_MES_vs_ADRN_footprint:
     input:
