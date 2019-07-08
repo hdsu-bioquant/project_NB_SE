@@ -133,8 +133,8 @@ igv_plot:
     start : 68776977
     end   : 69667477
     name  : CCND1
-    window: 3000
-    width : 8
+    window: 2000
+    width : 11
     height: 6
   figure4i:
     chr   : chr12
