@@ -15,8 +15,9 @@ params:
   cells_w      : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K3_Wmatrix_Wnorm.RDS"
   tumor_h      : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS"
   SKNAS_HiChIP : "data/cells/hichip/mango/SK-N-AS_HiChIP_mango.all"
-  CLBGA_HiChIP  : "data/cells/hichip/mango/CLB-GA_HiChIP_mango.all" 
-  figure: "results/figure3/Enhancer_Comparison_using_HiChIP.pdf"
+  CLBGA_HiChIP : "data/cells/hichip/mango/CLB-GA_HiChIP_mango.all" 
+  figure       : "results/figure3/Super_Enhancer_interaction.pdf"
+  sup_figure   : "results/figure3/Enhancer_interaction.pdf"
 editor_options: 
   chunk_output_type: console
 ---
@@ -189,8 +190,8 @@ samples
 
 
 mes_sampleIDs <- c(names(cells_mes)[cells_mes == TRUE], names(tumor_mes)[tumor_mes == TRUE])
-samples$Condition  <- "non mesenchymal"
-samples[samples$SampleID %in% mes_sampleIDs,]$Condition <- "mesenchymal"
+samples$Condition  <- "ADRN"
+samples[samples$SampleID %in% mes_sampleIDs,]$Condition <- "MES"
 
 
 
@@ -235,15 +236,18 @@ d.db <- dba.report(d)
 p    <- load.bed(samples$Peaks[1])
 
 # split in two sets, for later use
-Emc   <- d.db[which(d.db@elementMetadata$Fold < 0),]
-Enm   <- d.db[which(d.db@elementMetadata$Fold > 0),]
+
+Emc   <- d.db[(d.db$Conc_MES - d.db$Conc_ADRN) > 0,]
+Enm   <- d.db[(d.db$Conc_MES - d.db$Conc_ADRN) < 0,]
+
+
 allID <- seq(1:length(p))
 b     <- findOverlaps(p, d.db, type="equal")@from
 Enone <- p[allID[!allID %in% b],]
 Enone@elementMetadata$name <- NULL
 Enone@elementMetadata$Conc <- 0
-Enone@elementMetadata$'Conc_non mesenchymal' <- 0
-Enone@elementMetadata$Conc_mesenchymal <- 0
+Enone@elementMetadata$Conc_ADRN <- 0
+Enone@elementMetadata$Conc_MES  <- 0
 Enone@elementMetadata$Fold <- 0
 Enone@elementMetadata$'p-value' <- 0
 Enone@elementMetadata$FDR <- 0
@@ -285,9 +289,9 @@ sign_feat <- lapply(setNames(colnames(w_matrix), colnames(w_matrix)), function(s
 # add random score
 SE$Fold <- 0
 
-SE[SE$name %in% sign_feat$MES]$Fold  <- -1
-SE[SE$name %in% sign_feat$MYCN]$Fold <- 1
-SE[SE$name %in% sign_feat$MNA]$Fold  <- 1
+SE[SE$name %in% sign_feat$MES]$Fold  <- 1
+SE[SE$name %in% sign_feat$MYCN]$Fold <- -1
+SE[SE$name %in% sign_feat$MNA]$Fold  <- -1
 
 # mc   <- read.table("/home/saary/analysis/nb/analysis/enhancerComparison/SE_specific_sig1.csv")
 # nmc   <- read.table("/home/saary/analysis/nb/analysis/enhancerComparison/SE_specific_NonSig1.csv")
@@ -331,11 +335,11 @@ df <- rbind(a, b)
 
 ```
 
-```{R}
-mesMes <- sum((countOverlaps(superEnhancer[superEnhancer$Fold == -1], S)))/length(S)
-mesNon <- sum((countOverlaps(superEnhancer[superEnhancer$Fold == -1], C)))/length(C)
-nonMes <- sum((countOverlaps(superEnhancer[superEnhancer$Fold == 1], S)))/length(S)
-nonNon <- sum((countOverlaps(superEnhancer[superEnhancer$Fold == 1], C)))/length(C)
+```{R SE}
+mesMes <- sum((countOverlaps(superEnhancer[superEnhancer$Fold == 1], S)))/length(S)
+mesNon <- sum((countOverlaps(superEnhancer[superEnhancer$Fold == 1], C)))/length(C)
+nonMes <- sum((countOverlaps(superEnhancer[superEnhancer$Fold == -1], S)))/length(S)
+nonNon <- sum((countOverlaps(superEnhancer[superEnhancer$Fold == -1], C)))/length(C)
 df <- data.frame(mm = mesMes,
            mn  = mesNon,
            nm = nonMes,
@@ -366,9 +370,11 @@ barplot(mat, legend = colnames(mat))
 
 # make nice plots using ggplot
 colnames(mat) <- c("MES", "ADRN")
-matdf <- as.data.frame(mat)
-matdf$SE <- c("SE in SK-N-AS", "SE in CLB-GA")
-matdf <- gather(matdf, key, val, -SE)
+matdf     <- as.data.frame(mat)
+matdf$SE  <- c("SE in SK-N-AS", "SE in CLB-GA")
+matdf     <- gather(matdf, key, val, -SE)
+matdf$key <- factor(matdf$key, levels = c("MES", "ADRN"))
+
 m <- ggplot(matdf, aes(key,val, fill = SE)) + geom_col() + 
   scale_fill_manual(values= c(ColNo, ColMes)) +
   ylab("Fraction of interactions") +
@@ -386,4 +392,58 @@ ggsave(filename = params$figure, m, width = 4.0, height = 5)
 - *Not in enhancer*: Percentage of interactions that do not end in any enhancer element but somewhere else
 
 
+```{R enhancers}
+mesMes <- sum((countOverlaps(enhancer[enhancer$Fold > 0], S)))/length(S)
+mesNon <- sum((countOverlaps(enhancer[enhancer$Fold > 0], C)))/length(C)
+nonMes <- sum((countOverlaps(enhancer[enhancer$Fold < 0], S)))/length(S)
+nonNon <- sum((countOverlaps(enhancer[enhancer$Fold < 0], C)))/length(C)
 
+
+df <- data.frame(mm = mesMes,
+           mn  = mesNon,
+           nm = nonMes,
+           nn = nonNon)
+
+df3 <- data.frame(mm = mesMes*length(S),
+           mn  = mesNon*length(C),
+           nm = nonMes*length(S),
+           nn = nonNon*length(C))
+
+
+res <- c(mesMes, mesNon, nonMes, nonNon)
+res <- res/sum(res)
+names(res) <- c("mesE SK-N-AS", "mesE CLB-GA", "non SKNAS", "non CLBGA")
+barplot(res, legend =names(res)  )
+
+mSESum <- mesMes + mesNon
+mm    <- mesMes/mSESum
+mn    <- mesNon/mSESum
+nSESum <- nonMes + nonNon
+nm <- nonMes/nSESum
+nn <- nonNon/nSESum
+
+stacked <-c(mm,mn, nm,nn) 
+names(stacked) <- c(rep("mes E",2), rep("non mes E",2))
+mat <- matrix(stacked,2)
+colnames(mat) <- c("mes E", "non mes E")
+
+barplot(mat, legend = colnames(mat))
+
+
+# make nice plots using ggplot
+colnames(mat) <- c("MES", "ADRN")
+matdf         <- as.data.frame(mat)
+matdf$SE      <- c("SK-N-AS", "CLB-GA")
+matdf         <- gather(matdf, key, val, -SE)
+matdf$key     <- factor(matdf$key, levels = c("MES", "ADRN"))
+
+m <- ggplot(matdf, aes(key,val, fill = SE)) + geom_col() + 
+  scale_fill_manual(values= c(ColNo, ColMes)) +
+  ylab("fraction of interactions") +
+  xlab("") + theme(legend.title=element_blank()) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+m
+
+ggsave(filename = params$sup_figure, m, width = 4.0, height = 5)
+
+```

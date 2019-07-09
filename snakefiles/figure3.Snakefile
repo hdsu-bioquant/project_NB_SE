@@ -12,7 +12,7 @@ rule compile_figure3:
         figure3_CCND11 = join(DATAPATH,"results/figure3/SEtargetGenes_DiffKDprofileNBcellsVsRest.pdf"),
         figure3_CCND12 = join(DATAPATH,"results/figure3/Kelly_SKNA_KDprofile_topHits.pdf"),
         figure3_foot   = join(DATAPATH, 'results/figure3/figure3_MES_vs_ADRN_footprint.pdf'),
-        figure_enhan= join(DATAPATH, 'results/figure3/Enhancer_Comparison_using_HiChIP.pdf'),
+        figure_enhan= join(DATAPATH, 'results/figure3/Super_Enhancer_interaction.pdf'),
         figure3g    = join(DATAPATH, 'results/figure3/figure3g_IGV_plot.pdf')
     output: join(DATAPATH, 'results/figure3/figure3_paths.txt')
     shell:
@@ -43,9 +43,10 @@ rule fig3_Enhancer_Comparison_using_HiChIP:
         SKNAS_HiChIP = join(DATAPATH, 'data/cells/hichip/mango/SK-N-AS_HiChIP_mango.all'),
         CLBGA_HiChIP = join(DATAPATH, 'data/cells/hichip/mango/CLB-GA_HiChIP_mango.all')
     output:
-        report = join(DATAPATH, 'reports/Enhancer_Comparison_using_HiChIP.html'),
-        rmd    = temp(join(DATAPATH, 'reports/Enhancer_Comparison_using_HiChIP.Rmd')),
-        figure = join(DATAPATH, 'results/figure3/Enhancer_Comparison_using_HiChIP.pdf')
+        report    = join(DATAPATH, 'reports/Enhancer_Comparison_using_HiChIP.html'),
+        rmd       = temp(join(DATAPATH, 'reports/Enhancer_Comparison_using_HiChIP.Rmd')),
+        figure    = join(DATAPATH, 'results/figure3/Super_Enhancer_interaction.pdf'),
+        supfigure = join(DATAPATH, 'results/sup_figure3/Enhancer_interaction.pdf')
     params:
         script   = 'scripts/figure3/Enhancer_Comparison_using_HiChIP.Rmd',
         work_dir = DATAPATH
@@ -63,7 +64,8 @@ rule fig3_Enhancer_Comparison_using_HiChIP:
                   tumor_h      = '{input.tumor_h}', \
                   SKNAS_HiChIP = '{input.SKNAS_HiChIP}', \
                   CLBGA_HiChIP = '{input.CLBGA_HiChIP}', \
-                  figure = '{output.figure}' \
+                  figure       = '{output.figure}', \
+                  sup_figure   = '{output.supfigure}' \
                 ))"
 
 
