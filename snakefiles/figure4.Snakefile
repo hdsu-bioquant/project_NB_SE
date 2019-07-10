@@ -4,53 +4,52 @@
 
 rule compile_figure4:
     input:
-        #figure4a = join(DATAPATH, 'results/figure2/figure2a_tumor_SE_hmatrix.pdf'),
-        #figure4b = join(DATAPATH, 'results/figure2/figure2b_cells_SE_hmatrix.pdf'),
+        figure4a = join(DATAPATH,"results/figure4/junfos_corr_exposures.pdf"),
+        figure4b = join(DATAPATH,"results/figure4/ras_corr_exposures.pdf"),
         #figure4c = join(DATAPATH, 'results/figure2/figure2c_tumor_cells_SE_UMAP.pdf'),
         #figure4d = join(DATAPATH, 'results/figure2/figure2d_01_tumor_riverplot.pdf'),
         #figure4e = join(DATAPATH, 'results/figure2/figure2e_tumor_SE_targets_hmatrix.pdf'),
         #figure4f = join(DATAPATH, 'results/figure2/figure2f_tumor_cells_density.pdf'),
-        figure4g = join(DATAPATH, 'results/figure4/tumors_RNAseq_PrimaryVsRelapse.pdf'),
-        figure4i = join(DATAPATH, 'results/figure4/figure4i_IGV_plot.pdf')
+        #figure4i = join(DATAPATH, 'results/figure4/figure4i_IGV_plot.pdf')
+        figure4g = join(DATAPATH, 'results/figure4/tumors_RNAseq_PrimaryVsRelapse.pdf')
     output: join(DATAPATH, 'results/figure4/figure4_paths.txt')
     shell:
         """
         touch {output}
-        #echo 'Figure 4a {input.figure4i}' >> {output}
-        #echo 'Figure 4b {input.figure4i}' >> {output}
-        #echo 'Figure 4c {input.figure4i}' >> {output}
-        #echo 'Figure 4d {input.figure4i}' >> {output}
-        #echo 'Figure 4e {input.figure4i}' >> {output}
-        #echo 'Figure 4f {input.figure4i}' >> {output}
+        #echo 'Figure 4a {input.figure4a}' >> {output}
+        #echo 'Figure 4b {input.figure4b}' >> {output}
+        #echo 'Figure 4c {input.figure4a}' >> {output}
+        #echo 'Figure 4d {input.figure4a}' >> {output}
+        #echo 'Figure 4e {input.figure4a}' >> {output}
+        #echo 'Figure 4f {input.figure4a}' >> {output}
         #echo 'Figure 4g {input.figure4g}' >> {output}
-        echo 'Figure 4i {input.figure4i}' >> {output}
+        echo 'Figure 4i {input.figure4a}' >> {output}
         
         """
 
 #================================================================================#
 #   Correlation of RAS and JUN/FOS signature expression to Mesenchymal exposure  #
 #================================================================================#
-# rule fig4_RAS_JUN_FOS:
-#     input:
-#         NBexp    = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'),
-#         KDvals   = join(DATAPATH, 'db/DeepMap19Q2/cellKnockdownCERES.RDS'),
-#         cellExpr = join(DATAPATH, 'db/DeepMap19Q2/cellExpression.RDS')
-#     output:
-#         figMain_1 = join(DATAPATH, 'results/figure3/SEtargetGenes_DiffKDprofileNBcellsVsRest.pdf'),
-#         figMain_2 = join(DATAPATH, 'results/figure3/Kelly_SKNA_KDprofile_topHits.pdf'),
-#
-#         figSupp_1 = join(DATAPATH, 'results/sup_figure3/CCND1_KDprofile_across_tumorTypes_cells.pdf'),
-#         figSupp_2 = join(DATAPATH, 'results/sup_figure3/CCND1_ExpressionProfile_across_tumorTypes_cells.pdf'),
-#         figSupp_3 = join(DATAPATH, 'results/sup_figure3/CCND1_ExpressionProfile_NBcellsVsRest.pdf')
-#     params:
-#         script  = 'scripts/figure3/CCND1plots.R',
-#         outpath = DATAPATH
-#      conda: '../envs/R3.5.yaml'
-#      shell:
-#         """
-#         Rscript {params.script} {input.SEtarget} {input.KDvals} {input.cellExpr} {params.outpath}
-#         """
-
+rule fig4_RAS_JUN_FOS:
+    input:
+        NBexprs = join(DATAPATH, 'analysis/tumor/rnaseq/exprs/tumor_RNAseq_TPM_Matrix_filt_log.RDS'),
+        tumoNMF = join(DATAPATH, 'analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS'),
+        rasSigr = join(DATAPATH, 'db/publicGeneSigs/ras_target_genes.RDS'),
+        NBreg   = join(DATAPATH, 'analysis/tumor/ARACNe/network.txt'),
+        NBmut   = join(DATAPATH, 'annotation/NB_mutation_matrix.RDS')
+    output:
+        figMain_1 = join(DATAPATH,"results/figure4/junfos_corr_exposures.pdf"),
+        figMain_2 = join(DATAPATH,"results/figure4/ras_corr_exposures.pdf"),
+        figSupp_1 = join(DATAPATH,"results/sup_figure4/ras_proteins_corr_exposures.pdf"),
+        figSupp_2 = join(DATAPATH,"results/sup_figure4/AP1_complex_proteins_corr_exposures.pdf")
+    params:
+        script  = 'scripts/figure4/RasJunFosAnalysis.R',
+        outpath = join(DATAPATH, 'results/')
+    conda: '../envs/R3.5.yaml'
+    shell:
+        """
+        Rscript {params.script} {input.NBexprs} {input.tumoNMF} {input.rasSigr} {input.NBreg} {input.NBmut} {params.outpath}
+        """
 
 #================================================================================#
 #             Figure 4 - tumors RNAseq Primary vs. Relapse                       #

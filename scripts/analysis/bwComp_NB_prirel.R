@@ -1,3 +1,12 @@
+#-------------------------------------------------------------------------------
+# RUN THIS FIRST !!! (deepTools installation required)
+#
+# echo "source activate deepToolsEnv; bigwigCompare -b1 NSP032-RM01_H3K27ac.bw -b2 NSP032-PT01_H3K27ac.bw -p 10 -o NSP032_RM01_PT01_bigwig_log2Diff.bw -of "bigwig"" | qsub -l walltime=06:00:00,mem=10gb,nodes=1:ppn=10 -N "bigwigCompare01"
+# echo "source activate deepToolsEnv; bigwigCompare -b1 NSP032-RT01_H3K27ac.bw -b2 NSP032-PT01_H3K27ac.bw -p 10 -o NSP032_RT01_PT01_bigwig_log2Diff.bw -of "bigwig"" | qsub -l walltime=06:00:00,mem=10gb,nodes=1:ppn=10 -N "bigwigCompare02"
+# echo "source activate deepToolsEnv; bigwigCompare -b1 NSP032-RT02_H3K27ac.bw -b2 NSP032-PT01_H3K27ac.bw -p 10 -o NSP032_RT02_PT01_bigwig_log2Diff.bw -of "bigwig"" | qsub -l walltime=06:00:00,mem=10gb,nodes=1:ppn=10 -N "bigwigCompare03"
+# echo "source activate deepToolsEnv; bigwigCompare -b1 NSP032-RT03_H3K27ac.bw -b2 NSP032-PT01_H3K27ac.bw -p 10 -o NSP032_RT03_PT01_bigwig_log2Diff.bw -of "bigwig"" | qsub -l walltime=06:00:00,mem=10gb,nodes=1:ppn=10 -N "bigwigCompare04"
+#-------------------------------------------------------------------------------
+
 library(GenomicRanges)
 library(rtracklayer)
 library(parallel)
@@ -37,41 +46,41 @@ names(relvspri_BWdiff) = sapply(strsplit(bw_files, "/"), function(x) gsub("_bigw
 
 topHits = mclapply(relvspri_BWdiff, function(x){
   a = findOverlaps(x, consSE)
-  
+
   df = data.frame(Genes = mcols(consSE)$target_SYMBOL[subjectHits(a)], logFC = score(x)[queryHits(a)])
   df = sapply(split(df$logFC, df$Genes), median)
-  
+
   df = data.frame(Genes = names(df), logFC = as.numeric(df), stringsAsFactors = F)
-  
+
   df = merge(x = df, y = relvspri_Expdiff)
   df = merge(x = df, y = mesTFact, all.x = T)
   df = merge( x= df, y = SEtumor_MES, all.x = T)
-  
-  df = df[which(df$logFC < -0.5 & df$Score < -1  | 
+
+  df = df[which(df$logFC < -0.5 & df$Score < -1  |
                   df$logFC > 0.5 & df$Score > 1),]
   df = df[order(df$logFC),]
-  
+
   return(df)
 }, mc.cores = 4)
 
 WriteXLS(topHits, paste0(outpath,"bestCandidates_Rel_vs_Pri.xls"), row.names = F, AdjWidth = T, BoldHeaderRow = T, FreezeRow = 1)
 
 # All overlap
-set1 = Reduce(intersect,list(topHits$NSP032_RM01_PT01$Genes, 
-                       topHits$NSP032_RT01_PT01$Genes, 
-                       topHits$NSP032_RT02_PT01$Genes, 
+set1 = Reduce(intersect,list(topHits$NSP032_RM01_PT01$Genes,
+                       topHits$NSP032_RT01_PT01$Genes,
+                       topHits$NSP032_RT02_PT01$Genes,
                        topHits$NSP032_RT03_PT01$Genes))
 
 
-set2 = Reduce(intersect, list(topHits$NSP032_RT01_PT01$Genes, 
-                       topHits$NSP032_RT02_PT01$Genes, 
+set2 = Reduce(intersect, list(topHits$NSP032_RT01_PT01$Genes,
+                       topHits$NSP032_RT02_PT01$Genes,
                        topHits$NSP032_RT03_PT01$Genes))
 
 # Removin RT-02 as its of poor quality
-set3 = Reduce(intersect, list(topHits$NSP032_RM01_PT01$Genes, 
-                       topHits$NSP032_RT01_PT01$Genes, 
+set3 = Reduce(intersect, list(topHits$NSP032_RM01_PT01$Genes,
+                       topHits$NSP032_RT01_PT01$Genes,
                        topHits$NSP032_RT03_PT01$Genes))
 
 # Removing the relapse metastasis
-set4 = Reduce(intersect, list(topHits$NSP032_RT01_PT01$Genes, 
+set4 = Reduce(intersect, list(topHits$NSP032_RT01_PT01$Genes,
                        topHits$NSP032_RT03_PT01$Genes))
