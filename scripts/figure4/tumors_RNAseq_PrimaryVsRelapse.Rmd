@@ -1,0 +1,133 @@
+---
+title: "Tumors RNAseq NMF Primary vs Relapse pairs"
+author: "Health Data Science Unit"
+date: "`r date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    number_sections: false
+params:
+  work_dir : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/"
+  tumor_h  : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS"
+  figure   : "results/figure4/tumors_RNAseq_PrimaryVsRelapse.pdf"
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+#this chunk sets global options for Rmarkdown
+knitr::opts_chunk$set(echo = TRUE)
+options(knitr.table.format="html")
+
+library(viridis)
+library(ComplexHeatmap)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+library(ggradar)
+library(patchwork)
+
+```
+
+# Tumors RNAseq NMF H matrix  
+  
+```{r NMF_HMatrix, , fig.width=10, fig.height=5.5, out.width="90%"}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                        Read NMF H matrix data                              ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+tumors.nmf.hmatrix <- readRDS(params$tumor_h)
+
+
+```
+
+# Primary vs Relapse radar plots
+
+```{r PrimaryVsRelapse_ggradar, message=FALSE, results='asis'}
+# Helper function
+signatureRadar <- function(sampleID, hmatrix){
+  # Find Primary samples and relapse IDs
+  nspIDs <- grep(sampleID, colnames(hmatrix), value = TRUE)
+  annot <- data.frame(ProjectID = nspIDs,
+                      type      = factor(substr(nspIDs, start = 8, stop = 9), 
+                                         levels = c("PT", "RT", "RM")),
+                      stringsAsFactors = FALSE)
+  
+  print(annot)
+  # Assign color
+  group.colours <- c(PT = "#2FB47CFF", RT = "#420A68FF", RM = "#F76F5CFF")
+  group.colours <- group.colours[match(annot$type, names(group.colours))]
+  names(group.colours) <- annot$ProjectID
+  
+  # format dataframe to radar plots
+  scores <- hmatrix[,annot$ProjectID,drop=FALSE]
+  maxScale <- max(scores)
+  
+  scores <- cbind(colnames(scores), as.data.frame(t(scores)))
+  print(scores)
+  ggradar(scores, grid.max=maxScale, grid.mid=maxScale/2,
+          font.radar="Helvetica",
+          grid.label.size = 1,
+          axis.label.size = 1,
+          group.point.size = .5, 
+          group.line.width = 0.5,
+          group.colours = group.colours, 
+          background.circle.transparency = 1,
+          legend.text.size = 4,
+          gridline.min.linetype = "solid",
+          gridline.mid.linetype = "solid",
+          gridline.max.linetype = "solid",
+          background.circle.colour = NA,
+          gridline.min.colour = "grey60",
+          gridline.mid.colour = "grey40",
+          gridline.max.colour = "grey20",
+          axis.line.colour = "firebrick",
+          grid.line.width = .5)
+}
+
+
+
+
+sampleIDs <- c("NSP032", "NSP090", "NSP460")
+names(sampleIDs) <- sampleIDs
+
+
+
+
+radars <-  
+  signatureRadar("NSP032", tumors.nmf.hmatrix) +
+  signatureRadar("NSP090", tumors.nmf.hmatrix) +
+  signatureRadar("NSP460", tumors.nmf.hmatrix) +
+  plot_layout(ncol = 1, heights = c(4, 4, 4))
+
+radars
+
+ggsave(filename = params$figure, radars, width = 3, height = 4)
+
+
+```
+
+```{r savetables}
+# signatureRadar <- function(samples, hmatrix){
+#   scores <- hmatrix[,samples]
+#   maxScale <- max(scores)
+#   rownames(scores) <- c("MYCN", "Mesenchymal", "MNA-LR", "MNA-HR")
+#   scores <- as.data.frame(t(scores))
+#   
+#   idx <- match(rownames(scores), sampleannot_relapse$PatID)
+#   rownames(scores) <- sampleannot_relapse$ProjectID[idx]
+#   
+#   # type of tumor
+#   #scores$Sample_Type <- ifelse(is.na(sampleannot_relapse$Relapse[idx]), "Primary", "Relapse")
+#   scores$Sample_Type <- sapply(sampleannot_relapse$INFORM[idx], function(infID){
+#     ifelse(is.na(infID), "Primary", paste0("Relapse_", infID))
+#   })
+#   print(scores)
+#   
+#   write.csv(scores, paste0("publication/tables/Relapse_exposures", paste(rownames(scores), collapse = "_"), "NMF_hmatrix_tumors_RNAseq.csv"))
+# }
+
+
+```
+
