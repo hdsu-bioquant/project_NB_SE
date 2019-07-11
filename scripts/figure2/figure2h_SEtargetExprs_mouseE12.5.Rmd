@@ -98,61 +98,16 @@ convertHumanGeneList <- function(x){
   return(humanx)
 }
 
+# Mouse to Human symbols
+mm_hs_map = read.delim("http://www.informatics.jax.org/downloads/reports/HOM_MouseHumanSequence.rpt", stringsAsFactors = F)
+mm_hs_map = mm_hs_map[,colnames(mm_hs_map) %in% c("HomoloGene.ID", "Symbol")]
+mm_hs_map$HomoloGene.ID = as.character(mm_hs_map$HomoloGene.ID)
+mm_hs_map = split(mm_hs_map$Symbol, mm_hs_map$HomoloGene.ID)
+mm_hs_map = mm_hs_map[sapply(mm_hs_map, length) == 2] # Keeping only one to one homologs
+mm_hs_map = do.call("rbind", mm_hs_map)
+mm_hs_map = data.frame(mouse_symbol = noquote(as.character(mm_hs_map[,1])),
+                       human_symbol = noquote(as.character(mm_hs_map[,2])))
 
-# # Projections
-# projection_plot <- function(sigID){
-#   # Extract signature specific gens
-#   sig_SE_IDs  <- rownames(f_tumor[rowSums(f_tumor) == 1 & f_tumor[, sigID] == 1, ])
-#   sig_geneIDs <- unique(SE[sig_SE_IDs]$target_SYMBOL)
-#   # Find Mouse Homologous
-#   mouseIDs    <- convertHumanGeneList(sig_geneIDs)
-#   # get mean expression
-#   geneSet_MeanZ <- colMeans(e12.5_exprs[rownames(e12.5_exprs) %in% mouseIDs,])
-#   # map to cells
-#   e12.5_pstime$exprsZ <- geneSet_MeanZ[match(e12.5_pstime$SampleID, names(geneSet_MeanZ))]
-#   # print plot
-#   e12.5_pstime %>% 
-#     ggplot(aes(x = tsne_v1, y = tsne_v2, color = exprsZ)) +
-#     geom_point() +
-#     scale_color_gradient2()
-#   
-#   e12.5_pstime %>% 
-#     ggplot(aes(x = tsne_v1, y = tsne_v2, fill = exprsZ)) +
-#     geom_point(size = 3, shape = 21, color = "grey50", stroke= 0.1) +
-#     #scale_fill_gradient2(low = "#0CD6F5", mid = "white", high = "#A8105A", labels=c("","low","","","high")) +
-#     scale_fill_gradient2(low = "#0CD6F5", mid = "white", high = "#A8105A",breaks = trans_breaks(identity, identity, n = 3)) +
-#     ggtitle(sigID) +
-#     ylab("Dimension 2") + 
-#     xlab("Dimension 1") + 
-#     theme_bw() +
-#     theme(legend.position = c(0.8, 0.1),
-#           legend.direction = "horizontal",
-#           legend.title = element_blank(),
-#           plot.title = element_text(hjust = 0.5),
-#           panel.grid.major = element_blank(),
-#           panel.grid.minor = element_blank(),
-#           panel.background = element_blank())
-#   
-# }
-# 
-# 
-# 
-# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-# ##                          Plot projections                                  ##
-# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-# 
-# sigIDs <- setNames(colnames(f_tumor), colnames(f_tumor))
-# 
-# mycn   <- projection_plot("MYCN")
-# mes    <- projection_plot("MES")
-# man_lr <- projection_plot("MNA-LR")
-# man_hr <- projection_plot("MNA-HR")
-# 
-# 
-# projection_gg <- mycn + mes + man_lr + man_hr + plot_layout(ncol = 2)
-# projection_gg
-# 
-# ggsave(params$figure, projection_gg, width = 10, height = 10)
 
 
 ```
@@ -175,7 +130,8 @@ projection_plot <- function(sigID){
   #sig_SE_IDs <- names(sign_expo[sign_expo > quantile(sign_expo, 0.8)])
   sig_geneIDs <- unique(SE[sig_SE_IDs]$target_SYMBOL)
   # Find Mouse Homologous
-  mouseIDs    <- convertHumanGeneList(sig_geneIDs)
+  #mouseIDs    <- convertHumanGeneList(sig_geneIDs)
+  mouseIDs <- mm_hs_map$mouse_symbol[mm_hs_map$human_symbol %in% sig_geneIDs]
   # get mean expression
   geneSet_MeanZ <- colMeans(e12.5_exprs[rownames(e12.5_exprs) %in% mouseIDs,])
   # map to cells
