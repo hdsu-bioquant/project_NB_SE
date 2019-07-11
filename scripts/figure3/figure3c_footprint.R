@@ -28,8 +28,8 @@ params <- list(SE = "analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RD
                MES_activity   = "analysis/tumor/VIPER/MES_TFactivity.RDS")
 
 
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-##                             Read data                                      ##
+####––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––####
+###                            Read data                                     ###
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 SE <- readRDS(params$SE)
 MES_activity <- readRDS(params$MES_activity)
