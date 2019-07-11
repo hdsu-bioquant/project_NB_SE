@@ -1,0 +1,163 @@
+---
+title: "RAS JUN/FOS expression mapped to Mouse GSE99933 E12.5"
+author: "Health Data Science Unit"
+date: "`r date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    number_sections: false
+params:
+  mouse_pstime : "path/to/data"
+  mouse_exprs  : "path/to/data"
+  NBreg        : "analysis/tumor/ARACNe/network.txt"
+  rasSigr      : "db/publicGeneSigs/ras_target_genes.RDS"
+  figure : "results/figure..."
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+#this chunk sets global options for Rmarkdown
+knitr::opts_chunk$set(echo = TRUE)
+#setting working directory. Should be home directory of the project
+options(knitr.table.format="html")
+
+library(tidyverse)
+library(viridis)
+library(ggplot2)
+library(biomaRt)
+library(scales)
+library(patchwork)
+library(rtracklayer)
+library(matrixStats)
+
+```
+
+
+
+## Data loading
+  
+  
+```{r dataloading}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                             Read data                                      ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# params = list(mouse_pstime = 'db/GSE99933_E12.5/GSE99933_E12.5.txt',
+#               mouse_exprs  = 'db/GSE99933_E12.5/GSE99933_E12.5_exprs_Zscore.txt',
+#               NBreg   =  'analysis/tumor/ARACNe/network.txt',
+#               rasSigr = 'db/publicGeneSigs/ras_target_genes.RDS',
+#               figure = 'results/figure4/figure.pdf')
+
+
+# Read Mouse GSE99933 E12.5 data
+# Pseudotime and tsne axis
+e12.5_pstime <- read.table(params$mouse_pstime, 
+                           header = TRUE,
+                           stringsAsFactors = FALSE)
+
+head(e12.5_pstime)
+# Zscore of gene expression
+e12.5_exprs <- read.table(params$mouse_exprs, 
+                          header = TRUE,
+                          colClasses = c(probeset = "NULL"),
+                          row.names = 1,
+                          stringsAsFactors = FALSE)
+e12.5_exprs[1:5,1:5]
+
+
+
+
+```
+
+
+
+```{r mapsymbols}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                             Helper functions                               ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# Mouse to Human symbols
+mm_hs_map = read.delim("http://www.informatics.jax.org/downloads/reports/HOM_MouseHumanSequence.rpt", stringsAsFactors = F)
+mm_hs_map = mm_hs_map[,colnames(mm_hs_map) %in% c("HomoloGene.ID", "Symbol")]
+mm_hs_map$HomoloGene.ID = as.character(mm_hs_map$HomoloGene.ID)
+mm_hs_map = split(mm_hs_map$Symbol, mm_hs_map$HomoloGene.ID)
+mm_hs_map = mm_hs_map[sapply(mm_hs_map, length) == 2] # Keeping only one to one homologs
+mm_hs_map = do.call("rbind", mm_hs_map)
+mm_hs_map = data.frame(mouse_symbol = noquote(as.character(mm_hs_map[,1])),
+                       human_symbol = noquote(as.character(mm_hs_map[,2])))
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                            RAS targets                                     ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+## RAS metagene signature
+ras = readRDS(params$rasSigr)
+ras = ras$upreg
+ras
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                        JUN/FOS targets                                     ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+## JUN FOS (AP1 complex) target genes
+net = read.table(params$NBreg, header=T, stringsAsFactors=F, sep="\t")[,1:2]
+net =  net[net$Regulator %in% c("FOS", "FOSB", "FOSL1", "FOSL2", "JUN", "JUNB", "JUND"),]
+net = net[order(net$Regulator),]
+junfos = unique(net$Target)
+rm(net)
+junfos
+
+
+```
+
+```{r plotprojection}
+projection_plot <- function(geneIDs, sigID){
+  # Find Mouse Homologous
+  #mouseIDs    <- convertHumanGeneList(geneIDs)
+  mouseIDs <- mm_hs_map$mouse_symbol[mm_hs_map$human_symbol %in% geneIDs]
+  # get mean expression
+  geneSet_MeanZ <- colMeans(e12.5_exprs[rownames(e12.5_exprs) %in% mouseIDs,])
+  # map to cells
+  e12.5_pstime$exprsZ <- geneSet_MeanZ[match(e12.5_pstime$SampleID, names(geneSet_MeanZ))]
+  # print plot
+  e12.5_pstime %>% 
+    ggplot(aes(x = tsne_v1, y = tsne_v2, color = exprsZ)) +
+    geom_point() +
+    scale_color_gradient2()
+  
+  e12.5_pstime %>% 
+    ggplot(aes(x = tsne_v1, y = tsne_v2, fill = exprsZ)) +
+    geom_point(size = 3, shape = 21, color = "grey50", stroke= 0.1) +
+    #scale_fill_viridis() +
+    scale_fill_gradient2(low = "#0CD6F5", mid = "white", high = "#A8105A",breaks = trans_breaks(identity, identity, n = 3)) +
+    ggtitle(sigID) +
+    ylab("Dimension 2") + 
+    xlab("Dimension 1") + 
+    theme_bw() +
+    theme(legend.position = c(0.8, 0.1),
+          legend.direction = "horizontal",
+          legend.title = element_blank(),
+          plot.title = element_text(hjust = 0.5),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank())
+  
+}
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                          Plot projections                                  ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+
+gg_ras    <- projection_plot(ras, "RAS")
+gg_junfos <- projection_plot(junfos, "JUN/FOS")
+
+
+projection_gg <- gg_ras + gg_junfos + plot_layout(ncol = 2)
+projection_gg
+
+ggsave(params$figure, projection_gg, width = 10, height = 5)
+
+```
+

@@ -136,14 +136,11 @@ igv_plot:
     window: 2000
     width : 11
     height: 6
-  figure4i:
-    chr   : chr12
-    start : 64910000
-    end   : 65100000
-    name  : RASSF3
-    window: 2000
-    ymax  : 35
-    width : 8
-    height: 6
-    
+  figure4:
+    name: 
+      - CNTN1
+      - COL1A1
+    window: 150
+    width : 4
+    height: 3
 

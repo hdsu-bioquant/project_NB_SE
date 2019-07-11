@@ -78,9 +78,13 @@ fig3_MES_vs_ADRN_footprint:
     cores    : 20
     walltime : 01:30
     memory   : 46080
+    
+fig3_Enhancer_Comparison_using_HiChIP:
+    cores    : 60
+    walltime : 01:30
+    memory   : 46080  
 
-
-fig4i_IGV:
-    cores    : 2
+fig4_IGV:
+    cores    : 20
     walltime : 01:30
     memory   : 10240

@@ -6,11 +6,11 @@ rule compile_figure4:
     input:
         figure4a = join(DATAPATH,"results/figure4/junfos_corr_exposures.pdf"),
         figure4b = join(DATAPATH,"results/figure4/ras_corr_exposures.pdf"),
-        #figure4c = join(DATAPATH, 'results/figure2/figure2c_tumor_cells_SE_UMAP.pdf'),
-        #figure4d = join(DATAPATH, 'results/figure2/figure2d_01_tumor_riverplot.pdf'),
+        figure4cd = join(DATAPATH, 'results/figure4/RasJunFos_Exprs_mouseE12.5.pdf'),
         #figure4e = join(DATAPATH, 'results/figure2/figure2e_tumor_SE_targets_hmatrix.pdf'),
         #figure4f = join(DATAPATH, 'results/figure2/figure2f_tumor_cells_density.pdf'),
         #figure4i = join(DATAPATH, 'results/figure4/figure4i_IGV_plot.pdf')
+        figure4ij = expand(join(DATAPATH, 'results/figure4/figure4_{ExamplegeneID}_loci.pdf'), zip, ExamplegeneID = config['igv_plot']['figure4']['name']),
         figure4g = join(DATAPATH, 'results/figure4/tumors_RNAseq_PrimaryVsRelapse.pdf')
     output: join(DATAPATH, 'results/figure4/figure4_paths.txt')
     shell:
@@ -18,12 +18,11 @@ rule compile_figure4:
         touch {output}
         #echo 'Figure 4a {input.figure4a}' >> {output}
         #echo 'Figure 4b {input.figure4b}' >> {output}
-        #echo 'Figure 4c {input.figure4a}' >> {output}
-        #echo 'Figure 4d {input.figure4a}' >> {output}
+        #echo 'Figure 4c-d {input.figure4cd}' >> {output}
         #echo 'Figure 4e {input.figure4a}' >> {output}
         #echo 'Figure 4f {input.figure4a}' >> {output}
         #echo 'Figure 4g {input.figure4g}' >> {output}
-        echo 'Figure 4i {input.figure4a}' >> {output}
+        echo 'Figure 4i-j {input.figure4ij}' >> {output}
         
         """
 
@@ -50,6 +49,40 @@ rule fig4_RAS_JUN_FOS:
         """
         Rscript {params.script} {input.NBexprs} {input.tumoNMF} {input.rasSigr} {input.NBreg} {input.NBmut} {params.outpath}
         """
+
+#================================================================================#
+#        RAS JUN/FOS targets Expression mapped to Mouse GSE99933 E12.5           #
+#================================================================================#
+optK_tc = str(config['NMFparams']['tumor']['optimalK']['chipseq'])
+rule fig4_RasJunFos_mouse:
+    input:
+        mouse_pstime = join(DATAPATH, 'db/GSE99933_E12.5/GSE99933_E12.5.txt'),
+        mouse_exprs  = join(DATAPATH, 'db/GSE99933_E12.5/GSE99933_E12.5_exprs_Zscore.txt'),
+        NBreg        = join(DATAPATH, 'analysis/tumor/ARACNe/network.txt'),
+        rasSigr      = join(DATAPATH, 'db/publicGeneSigs/ras_target_genes.RDS')
+    output:
+        report = join(DATAPATH, 'reports/RasJunFos_Exprs_mouseE12.5.html'),
+        rmd    = temp(join(DATAPATH, 'reports/RasJunFos_Exprs_mouseE12.5.Rmd')),
+        figure = join(DATAPATH, 'results/figure4/RasJunFos_Exprs_mouseE12.5.pdf')
+    params:
+        script   = 'scripts/figure4/RasJunFos_Exprs_mouseE12.5.Rmd'
+    conda: '../envs/R3.5.yaml'
+    shell:
+        """
+        cp {params.script} {output.rmd}
+
+        Rscript -e "rmarkdown::render( '{output.rmd}', \
+                params = list( \
+                  mouse_pstime = '{input.mouse_pstime}', \
+                  mouse_exprs  = '{input.mouse_exprs}', \
+                  NBreg        = '{input.NBreg}', \
+                  rasSigr      = '{input.rasSigr}', \
+                  figure       = '{output.figure}' \
+                ))"
+
+
+        """
+
 
 #================================================================================#
 #             Figure 4 - tumors RNAseq Primary vs. Relapse                       #
@@ -82,25 +115,26 @@ rule fig4_tumors_RNAseq_PrimaryVsRelapse:
 
 
 #================================================================================#
-#                      Figure 4i - VSNL1 loci                                    #
+#                      Figure 4  - Example loci IGV                              #
 #================================================================================#
-rule fig4i_IGV:
+optK_cc = str(config['NMFparams']['cells']['optimalK']['chipseq'])
+rule fig4_IGV:
     input:
-        consensusSE = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed')
+        consensusSE    = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'),
+        hsapiens_genes = join(DATAPATH, 'db/misc/EnsDb_Hsapiens_v75_genes.RDS'),
+        cells_h        = join(DATAPATH, 'analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K' + optK_cc + '_Hmatrix_hnorm.RDS')
     output:
-        report = join(DATAPATH, 'reports/figure4i_IGV_plot.html'),
-        rmd    = temp(join(DATAPATH, 'reports/figure4i_IGV_plot.Rmd')),
-        figure = join(DATAPATH, 'results/figure4/figure4i_IGV_plot.pdf')
+        report = join(DATAPATH, 'reports/figure4_{ExamplegeneID}_IGV_plot.html'),
+        rmd    = temp(join(DATAPATH, 'reports/figure4_{ExamplegeneID}_IGV_plot.Rmd')),
+        figure = join(DATAPATH, 'results/figure4/figure4_{ExamplegeneID}_loci.pdf')
     params:
-        script       = 'scripts/figure4/figure4i_IGV_plot.Rmd',
+        script       = 'scripts/figure4/figure4_IGV_plot.Rmd',
         work_dir     = DATAPATH,
-        path_config  = join(os.getcwd(), 'scripts/figure4/figure4i_tracks.txt'),
-        width_window = config['igv_plot']['figure4i']['window'],
-        ymax     = config['igv_plot']['figure4i']['ymax'],
-        gr_chr   = config['igv_plot']['figure4i']['chr'],
-        gr_start = config['igv_plot']['figure4i']['start'],
-        gr_end   = config['igv_plot']['figure4i']['end'],
-        gr_name  = config['igv_plot']['figure4i']['name']
+        width_window = config['igv_plot']['figure4']['window'],
+        width        = config['igv_plot']['figure4']['width'],
+        height       = config['igv_plot']['figure4']['height'],
+        #gr_name  = config['igv_plot']['figure4i']['name']
+        gr_name  = lambda wildcards: wildcards.ExamplegeneID
     conda: '../envs/R3.5.yaml'
     shell:
         """
@@ -108,15 +142,15 @@ rule fig4i_IGV:
 
         Rscript -e "rmarkdown::render( '{output.rmd}', \
                 params = list( \
-                  work_dir     = '{params.work_dir}', \
-                  path_config  = '{params.path_config}', \
-                  width_window = {params.width_window}, \
-                  ymax  = '{params.ymax}', \
-                  chr   = '{params.gr_chr}', \
-                  start = {params.gr_start}, \
-                  end   = {params.gr_end}, \
-                  name  = '{params.gr_name}', \
-                  figure = '{output.figure}' \
+                  work_dir       = '{params.work_dir}', \
+                  SE             = '{input.consensusSE}', \
+                  hsapiens_genes = '{input.hsapiens_genes}', \
+                  cells_h        = '{input.cells_h}', \
+                  width_window   = {params.width_window}, \
+                  width          = {params.width}, \
+                  height         = {params.height}, \
+                  name           = '{params.gr_name}', \
+                  figure         = '{output.figure}' \
                 ))"
 
 
