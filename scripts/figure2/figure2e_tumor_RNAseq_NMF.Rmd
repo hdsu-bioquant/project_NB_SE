@@ -10,13 +10,13 @@ output:
     number_sections: false
 params:
   K         : 4
-  annot     : "path/to/..."
-  norm_nmfW : "path/to/..."
-  norm_nmfH : "path/to/..."
+  annot     : "annotation/annotation_tumor.RDS"
+  norm_nmfW : "analysis/tumor/rnaseq/NMF/tumor_consensusSE_targetExprs_normNMF_W.RDS"
+  norm_nmfH : "analysis/tumor/rnaseq/NMF/tumor_consensusSE_targetExprs_normNMF_H.RDS"
   hmatrix_wnorm : "path/to/..."
   wmatrix_wnorm : "path/to/..."
   nmf_features  : "path/to/..."
-  hmatrix_hnorm : "path/to/..."
+  hmatrix_hnorm : "analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS"
   figure2e      : "results/figures/figure2/..."
 editor_options: 
   chunk_output_type: console
@@ -226,7 +226,7 @@ saveRDS(SignaFeat, params$nmf_features)
 norm.nmf.hmatrix.hnorm <- HMatrix(norm.nmf.exp.H, k = K)[signature_idx,]
 colnames(norm.nmf.hmatrix.hnorm) <- colnames(norm.nmf.exp.H)
 rownames(norm.nmf.hmatrix.hnorm) <- names(signature_idx)
-saveRDS(norm.nmf.hmatrix, params$hmatrix_hnorm)
+saveRDS(norm.nmf.hmatrix.hnorm, params$hmatrix_hnorm)
 
 ```
 

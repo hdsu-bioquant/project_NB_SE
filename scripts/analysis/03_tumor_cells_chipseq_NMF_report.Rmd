@@ -10,20 +10,20 @@ output:
     number_sections: false
 params:
   assayID:   "foo"
-  annot_tumor:  "path/to/metadata"
-  annot_cells:  "path/to/metadata"
+  annot_tumor:  "annotation/annotation_tumor.RDS"
+  annot_cells:  "annotation/annotation_cells.RDS"
   nmf_kmin:  2
   nmf_kmax:  6
   nmf_iter:  10
-  nmf:       "path/to/save"
-  norm_nmfW: "path/to/save"
-  norm_nmfH: "path/to/save"
+  nmf:       "analysis/tumor_cells/chipseq/H3K27ac/NMF/tumor_cells_consensusSE_SignalScore_NMF.RDS"
+  norm_nmfW: "analysis/tumor_cells/chipseq/H3K27ac/NMF/tumor_cells_consensusSE_SignalScore_normNMF_W.RDS"
+  norm_nmfH: "analysis/tumor_cells/chipseq/H3K27ac/NMF/tumor_cells_consensusSE_SignalScore_normNMF_H.RDS"
   matrix:    "path/to/matrix"
-  K         : 4
+  K         : 5
   hmatrix_wnorm : "path/to/matrix"
   wmatrix_wnorm : "path/to/matrix"
   nmf_features  : "path/to/matrix"
-  hmatrix_hnorm : "path/to/matrix"
+  hmatrix_hnorm : "analysis/tumor_cells/chipseq/H3K27ac/NMF/tumor_cells_consensusSE_K5_Hmatrix_hnorm.RDS"
 editor_options: 
   chunk_output_type: console
 ---
@@ -303,7 +303,7 @@ saveRDS(SignaFeat, params$nmf_features)
 norm.nmf.hmatrix.hnorm <- HMatrix(norm.nmf.exp.H, k = K)[signature_idx,]
 colnames(norm.nmf.hmatrix.hnorm) <- colnames(norm.nmf.exp.H)
 rownames(norm.nmf.hmatrix.hnorm) <- names(signature_idx)
-saveRDS(norm.nmf.hmatrix, params$hmatrix_hnorm)
+saveRDS(norm.nmf.hmatrix.hnorm, params$hmatrix_hnorm)
 
 ```
 

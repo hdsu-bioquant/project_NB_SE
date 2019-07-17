@@ -233,7 +233,7 @@ saveRDS(SignaFeat, params$nmf_features)
 norm.nmf.hmatrix.hnorm <- HMatrix(norm.nmf.exp.H, k = K)[signature_idx,]
 colnames(norm.nmf.hmatrix.hnorm) <- colnames(norm.nmf.exp.H)
 rownames(norm.nmf.hmatrix.hnorm) <- names(signature_idx)
-saveRDS(norm.nmf.hmatrix, params$hmatrix_hnorm)
+saveRDS(norm.nmf.hmatrix.hnorm, params$hmatrix_hnorm)
 
 ```
 

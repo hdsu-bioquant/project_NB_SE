@@ -9,14 +9,14 @@ output:
     toc_depth: 4
     number_sections: false
 params:
-  K         : 3
+  K         : 4
   annot     : "annotation/annotation_cells.RDS"
   norm_nmfW : "analysis/cells/rnaseq/NMF/cells_consensusSE_targetExprs_normNMF_W.RDS"
   norm_nmfH : "analysis/cells/rnaseq/NMF/cells_consensusSE_targetExprs_normNMF_H.RDS"
-  hmatrix_wnorm : "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K4_Hmatrix_wnorm.RDS"
-  wmatrix_wnorm : "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K4_Wmatrix_Wnorm.RDS"
-  nmf_features  : "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K4_NMF_features.RDS"
-  hmatrix_hnorm : "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K4_Hmatrix_hnorm.RDS"
+  hmatrix_wnorm : ""
+  wmatrix_wnorm : ""
+  nmf_features  : ""
+  hmatrix_hnorm : "analysis/cells/rnaseq/NMF/cells_consensusSE_K4_Hmatrix_hnorm.RDS"
   figure      : "results/figures/figure2/figure2b_cells_SE_hmatrix.pdf"
 editor_options: 
   chunk_output_type: console
@@ -226,7 +226,7 @@ saveRDS(SignaFeat, params$nmf_features)
 norm.nmf.hmatrix.hnorm <- HMatrix(norm.nmf.exp.H, k = K)[signature_idx,]
 colnames(norm.nmf.hmatrix.hnorm) <- colnames(norm.nmf.exp.H)
 rownames(norm.nmf.hmatrix.hnorm) <- names(signature_idx)
-saveRDS(norm.nmf.hmatrix, params$hmatrix_hnorm)
+saveRDS(norm.nmf.hmatrix.hnorm, params$hmatrix_hnorm)
 
 ```
 

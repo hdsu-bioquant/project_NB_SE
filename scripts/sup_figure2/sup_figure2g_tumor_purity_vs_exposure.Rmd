@@ -9,10 +9,10 @@ output:
     toc_depth: 4
     number_sections: false
 params:
-  h_SEsig : "path/to/data"
-  h_exprs : "path/to/data"
-  purity  : "path/to/data"
-  figure  : "results/figures..."
+  h_SEsig : "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS"
+  h_exprs : "analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS"
+  purity  : "annotation/purity_tumor.csv"
+  figure  : "results/sup_figure2/sup_figure2g_tumor_purity_vs_exposure.pdf"
 editor_options: 
   chunk_output_type: console
 ---
@@ -37,9 +37,9 @@ library(ggpubr)
   
 ```{r dataloading}
 # 
-# params <- list(h_SEsig = '/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS',
-#                h_exprs = '/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS',
-#                purity = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/annotation/purity_tumor.csv",
+# params <- list(h_SEsig = 'analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS',
+#                h_exprs = 'analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS',
+#                purity = "annotation/purity_tumor.csv",
 #                figure = "results/sup_figure2/sup_figure2g_tumor_purity_vs_exposure.pdf")
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##                             Read data                                      ##
@@ -147,6 +147,85 @@ ggsave(params$figure, ggExpVsPurity, width=8, height=4)
 
 
 
+```
+
+
+```{r}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##               SE signal exposure vs tumor purity                           ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+as.data.frame(t(assign_signature(h_SEsig))) %>% 
+  rownames_to_column("ProjectID") %>% 
+  gather(Signature, IsSignature, -ProjectID) %>% 
+  full_join(y = purdf_SEsig, by = c("ProjectID", "Signature")) %>% 
+  mutate(Signature = factor(Signature, levels = unique(Signature))) %>% 
+  filter(!is.na(Purity)) %>% 
+  mutate(High = ifelse(IsSignature == "High", TRUE, FALSE)) %>% 
+  mutate(Low  = ifelse(IsSignature == "Low",  TRUE, FALSE)) %>% 
+  mutate(All  = TRUE) %>% 
+  gather(SignatureSpecific, toFil, High, Low, All) %>% 
+  filter(toFil) %>% 
+  ggplot(aes(x = Purity, y = Exposure)) +
+  geom_point(aes(color = IsSignature)) +
+  geom_vline(xintercept = 0.5) +
+  facet_wrap(SignatureSpecific~Signature,  nrow = 3, scales = "free") +
+  #stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~"))) +
+  stat_cor(aes(label = paste(..r.label..))) +
+  #stat_cor(method = "pearson") +
+  tm +
+  theme(legend.title = element_blank())
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                 Expression exposure vs tumor purity                        ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+as.data.frame(t(assign_signature(h_exprs))) %>% 
+  rownames_to_column("ProjectID") %>% 
+  gather(Signature, IsSignature, -ProjectID) %>% 
+  full_join(y = purdf_exprs, by = c("ProjectID", "Signature")) %>% 
+  mutate(Signature = factor(Signature, levels = unique(Signature))) %>% 
+  filter(!is.na(Purity)) %>% 
+  mutate(High = ifelse(IsSignature == "High", TRUE, FALSE)) %>% 
+  mutate(Low  = ifelse(IsSignature == "Low",  TRUE, FALSE)) %>% 
+  mutate(All  = TRUE) %>% 
+  gather(SignatureSpecific, toFil, High, Low, All) %>% 
+  filter(toFil) %>% 
+  ggplot(aes(x = Purity, y = Exposure)) +
+  geom_point(aes(color = IsSignature)) +
+  geom_vline(xintercept = 0.5) +
+  facet_wrap(SignatureSpecific~Signature,  nrow = 3, scales = "free") +
+  #stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~"))) +
+  stat_cor(aes(label = paste(..r.label..))) +
+  #stat_cor(method = "pearson") +
+  tm +
+  theme(legend.title = element_blank())
+
+
+
+assign_signature <- function(h){
+  is_h <- t(apply(h, 1, function(x){
+    k <- kmeans(x, 2)
+    max_idx <- which.max(k$centers)
+    #if_else(k$cluster == max_idx, "High", "Low")
+    if_else(k$cluster == max_idx, 1, 0)
+  }))
+  colnames(is_h) <- colnames(h)
+  rownames(is_h) <- rownames(h)
+  is_h <- is_h * h
+  # apply(is_h, 2, function(x){
+  #   assignment <- setNames(rep(0, length(x)), names(x))
+  #   assignment[which.max(x)] <- 1
+  #   assignment
+  # })
+  apply(is_h, 2, function(x){
+    assignment <- setNames(rep("Low", length(x)), names(x))
+    assignment[which.max(x)] <- "High"
+    assignment
+  })
+}
+
+x <- assign_signature(h_exprs)
+
+class(x)
 ```
 
 

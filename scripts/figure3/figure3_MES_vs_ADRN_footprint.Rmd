@@ -308,19 +308,61 @@ ddf.flipped$mes  <- MES_activity[match( ddf.flipped$name, names(MES_activity))]
 co.v <- cor(ddf.flipped$val, ddf.flipped$mes, method = "spearman", use = "pairwise.complete.obs") 
 cor.df <- data.frame(x = 35, y = -400, text = paste0("Spearman = ", round(co.v, 2)))
 
-m <- ggplot(ddf.flipped, aes(pos, val, color = mes)) + 
-  geom_text_repel(aes(label=ddf.flipped$name), color = "black") +
-  geom_point(size = 2) + 
-  xlab("")+
-  #geom_text(data = cor.df, aes(x,y, label = text), color  = "black", size = 5)+ 
-  ylab("t.statistic") +  
-  #expand_limits(x = 50, y = 500) + 
-  scale_colour_gradientn(colours = col)#+ scale_colour_brewer(palette = "PRGn", type = "seq")
-m
-
-ggsave(params$figure, m, width = 12, height = 8)
+# m <- ggplot(ddf.flipped, aes(pos, val, color = mes)) + 
+#   geom_text_repel(aes(label=ddf.flipped$name), color = "black") +
+#   geom_point(size = 2) + 
+#   xlab("")+
+#   #geom_text(data = cor.df, aes(x,y, label = text), color  = "black", size = 5)+ 
+#   ylab("t.statistic") +  
+#   #expand_limits(x = 50, y = 500) + 
+#   scale_colour_gradientn(colours = col)#+ scale_colour_brewer(palette = "PRGn", type = "seq")
+# m
 
 
+
+
+
+# 
+# ddf.flipped$name <- factor(ddf.flipped$name, levels = rev(ddf.flipped$name))
+# 
+# head(ddf.flipped)
+# 
+# 
+# dfgg <- ddf.flipped %>% 
+#   mutate(labelpos = rev(seq(min(val), max(val), length.out = n())))
+# 
+
+dfgg <- ddf.flipped
+dfgg$labelpos <- 0
+midval <- sum(dfgg$val > median(dfgg$val))
+dfgg$labelpos[dfgg$val > median(dfgg$val)] <- rev(seq(min(dfgg$val), max(dfgg$val), length.out = midval))
+dfgg$labelpos[dfgg$val <= median(dfgg$val)] <- rev(seq(min(dfgg$val), max(dfgg$val), length.out = nrow(dfgg) - midval))
+
+
+
+m <- ggplot(dfgg, aes(x = pos, y = val, color = mes)) + 
+  geom_point(size=2) +
+  xlim(-20, 100) +
+  # geom_text(data = dfgg,
+  #           mapping = aes(x = 80, y = labelpos, label = name),
+  #           parse = TRUE, hjust = 0) +
+  geom_text(data = dfgg[dfgg$val > median(dfgg$val),],
+            mapping = aes(x = 80, y = labelpos, label = name),
+            parse = TRUE, hjust = 0, color = "black") +
+  geom_text(data = dfgg[dfgg$val <= median(dfgg$val),],
+            mapping = aes(x = -20, y = labelpos, label = name),
+            parse = TRUE, hjust = 0, color = "black") +
+  geom_segment(data = dfgg[dfgg$val > median(dfgg$val),],
+               mapping = aes(x = pos, xend = 79, y = val, yend = labelpos),
+               color = "black", size = 0.1) +
+  geom_segment(data = dfgg[dfgg$val <= median(dfgg$val),],
+               mapping = aes(x = pos, xend = -2, y = val, yend = labelpos),
+               color = "black", size = 0.1) +
+  scale_colour_gradientn(colours = col)
+m 
+
+
+ggsave(params$figure, m, width = 7.5, height = 6.5) 
 ```
 
 

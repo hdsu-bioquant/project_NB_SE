@@ -27,6 +27,35 @@ rule compile_figure4:
         """
 
 #================================================================================#
+#         Primary versus Relapse differential gene expression analysis           #
+#================================================================================#
+rule fig4_primary_vs_relapse:
+    input:
+        NBexprs  = join(DATAPATH, 'data/tumor/rnaseq/exprs/tumor_RNAseq_Counts_Matrix.RDS'),
+        rasSigr  = join(DATAPATH, 'db/publicGeneSigs/ras_target_genes.RDS'),
+        NBreg    = join(DATAPATH, 'analysis/tumor/ARACNe/network.txt'),
+        crcList  = join(DATAPATH, 'results/supptables/crcTF_fractionObserved.txt'),
+        mesTFact = join(DATAPATH, "analysis/tumor/VIPER/MES_TFactivity.RDS")
+
+    output:
+        diffTab  = join(DATAPATH, 'analysis/tumor/Rel_vs_Pri/RelapseVsPrimary_topDiffExpGenes.txt'),
+        mainFig1 = join(DATAPATH, 'results/figure4/JunFos_Ras_enrichment_barcodeplot_relapsevsPrimary.pdf'),
+        mainFig2 = join(DATAPATH, 'results/figure4/crcTF_in_relapse_pri_enriched.pdf'),
+        suppFig1 = join(DATAPATH, 'results/sup_figure4/all_TF_in_relapse_pri_enriched.pdf')
+
+    params:
+        script   = 'scripts/figure4/diffAnalysisPrimaryVSRelapse.R',
+        outpath1 = join(DATAPATH, "analysis/"),
+        outpath2 = join(DATAPATH, "results/")
+    conda: '../envs/R3.5.yaml'
+    shell:
+        """
+         Rscript {params.script} {input.NBexprs} {input.rasSigr} {input.NBreg} \
+          {input.crcList} {input.mesTFact} {params.outpath1} {params.outpath2}
+        """
+
+
+#================================================================================#
 #   Correlation of RAS and JUN/FOS signature expression to Mesenchymal exposure  #
 #================================================================================#
 rule fig4_RAS_JUN_FOS:
@@ -49,6 +78,28 @@ rule fig4_RAS_JUN_FOS:
         """
         Rscript {params.script} {input.NBexprs} {input.tumoNMF} {input.rasSigr} {input.NBreg} {input.NBmut} {params.outpath}
         """
+
+#================================================================================#
+#                             TNFRSF12A related analysis                         #
+#================================================================================#
+rule fig4_TNFRSF12A_analysis:
+    input:
+        NBcells  = join(DATAPATH, 'analysis/cells/rnaseq/exprs/cells_RNAseq_TPM_Matrix_filt_log.RDS'),
+        NBanno   = join(DATAPATH, 'annotation/annotation_cells.RDS'),
+        NBexprs  = join(DATAPATH, 'analysis/tumor/rnaseq/exprs/tumor_RNAseq_TPM_Matrix_filt_log.RDS'),
+        tumorNMF = join(DATAPATH, 'analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS')
+    output:
+        mainFig1 = join(DATAPATH, 'results/figure4/TNFRSF12A_expression_NB.pdf')
+    params:
+        script  = 'scripts/figure4/TNFRSF12AexpNB.R',
+        outpath = join(DATAPATH, 'results/')
+    conda: '../envs/R3.5.yaml'
+
+    shell:
+        """
+          Rscript {params.script} {input.NBcells} {input.NBanno} {input.NBexprs} {input.tumorNMF} {params.outpath}
+        """
+
 
 #================================================================================#
 #        RAS JUN/FOS targets Expression mapped to Mouse GSE99933 E12.5           #
@@ -112,7 +163,6 @@ rule fig4_tumors_RNAseq_PrimaryVsRelapse:
 
 
         """
-
 
 #================================================================================#
 #                      Figure 4  - Example loci IGV                              #
