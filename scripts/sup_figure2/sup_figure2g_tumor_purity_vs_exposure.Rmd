@@ -151,6 +151,28 @@ ggsave(params$figure, ggExpVsPurity, width=8, height=4)
 
 
 ```{r}
+assign_signature <- function(h){
+  is_h <- t(apply(h, 1, function(x){
+    k <- kmeans(x, 2)
+    max_idx <- which.max(k$centers)
+    #if_else(k$cluster == max_idx, "High", "Low")
+    if_else(k$cluster == max_idx, 1, 0)
+  }))
+  colnames(is_h) <- colnames(h)
+  rownames(is_h) <- rownames(h)
+  is_h <- is_h * h
+  # apply(is_h, 2, function(x){
+  #   assignment <- setNames(rep(0, length(x)), names(x))
+  #   assignment[which.max(x)] <- 1
+  #   assignment
+  # })
+  apply(is_h, 2, function(x){
+    assignment <- setNames(rep("Low", length(x)), names(x))
+    assignment[which.max(x)] <- "High"
+    assignment
+  })
+}
+
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##               SE signal exposure vs tumor purity                           ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
@@ -201,31 +223,7 @@ as.data.frame(t(assign_signature(h_exprs))) %>%
 
 
 
-assign_signature <- function(h){
-  is_h <- t(apply(h, 1, function(x){
-    k <- kmeans(x, 2)
-    max_idx <- which.max(k$centers)
-    #if_else(k$cluster == max_idx, "High", "Low")
-    if_else(k$cluster == max_idx, 1, 0)
-  }))
-  colnames(is_h) <- colnames(h)
-  rownames(is_h) <- rownames(h)
-  is_h <- is_h * h
-  # apply(is_h, 2, function(x){
-  #   assignment <- setNames(rep(0, length(x)), names(x))
-  #   assignment[which.max(x)] <- 1
-  #   assignment
-  # })
-  apply(is_h, 2, function(x){
-    assignment <- setNames(rep("Low", length(x)), names(x))
-    assignment[which.max(x)] <- "High"
-    assignment
-  })
-}
 
-x <- assign_signature(h_exprs)
-
-class(x)
 ```
 
 
