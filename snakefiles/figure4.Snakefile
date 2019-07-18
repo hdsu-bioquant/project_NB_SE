@@ -4,14 +4,13 @@
 
 rule compile_figure4:
     input:
-        figure4a = join(DATAPATH,"results/figure4/junfos_corr_exposures.pdf"),
-        figure4b = join(DATAPATH,"results/figure4/ras_corr_exposures.pdf"),
+        figure4a  = join(DATAPATH,"results/figure4/junfos_corr_exposures.pdf"),
+        figure4b  = join(DATAPATH,"results/figure4/ras_corr_exposures.pdf"),
         figure4cd = join(DATAPATH, 'results/figure4/RasJunFos_Exprs_mouseE12.5.pdf'),
-        #figure4e = join(DATAPATH, 'results/figure2/figure2e_tumor_SE_targets_hmatrix.pdf'),
-        #figure4f = join(DATAPATH, 'results/figure2/figure2f_tumor_cells_density.pdf'),
-        #figure4i = join(DATAPATH, 'results/figure4/figure4i_IGV_plot.pdf')
+        figure4e  = join(DATAPATH, 'results/figure4/TNFRSF12A_expression_NB.pdf'),
+        figure4f  = join(DATAPATH, 'results/figure4/JunFos_Ras_enrichment_barcodeplot_relapsevsPrimary.pdf'),
         figure4ij = expand(join(DATAPATH, 'results/figure4/figure4_{ExamplegeneID}_loci.pdf'), zip, ExamplegeneID = config['igv_plot']['figure4']['name']),
-        figure4g = join(DATAPATH, 'results/figure4/tumors_RNAseq_PrimaryVsRelapse.pdf')
+        figure4g  = join(DATAPATH, 'results/figure4/tumors_RNAseq_PrimaryVsRelapse.pdf')
     output: join(DATAPATH, 'results/figure4/figure4_paths.txt')
     shell:
         """
@@ -36,13 +35,11 @@ rule fig4_primary_vs_relapse:
         NBreg    = join(DATAPATH, 'analysis/tumor/ARACNe/network.txt'),
         crcList  = join(DATAPATH, 'results/supptables/crcTF_fractionObserved.txt'),
         mesTFact = join(DATAPATH, "analysis/tumor/VIPER/MES_TFactivity.RDS")
-
     output:
         diffTab  = join(DATAPATH, 'analysis/tumor/Rel_vs_Pri/RelapseVsPrimary_topDiffExpGenes.txt'),
         mainFig1 = join(DATAPATH, 'results/figure4/JunFos_Ras_enrichment_barcodeplot_relapsevsPrimary.pdf'),
         mainFig2 = join(DATAPATH, 'results/figure4/crcTF_in_relapse_pri_enriched.pdf'),
         suppFig1 = join(DATAPATH, 'results/sup_figure4/all_TF_in_relapse_pri_enriched.pdf')
-
     params:
         script   = 'scripts/figure4/diffAnalysisPrimaryVSRelapse.R',
         outpath1 = join(DATAPATH, "analysis/"),
@@ -94,7 +91,6 @@ rule fig4_TNFRSF12A_analysis:
         script  = 'scripts/figure4/TNFRSF12AexpNB.R',
         outpath = join(DATAPATH, 'results/')
     conda: '../envs/R3.5.yaml'
-
     shell:
         """
           Rscript {params.script} {input.NBcells} {input.NBanno} {input.NBexprs} {input.tumorNMF} {params.outpath}
