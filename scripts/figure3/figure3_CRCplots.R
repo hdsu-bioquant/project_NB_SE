@@ -448,28 +448,15 @@ pdf(paste0(outpath,"figure3/crcTF_correlation_TFactivity_vs_KD.pdf"), width=3.5,
 dev.off()
 
 # Multi-dimentional and Integrative CRC plot
-pdf(paste0(outpath,"figure3/crcTF_oncoprints_SignatureSpecific.pdf"),width=7.4,height=5.8)
-
+pdf(paste0(outpath,"sup_figure3/crcTF_oncoprints_SignatureSpecific.pdf"),width=7.4, height=6.)
 layout(rbind(
              c(1,0,0,2),
              c(3:6),
              c(7,7,8,8)
             ),
-         width=c(2,0.1,0.1,1),
-         height=c(0.015,0.7,0.08)
+         width=c(2, 0.1, 0.1, 1),
+         height=c(0.06, 0.7, 0.1)
         )
-  
-
-# Layout while including the KD analysis and its legend
-# layout(rbind(
-#               c(1,0,0,0,2),
-#               c(3:7),
-#               rep(8,5), 
-#               c(9,10,10,11,11)
-#             ),
-#        width=c(2.04,0.35,0.1,0.35,1.1),
-#        height=c(0.015,0.7,0.08,0.08)
-#       )
 
   # Cluster order based on crc Fraction observed
   crcModules = read.table(paste0(outpath,"supptables/crcTF_modules.txt"), header=T, sep="\t", stringsAsFactors = F)
@@ -477,53 +464,71 @@ layout(rbind(
   
   # Ordering the rows of data below based on the crcFrac observed heatmap in main figure
   selCRC    = selCRC[match(crcModules$Genes, rownames(selCRC)),]
-  #propObs   = propObs[match(crcModules$Genes, rownames(propObs)),]
   selTF.Mes = selTF.Mes[match(crcModules$Genes, rownames(selTF.Mes)),,drop=F]
-
+  #propObs   = propObs[match(crcModules$Genes, rownames(propObs)),] # If using proportional barplots
+  
   # Tumors signatures
   tmpAnnoTumor = anno[anno$Type == "tumor",]
   tmpAnnoTumor = tmpAnnoTumor[order(tmpAnnoTumor$Signature),]
   tmpAnnoTumor = droplevels(tmpAnnoTumor)
+  
   tmpCRCTumor  = selCRC[,colnames(selCRC) %in% tmpAnnoTumor$Samples]
-  tmpCRCTumor  = tmpCRCTumor[,match(tmpAnnoTumor$Samples,colnames(tmpCRCTumor))]
+  tmpCRCTumor  = tmpCRCTumor[,match(tmpAnnoTumor$Samples, colnames(tmpCRCTumor))]
 
   # Tumor sample annotation
-  idT = rep(NA,length(tmpAnnoTumor$Signature))
-  idT[tmpAnnoTumor$Signature == "MYCN-Amp-T"]=1
-  idT[tmpAnnoTumor$Signature == "Mesenchymal-T"]=2
-  idT[tmpAnnoTumor$Signature == "LR-MYCN-nonAmp-T"]=3
-  idT[tmpAnnoTumor$Signature == "HR-MYCN-nonAmp-T"]=4
-  idT = as.numeric(idT)
-  idT = matrix(idT,ncol=1)
+  idT = matrix(nrow = 4, ncol = nrow(tmpAnnoTumor))
+  rownames(idT) = c("Signature", "MYCN", "Stage", "Relapse")
+  
+  idT[1,][tmpAnnoTumor$Signature == "MES-T"] = 1
+  idT[1,][tmpAnnoTumor$Signature == "MYCN-T"] = 2
+  idT[1,][tmpAnnoTumor$Signature == "MNA-HR-T"] = 3
+  idT[1,][tmpAnnoTumor$Signature == "MNA-LR-T"] = 4
+  
+  idT[2,][tmpAnnoTumor$MYCN == "Amp"] = 5
+  idT[2,][tmpAnnoTumor$MYCN == "NonAmp"] = 6
+
+  idT[3,][tmpAnnoTumor$Stage == "4"] = 5
+  idT[3,][tmpAnnoTumor$Stage == "1-3;4S"] = 6
+  
+  idT[4,][tmpAnnoTumor$Relapse == "Yes"] = 5
+  idT[4,][tmpAnnoTumor$Relapse == "No"] = 6
+  
   sigBordersTumor = table(tmpAnnoTumor$Signature)
 
   # Cell line signatures
   tmpAnnoCell = anno[anno$Type == "cell",]
   tmpAnnoCell = tmpAnnoCell[order(tmpAnnoCell$Signature),]
   tmpAnnoCell = droplevels(tmpAnnoCell)
+  
   tmpCRCcell  = selCRC[,colnames(selCRC) %in% tmpAnnoCell$Samples]
   tmpCRCcell  = tmpCRCcell[,match(tmpAnnoCell$Samples,colnames(tmpCRCcell))]
 
   # Cell sample annotation
-  idC = rep(NA,length(tmpAnnoCell$Signature))
-  idC[tmpAnnoCell$Signature == "MYCN-Amp-C"]=1
-  idC[tmpAnnoCell$Signature == "Mesenchymal-C"]=2
-  idC[tmpAnnoCell$Signature == "MYCN-nonAmp-C"]=3
-  idC = as.numeric(idC)
-  idC = matrix(idC,ncol=1)
+  idC = matrix(nrow = 4, ncol = nrow(tmpAnnoCell))
+  rownames(idC) = c("Signature", "MYCN", "Stage", "Relapse")
+  
+  idC[1,][tmpAnnoCell$Signature == "MES-C"] = 1
+  idC[1,][tmpAnnoCell$Signature == "MYCN-C"] = 2
+  idC[1,][tmpAnnoCell$Signature == "MNA-C"] = 3
+  
+  idC[2,][tmpAnnoCell$MYCN == "Amp"] = 4
+  idC[2,][tmpAnnoCell$MYCN == "NonAmp"] = 5
+
   sigBordersCell = table(tmpAnnoCell$Signature)
 
   # Sample coloring Tumors
   par(mar=c(0,2.5,0.25,0.25),xaxs="i",yaxs="i")
-  image(idT,col=c("#006837","#40004B","#78c679", "#31a354"),xaxt="n", yaxt="n")
-  grid(col="white",nx=nrow(idT), ny=0, lty=1,lwd=1); box()
-  abline(v=seq(0,1,length.out=ncol(tmpCRCTumor))[c(sigBordersTumor[1], sum(sigBordersTumor[1:2]), sum(sigBordersTumor[1:3]))]+0.01, lwd=1)
-
+  image(t(idT), col=c("#40004B", "#006837", "#31a354", "#78c679", "black", "grey80"),xaxt="n", yaxt="n")
+  grid(col="white",nx=ncol(idT), ny=nrow(idT), lty=1,lwd=1); box()
+  abline(v=seq(0,1,length.out=ncol(tmpCRCTumor))[c(sigBordersTumor[1], sum(sigBordersTumor[1:2]), sum(sigBordersTumor[1:3]))]+0.01, lwd=3, col="white")
+  axis(side=2, at=seq(0,1,length.out=nrow(idT)), labels=rownames(idT), cex.axis=0.6, tick=F,las=2)
+  
   #Sample coloring cells
   par(mar=c(0,0.25,0.25,2.5),xaxs="i",yaxs="i")
-  image(idC,col=c("#006837","#40004B","#31a354"),xaxt="n", yaxt="n")
-  grid(col="white",nx=nrow(idC), ny=0, lty=1,lwd=1); box()
-  abline(v=seq(0,1,length.out=ncol(tmpCRCcell))[c(sigBordersCell[1], sum(sigBordersCell[1:2]), sum(sigBordersCell[1:3]))]+0.01, lwd=1)
+  image(t(idC), col=c("#40004B", "#006837", "#31a354","black", "grey80"),xaxt="n", yaxt="n")
+  grid(col="white",nx=ncol(idC), ny=nrow(idC), lty=1,lwd=1); box()
+  abline(v=seq(0,1,length.out=ncol(tmpCRCcell))[c(sigBordersCell[1], sum(sigBordersCell[1:2]))]+0.02, lwd=3, col="white")
+  axis(side=4, at=seq(0,1,length.out=nrow(idC)), labels=rownames(idC), cex.axis=0.6, tick=F, las=2)
   
   # Tumor CRC oncoprints
   par(mar=c(4,2.5,0.25,0.25),mgp=c(0,0.2,0),xaxs="i",yaxs="i")
@@ -533,13 +538,6 @@ layout(rbind(
   axis(side=1, at=seq(0,1,length.out=ncol(tmpCRCTumor)), labels=colnames(tmpCRCTumor), cex.axis=0.6, tick=F,las=2)
   abline(v=seq(0,1,length.out=ncol(tmpCRCTumor))[c(sigBordersTumor[1], sum(sigBordersTumor[1:2]), sum(sigBordersTumor[1:3]))]+0.01, lwd=1)
   #axis(side=3, at=0.5, labels="CRC frequency (Tumors)", cex.axis=1, tick=F)
-
-  # # Tumor CRC proportion barplots
-  # par(mar=c(4,0.1,0.25,0.25),mgp=c(0,0.2,0),xaxs="i",yaxs="i")
-  # barplot(t(propObs[,1:4]),horiz=T,las=2,cex.axis=0.9,cex.lab=0.9,cex.names=0.8,col=c("#006837","#40004B","#31a354","#78c679"),border=NA,yaxt="n",xaxt="n")
-  # axis(side=1, at=c(0,50,100), labels=c(0,50,100), cex.axis=0.9, tick=F,las=2)
-  # axis(side=3, at=50, labels="Proportion(%)", cex.axis=0.8, line= -0.3, tick=F)
-  # box(col="black")
 
   # crcTF frac observed modules
   par(mar=c(4,0.25,0.25,0.25),mgp=c(0,0.2,0))
@@ -557,13 +555,6 @@ layout(rbind(
   box(col="black")
   axis(side=1, at=0, labels="TF activity", cex.axis=0.7, tick=F,las=2)
 
-  # # Cell line CRC proportion barplots
-  # par(mar=c(4,0.25,0.25,0.1),mgp=c(0,0.2,0),xaxs="i",yaxs="i")
-  # barplot(t(propObs[,5:ncol(propObs)]),horiz=T,las=2,cex.axis=0.9,cex.lab=0.9,cex.names=0.8,col=c("#006837","#40004B","#31a354"),border=NA,yaxt="n",xaxt="n")
-  # axis(side=1, at=c(0,50,100), labels=c(0,50,100), cex.axis=0.9, tick=F,las=2)
-  # axis(side=3, at=50, labels="Proportion(%)", cex.axis=0.8, line= -0.3, tick=F)
-  # box(col="black")
-
   # Cell CRC oncoprints
   par(mar=c(4,0.25,0.25,2.5),mgp=c(0,0.2,0),xaxs="i",yaxs="i")
   image(t(tmpCRCcell),col=c("#f0f0f0","black"),xaxt="n",yaxt="n")
@@ -573,40 +564,27 @@ layout(rbind(
   abline(v=seq(0,1,length.out=ncol(tmpCRCcell))[c(sigBordersCell[1], sum(sigBordersCell[1:2]))]+0.02,lwd=1)
   #axis(side=3, at=0.5, labels="CRC frequency (Cells)", cex.axis=1, tick=F)
 
-  # #Internal KD analysis
-  # par(mar=c(2.9,8,1,8),mgp=c(0,0.2,0))
-  # col = rev(colorRampPalette(brewer.pal(9,"YlOrRd"))(100))
-  # image(as.matrix(kd.NB.fc), col=col, xaxt="n", yaxt="n")
-  # grid(col="white",nx=nrow(kd.NB.fc), ny=0, lty=1,lwd=1)
-  # box(col="black")
-  # axis(side=2, at=0, labels=paste("KD","validation",sep="\n"), cex.axis=0.8, tick=F,las=2)
-  # valMes = seq(0,1,length.out=nrow(kd.NB.fc))[which(kd.NB.fc$log2FC < 0)]
-  # valNonMes = seq(0,1,length.out=nrow(kd.NB.fc))[which(kd.NB.fc$log2FC > 0)]
-  # axis(side=1, at=valMes, labels=rownames(kd.NB.fc)[which(kd.NB.fc$log2FC < 0)], cex.axis=0.75, tick=F,las=2,col.axis="#40004B")
-  # axis(side=1, at=valNonMes, labels=rownames(kd.NB.fc)[which(kd.NB.fc$log2FC > 0)], cex.axis=0.75, tick=F,las=2,col.axis="#006837")
-  # rm(valMes,valNonMes)
-  # 
-  # ## Legends for KD sensitivty
-  # par(mar=c(1.5,4.5,2.5,17.5),mgp=c(1.5,0.5,0))
-  # key = sort(runif(100, min = min(kd.NB.fc, na.rm=T), max = max(kd.NB.fc,na.rm=T)),decreasing = T)
-  # image(as.matrix(key), col=colorRampPalette(brewer.pal(9,"YlOrRd"))(100), xaxt="n", yaxt="n");box()
-  # title("Cell sensitivity", line=0.3, cex.main=1)
-  # axis(side=1,at=c(0,.5,1),labels=rev(round(key[c(1,length(key)/2,length(key))])))
-  # axis(side=2,at=0,labels=paste("High Mes","cell death",sep="\n"),tick=F,las=1)
-  # axis(side=4,at=0,labels=paste("High NonMes","cell death",sep="\n"),tick=F,las=1)
-  # rm(key)
-
-  # Signature legend
+  # Annotation legened 1
   par(mar=c(0,1,1,0),xaxs="i",yaxs="i", xpd=F)
-  plot.new(); legend("left", legend=c("MYCN-Amp","Mesenchymal","LR-MYCN-nonAmp","HR-MYCN-nonAmp"), bty="n", fill=c("#006837","#40004B","#78c679", "#31a354"),
-  x.intersp=0.3, cex=0.9, border = NA)
-
+  plot.new()
+  legend("left", title = "Signature", legend=c("MES","MYCN","MNA-HR","MNA-LR"), bty="n", cex=0.9,
+         fill=c("#40004B", "#006837", "#31a354", "#78c679"), x.intersp=0.3, border = NA)
+  
+  legend("top", title = "MYCN", legend=c("Amp","nonAmp"), bty="n", cex=0.9,
+         fill=c("black", "grey"), x.intersp=0.3, border = NA)
+  
+  legend("bottom", title = "Relapse", legend=c("Yes","No"), bty="n", cex=0.9,
+         fill=c("black", "grey"), x.intersp=0.3, border = NA)
+  
+  legend("right", title = "Stage", legend=c("4","1-3;4S"), bty="n", cex=0.9,
+         fill=c("black", "grey"), x.intersp=0.3, border = NA)
+  
   ## Legends for TF activity
-  par(mar=c(1.5,9,2.5,3.8),mgp=c(1.5,0.5,0),xpd=F)
+  par(mar=c(1.7,9,2.5,3.8),mgp=c(1.5,0.5,0),xpd=F)
   key = sort(runif(100, min= min(selTF.Mes,na.rm=T), max=max(selTF.Mes, na.rm=T)),decreasing = T)
   image(as.matrix(key), col= colorRampPalette(brewer.pal(11,"PRGn"))(100), xaxt="n", yaxt="n");box()
-  title("TF activity", line=0.3, cex.main=1)
-  axis(side=1,at=c(0,.5,1),labels=rev(round(key[c(1,length(key)/2,length(key))])))
-  axis(side=4,at=0,labels=paste("High in","MES",sep="\n"),tick=F,las=1)
-  axis(side=2,at=0,labels=paste("High in","ADRN",sep="\n"),tick=F,las=1)
+  title("MES TF activity", line=0.3, cex.main=0.6)
+  #axis(side=1,at=c(0,.5,1),labels=rev(round(key[c(1,length(key)/2,length(key))])), cex.axis=0.6)
+  axis(side=4,at=0,labels=paste("High in","MES",sep="\n"),tick=F,las=1, cex.axis=0.6)
+  axis(side=2,at=0,labels=paste("High in","ADRN",sep="\n"),tick=F,las=1, cex.axis=0.6)
 dev.off()  
