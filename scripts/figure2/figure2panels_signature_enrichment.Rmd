@@ -9,16 +9,16 @@ output:
     toc_depth: 4
     number_sections: false
 params:
+  
   SE: "analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS"
-  terms: "results/suppltables/GO_BP_enrichment_SE_target_genes.txt"
+  terms: "results/supplables/GO_BP_enrichment_SE_target_genes.txt"
   wChIP_tumor : "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Wmatrix_Wnorm.RDS"
   wChIP_cells : "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K3_Wmatrix_Wnorm.RDS"
   wRNAs_tumor : "analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Wmatrix_Wnorm.RDS"
   wRNAv_tumor : "results/figure2/figure2panels_signature_enrichment.pdf"
   figure : "results/figure2/figure2panels_signature_enrichment.pdf"
   sup_figure : "results/sup_figure2/sup_figure2_MostVariable_signature_enrichment.pdf"
-  targetannot_df : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/analysis/tumor/SE_annot/tumor_consensusSE_target_annotation_df.RDS"
-  
+  targetannot_df : "analysis/tumor/SE_annot/tumor_consensusSE_target_annotation_df.RDS"
 editor_options: 
   chunk_output_type: console
 ---
@@ -48,7 +48,7 @@ library(matrixStats)
 ```{r dataloading}
 
 # params <- list(SE = "analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS",
-#                terms = "results/suppltables/GO_BP_enrichment_SE_target_genes.txt",
+#                terms = "results/supptables/GO_BP_enrichment_SE_target_genes.txt",
 #                wChIP_cells = "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K3_Wmatrix_Wnorm.RDS",
 #                wChIP_tumor = "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Wmatrix_Wnorm.RDS",
 #                wRNAs_tumor = "analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Wmatrix_Wnorm.RDS",

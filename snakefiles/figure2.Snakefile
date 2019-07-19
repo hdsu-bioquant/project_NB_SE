@@ -139,7 +139,7 @@ optK_tr = str(config['NMFparams']['tumor']['optimalK']['rnaseq'])
 rule fig2panels_signature_enrichment:
     input:
         SE_target   = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'),
-        terms       = join(DATAPATH, 'results/suppltables/GO_BP_enrichment_SE_target_genes.txt'),
+        terms       = join(DATAPATH, 'results/supptables/GO_BP_enrichment_SE_target_genes.txt'),
         wChIP_tumor = join(DATAPATH, ('analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K' + optK_tc + '_Wmatrix_Wnorm.RDS')),
         wChIP_cells = join(DATAPATH, ('analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K' + optK_cc + '_Wmatrix_Wnorm.RDS')),
         wRNAs_tumor = join(DATAPATH, ('analysis/tumor/rnaseq/NMF/tumor_consensusSE_K' + optK_tr + '_Wmatrix_Wnorm.RDS')),

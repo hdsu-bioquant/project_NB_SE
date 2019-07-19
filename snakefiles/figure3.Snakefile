@@ -163,12 +163,13 @@ rule fig3_IGV:
 rule fig3_CRCplots:
     input:
         KDdata   = join(DATAPATH, 'analysis/cells/crcGIEMSAkd/nbKDinhouse.RDS'),
-        TFact    = join(DATAPATH, 'analysis/tumor/VIPER/'),
+        network  = join(DATAPATH, 'analysis/tumor/VIPER/networkViper.txt'),
         tumorNMF = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS'),
         cellNMF  = join(DATAPATH, 'analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K3_Hmatrix_hnorm.RDS'),
         tumorCRC = join(DATAPATH, 'data/tumor/chipseq/H3K27ac/CRC/'),
         cellCRC  = join(DATAPATH, 'data/cells/chipseq/H3K27ac/CRC/')
     output:
+        crcList   = join(DATAPATH, 'results/supptables/crcTF_fractionObserved.txt'),
         tabSupp_1 = join(DATAPATH, 'results/supptables/TFactivity_across_all_signatures_ZnormPerSig.txt'),
         tabSupp_2 = join(DATAPATH, 'results/supptables/crcTF_modules.txt'),
 
@@ -180,12 +181,13 @@ rule fig3_CRCplots:
         figMain_3 = join(DATAPATH, 'results/figure3/crcTF_correlation_TFactivity_vs_KD.pdf'),
         figMain_4 = join(DATAPATH, 'results/figure3/crcTF_oncoprints_SignatureSpecific.pdf')
     params:
+        TFact    = join(DATAPATH, 'analysis/tumor/VIPER/'),
         script  = 'scripts/figure3/figure3_CRCplots.R',
         outpath = join(DATAPATH, 'results/')
     conda: '../envs/R3.5.yaml'
     shell:
         """
-        Rscript {params.script} {input.KDdata} {input.TFact} {input.tumorNMF} \
+        Rscript {params.script} {input.KDdata} {params.TFact} {input.tumorNMF} \
                 {input.cellNMF} {input.tumorCRC} {input.cellCRC} {params.outpath}
         """
 

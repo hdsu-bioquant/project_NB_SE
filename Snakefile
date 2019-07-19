@@ -204,7 +204,8 @@ rule viperTF:
         NMFexpo = join(DATAPATH, 'analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS')
     output:
         network  = join(DATAPATH, 'analysis/tumor/VIPER/networkViper.txt'),
-        viperout = join(DATAPATH, 'analysis/tumor/VIPER/NBpersampleTFactivity.RDS')
+        viperout = join(DATAPATH, 'analysis/tumor/VIPER/NBpersampleTFactivity.RDS'),
+        MES_activity   = join(DATAPATH, 'analysis/tumor/VIPER/MES_TFactivity.RDS'),
     params:
         script = 'scripts/analysis/07_viperTFactivity.R',
         outdir = join(DATAPATH, 'analysis/tumor/VIPER')
@@ -747,7 +748,7 @@ rule DeepMapDownload:
 
 rule RAS_Download:
     output:
-        rasrds = join(DATAPATH, 'publicGeneSigs/ras_target_genes.RDS')
+        rasrds = join(DATAPATH, 'db/publicGeneSigs/ras_target_genes.RDS')
     params:
         urlras = 'https://static-content.springer.com/esm/art%3A10.1186%2F1755-8794-3-26/MediaObjects/12920_2010_161_MOESM3_ESM.XLS',
         script  = 'scripts/aux/download_RAS_signature.R',
