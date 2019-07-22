@@ -23,8 +23,7 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = F)
-knitr::opts_chunk$set(cache = T)
+knitr::opts_chunk$set(echo = TRUE)
 ```
 
 # Differential interaction analysis between enhacner and super enhancer elements as captured with HiChIP. Datat from cell lines SK-N-AS and CLB-GA pulled down on H3K27ac.
@@ -145,7 +144,7 @@ analyseInteractions <- function(regions, setA, setB, n, m){
 
 
 Do diffbind analysis using bam files and MACS2 called peaks of H3K27ac ChIP-seq.
-```{r DIFFBIND, message=FALSE, warning=FALSE, cache=T}
+```{r DIFFBIND, message=FALSE, warning=FALSE, cache=FALSE}
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##                     assign samples to MES signature                        ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
@@ -174,7 +173,7 @@ tumor_mes
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 tumor_bam <- list.files(file.path(params$work_dir, "data/tumor/chipseq/H3K27ac/bam"), 
                         pattern = "_H3K27ac_rmdup_sorted_merged.bam", full.names = TRUE)
-
+message(tumor_bam)
 cells_bam <- list.files(file.path(params$work_dir, "data/cells/chipseq/H3K27ac/bam"), 
                         pattern = "_H3K27ac_rmdup_sorted_merged.bam", full.names = TRUE)
 
@@ -263,7 +262,7 @@ enhancer <- c(Emc, Enm, Enone)
 
 Interactions of HiChIP were called using Mango. After aligning the fastq files using Hi-C-pro , mango steps 4 and 5 were used to call interactions witha FDR treshold of 0.1.
 
-```{r Interactions, cache = T}
+```{r Interactions, cache = FALSE}
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##                    assign SE to MES signature                              ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##

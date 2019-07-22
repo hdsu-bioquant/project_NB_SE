@@ -236,7 +236,7 @@ rule runAracneAP:
         network = join(DATAPATH, 'analysis/tumor/ARACNe/network.txt')
     params:
         outdir          = join(DATAPATH, 'analysis/tumor/ARACNe/'),
-        aracneap        = join(DATAPATH, 'src/softwares/Aracne.jar'),
+        aracneap        = 'bin/Aracne.jar',
         miPval          = config['ARACNe']['mi_pval_cutoff'],
         consolidatePval = config['ARACNe']['consolidation_pval_cutoff'],
         cores           = config['ARACNe']['cpus']
@@ -627,7 +627,7 @@ rule SE_bigwigaverageoverbed:
         bw             = join(DATAPATH, 'data/{type}/chipseq/H3K27ac/bw/{sample}_H3K27ac.bw'), 
         consensusSE    = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed')
     output:
-        bw_over_bed    = temp(join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{sample}_H3K27ac_bigWigAverageOverBed.txt'))
+        bw_over_bed    = join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{sample}_H3K27ac_bigWigAverageOverBed.txt')
     conda:
         'envs/generaltools.yaml'
     shell:

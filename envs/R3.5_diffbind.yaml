@@ -12,5 +12,6 @@ dependencies:
  - bioconductor-txdb.hsapiens.ucsc.hg19.knowngene
  - r-cowplot
  - r-reshape2
+ - r-codetools
  
    

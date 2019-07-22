@@ -30,6 +30,12 @@ dependencies:
  - bioconductor-ggbio
  - bioconductor-yapsa
  - bioconductor-deseq2
+ - bioconductor-viper
+ - r-pheatmap
+ - r-r.utils
+ - bioconductor-genomicinteractions
+ - r-amap
+ - bioconductor-diffbind
  - python=3.6.7
  - numpy
  - pip

@@ -31,6 +31,10 @@ path_TADs
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 devtools::install_github('andquintero/bratwurst', ref='dev_hdsu', upgrade = "never")
 devtools::install_github("thomasp85/patchwork", upgrade = "never")
+devtools::install_github("ricardo-bion/ggradar", upgrade = "never")
+install.packages("ggpubr")
+install.packages("ggbeeswarm")
+install.packages("enrichR")
 
 #BiocManager::install("viper")
 
@@ -51,7 +55,7 @@ devtools::install_github("thomasp85/patchwork", upgrade = "never")
 #BiocManager::install("GenomicInteractions", version = "3.8")
 # devtools::install_github("cran/amap", ref = "40fe5e59fa3d84790f568438b752356d52ad15e0", upgrade = "never")
 # BiocManager::install("DiffBind")
-#devtools::install_github("ricardo-bion/ggradar", upgrade = "never")
+
 
 library(EnsDb.Hsapiens.v75)
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
