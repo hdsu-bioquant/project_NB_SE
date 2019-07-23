@@ -44,7 +44,7 @@ rule fig4_primary_vs_relapse:
         script   = 'scripts/figure4/diffAnalysisPrimaryVSRelapse.R',
         outpath1 = join(DATAPATH, "analysis/"),
         outpath2 = join(DATAPATH, "results/")
-    conda: '../envs/R3.5.yaml'
+    conda: '../envs/R3.5_2.yaml'
     shell:
         """
          Rscript {params.script} {input.NBexprs} {input.rasSigr} {input.NBreg} \

@@ -6,9 +6,9 @@ library(ggplot2)
 library(ggrepel)
 library(ggbeeswarm)
 
-#path = as.character(args[1])
+path = as.character(args[1])
 
-path = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/"
+
 
 # Super enhancers target genes
 se = readRDS(paste0(path, "analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS"))
@@ -75,7 +75,7 @@ GOenrich$Term = sapply(strsplit(GOenrich$Term, " (", fixed=TRUE), function(x)x[1
 GOenrich$Value = round(-log10(GOenrich$Adjusted.P.value), 4)
 
 # Writing the results
-write.table(GOenrich[,1:6], paste0(path,"results/suppltables/GO_BP_enrichment_SE_target_genes.txt"), row.names=F, quote=F, sep="\t")
+write.table(GOenrich[,1:6], paste0(path,"results/supptables/GO_BP_enrichment_SE_target_genes.txt"), row.names=F, quote=F, sep="\t")
 
 # Plotting the enrichment analysis results
 toShow = rep("No",nrow(GOenrich))
@@ -90,12 +90,13 @@ toShow[GOenrich$Term %in% c("positive regulation of epithelial cell migration",
                        )] = "Yes"
 
 p = ggplot(GOenrich, aes(x = Class, y = Rank, size = Value, color = Class)) + theme_void(base_size = 9) + scale_y_reverse() +
-    labs(size = expression(paste(-log[10],"(FDR)")), colour = "Meta-genesets") +
-    geom_quasirandom(shape=21) + 
-    geom_text_repel(data=subset(GOenrich, toShow == "Yes"), nudge_y = 0.5, aes(label=Term), size=2.5) + 
-    guides(colour = guide_legend(nrow = 3, ncol=2, byrow = F, title.position = "top"), 
-           size = guide_legend(nrow = 3, ncol=1, byrow = F, title.position = "top")) +
-    theme(legend.position = "bottom") + scale_colour_brewer(palette = "Set1") 
+  labs(size = expression(paste(-log[10],"(FDR)")), colour = "Meta-genesets") +
+  geom_quasirandom(shape=21) + 
+  geom_text_repel(data=subset(GOenrich, toShow == "Yes"), nudge_y = 0.5, aes(label=Term), size=2.5) + 
+  scale_size_continuous(breaks = c(min(GOenrich$Value), median(GOenrich$Value), max(GOenrich$Value))) +
+  guides(colour = guide_legend(nrow = 3, ncol=2, byrow = F, title.position = "top"), 
+         size = guide_legend(nrow = 3, ncol=1, byrow = F, title.position = "top")) +
+  theme(legend.position = "bottom") + scale_colour_brewer(palette = "Set1") 
 
 ggsave(filename = paste0(path,"results/figure1/GO_BP_enrichment_SE_target_genes.pdf"), 
        plot = p, width=4.2, height=3.5)

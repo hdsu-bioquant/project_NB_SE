@@ -6,5 +6,12 @@ dependencies:
  - r-data.table=1.12.2
  - r-tidyverse
  - r-r.utils
- 
+ - r-readxl
+ - bioconductor-edger
+ - bioconductor-limma
+ - r-gridextra
+ - r-ggrepel
+ - r-statmod
+ - r-writexls
+ - bioconductor-fgsea 
    

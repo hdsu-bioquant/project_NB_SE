@@ -35,6 +35,10 @@ devtools::install_github("ricardo-bion/ggradar", upgrade = "never")
 install.packages("ggpubr")
 install.packages("ggbeeswarm")
 install.packages("enrichR")
+install.packages("WriteXLS")
+install.packages("statmod")
+
+
 
 #BiocManager::install("viper")
 

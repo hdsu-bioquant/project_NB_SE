@@ -532,9 +532,10 @@ rule SE_target_genes:
         TADs           = join(DATAPATH, 'db/TADs/hESC_domains_hg19.RDS'),
         hsapiens_genes = join(DATAPATH, 'db/misc/EnsDb_Hsapiens_v75_genes.RDS')
     output:
-        report    = join(DATAPATH, 'reports/02_SE_target_genes_report.html'),
-        rmd       = temp(join(DATAPATH, 'reports/02_SE_target_genes_report.Rmd')),
-        SE_target = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'),
+        report          = join(DATAPATH, 'reports/02_SE_target_genes_report.html'),
+        rmd             = temp(join(DATAPATH, 'reports/02_SE_target_genes_report.Rmd')),
+        SE_target       = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'),
+        SE_target_df    = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_annotation_df.RDS'),
         tumor_exprs_fil = join(DATAPATH, 'analysis/tumor/rnaseq/exprs/tumor_RNAseq_TPM_Matrix_filt_log.RDS'),
         cells_exprs_fil = join(DATAPATH, 'analysis/cells/rnaseq/exprs/cells_RNAseq_TPM_Matrix_filt_log.RDS')
     params:

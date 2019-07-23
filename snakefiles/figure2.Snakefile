@@ -139,6 +139,7 @@ optK_tr = str(config['NMFparams']['tumor']['optimalK']['rnaseq'])
 rule fig2panels_signature_enrichment:
     input:
         SE_target   = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'),
+        SE_target_df= join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_annotation_df.RDS'),
         terms       = join(DATAPATH, 'results/supptables/GO_BP_enrichment_SE_target_genes.txt'),
         wChIP_tumor = join(DATAPATH, ('analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K' + optK_tc + '_Wmatrix_Wnorm.RDS')),
         wChIP_cells = join(DATAPATH, ('analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K' + optK_cc + '_Wmatrix_Wnorm.RDS')),
@@ -159,14 +160,15 @@ rule fig2panels_signature_enrichment:
 
         Rscript -e "rmarkdown::render( '{output.rmd}', \
                 params = list( \
-                  SE     = '{input.SE_target}', \
-                  terms     = '{input.terms}', \
-                  wChIP_tumor = '{input.wChIP_tumor}', \
-                  wChIP_cells = '{input.wChIP_cells}', \
-                  wRNAs_tumor = '{input.wRNAs_tumor}', \
-                  wRNAv_tumor = '{input.wRNAv_tumor}', \
-                  figure      = '{output.figure}', \
-                  sup_figure      = '{output.sup_figure}' \
+                  SE             = '{input.SE_target}', \
+                  targetannot_df = '{input.SE_target_df}', \
+                  terms          = '{input.terms}', \
+                  wChIP_tumor    = '{input.wChIP_tumor}', \
+                  wChIP_cells    = '{input.wChIP_cells}', \
+                  wRNAs_tumor    = '{input.wRNAs_tumor}', \
+                  wRNAv_tumor    = '{input.wRNAv_tumor}', \
+                  figure         = '{output.figure}', \
+                  sup_figure     = '{output.sup_figure}' \
                 ))"
 
 

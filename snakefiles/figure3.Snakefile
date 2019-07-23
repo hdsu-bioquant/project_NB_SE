@@ -5,10 +5,9 @@
 
 rule compile_figure3:
     input:
-        figure3_CRC1 = join(DATAPATH, 'results/figure3/crcTF_fractionObserved_tumors_cells.pdf'),
-        figure3_CRC2 = join(DATAPATH, 'results/figure3/crcTF_TFactivity_per_Major_class_and_Signature.pdf'),
+        figure3_CRC1 = join(DATAPATH, 'results/figure3/crcTF_fraction_observed_tumor_and cells_signatures_combined.pdf'),
+        figure3_CRC2 = join(DATAPATH, 'results/figure3/crcTF_TF_activity_tumor_and cells_signatures_combined.pdf'),
         figure3_CRC3 = join(DATAPATH, 'results/figure3/crcTF_correlation_TFactivity_vs_KD.pdf'),
-        figure3_CRC4 = join(DATAPATH, 'results/figure3/crcTF_oncoprints_SignatureSpecific.pdf'),
         figure3_CCND11 = join(DATAPATH,"results/figure3/SEtargetGenes_DiffKDprofileNBcellsVsRest.pdf"),
         figure3_CCND12 = join(DATAPATH,"results/figure3/Kelly_SKNA_KDprofile_topHits.pdf"),
         figure3_foot   = join(DATAPATH, 'results/figure3/figure3_MES_vs_ADRN_footprint.pdf'),
@@ -21,7 +20,6 @@ rule compile_figure3:
         echo 'Figure 3 CRC1 {input.figure3_CRC1}' >> {output}
         echo 'Figure 3 CRC2 {input.figure3_CRC2}' >> {output}
         echo 'Figure 3 CRC3 {input.figure3_CRC3}' >> {output}
-        echo 'Figure 3 CRC4 {input.figure3_CRC4}' >> {output}
         echo 'Figure 3 CCND1 1 {input.figure3_CCND11}' >> {output}
         echo 'Figure 3 CCND1 2 {input.figure3_CCND12}' >> {output}
         echo 'Figure 3 footprint {input.figure3_foot}' >> {output}
@@ -167,19 +165,23 @@ rule fig3_CRCplots:
         tumorNMF = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS'),
         cellNMF  = join(DATAPATH, 'analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K3_Hmatrix_hnorm.RDS'),
         tumorCRC = join(DATAPATH, 'data/tumor/chipseq/H3K27ac/CRC/'),
-        cellCRC  = join(DATAPATH, 'data/cells/chipseq/H3K27ac/CRC/')
+        cellCRC  = join(DATAPATH, 'data/cells/chipseq/H3K27ac/CRC/'),
+        t_annot  = join(DATAPATH, 'annotation/annotation_tumor.RDS'),
+        c_annot  = join(DATAPATH, 'annotation/annotation_cells.RDS')
     output:
         crcList   = join(DATAPATH, 'results/supptables/crcTF_fractionObserved.txt'),
         tabSupp_1 = join(DATAPATH, 'results/supptables/TFactivity_across_all_signatures_ZnormPerSig.txt'),
         tabSupp_2 = join(DATAPATH, 'results/supptables/crcTF_modules.txt'),
 
         figSupp_1 = join(DATAPATH, 'results/sup_figure3/TFactivity_heatmap_across_all_signatures_ZnormPerSig.pdf'),
-        figSupp_2 = join(DATAPATH, 'results/sup_figure3/crcTF_TFactivity_per_Minor_class_and_Signature.pdf'),
+        figSupp_2 = join(DATAPATH, 'results/sup_figure3/crcTF_TFactivity_per_crcModule_and_Signature_labelled.pdf'),
+        figSupp_3 = join(DATAPATH, 'results/sup_figure3/crcTF_fraction_observed_tumors_only.pdf'),
+        figSupp_4 = join(DATAPATH, 'results/sup_figure3/crcTF_fraction_observed_cells_only.pdf'),
+        figSupp_5 = join(DATAPATH, 'results/sup_figure3/crcTF_oncoprints_Signature_Specific.pdf'),
 
-        figMain_1 = join(DATAPATH, 'results/figure3/crcTF_fractionObserved_tumors_cells.pdf'),
-        figMain_2 = join(DATAPATH, 'results/figure3/crcTF_TFactivity_per_Major_class_and_Signature.pdf'),
-        figMain_3 = join(DATAPATH, 'results/figure3/crcTF_correlation_TFactivity_vs_KD.pdf'),
-        figMain_4 = join(DATAPATH, 'results/figure3/crcTF_oncoprints_SignatureSpecific.pdf')
+        figMain_1 = join(DATAPATH, 'results/figure3/crcTF_fraction_observed_tumor_and cells_signatures_combined.pdf'),
+        figMain_2 = join(DATAPATH, 'results/figure3/crcTF_TF_activity_tumor_and cells_signatures_combined.pdf'),
+        figMain_3 = join(DATAPATH, 'results/figure3/crcTF_correlation_TFactivity_vs_KD.pdf')
     params:
         TFact    = join(DATAPATH, 'analysis/tumor/VIPER/'),
         script  = 'scripts/figure3/figure3_CRCplots.R',
@@ -188,7 +190,9 @@ rule fig3_CRCplots:
     shell:
         """
         Rscript {params.script} {input.KDdata} {params.TFact} {input.tumorNMF} \
-                {input.cellNMF} {input.tumorCRC} {input.cellCRC} {params.outpath}
+                {input.cellNMF} {input.tumorCRC} {input.cellCRC} \
+                {input.t_annot} {input.c_annot} {params.outpath} \
+                
         """
 
 
