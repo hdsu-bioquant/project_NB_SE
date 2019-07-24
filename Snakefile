@@ -56,12 +56,12 @@ DATAPATH = config['main_working_directory']
 #                               Include extra rules                            #
 #==============================================================================#
 # Include snakefiles containing figure rules
+include: "snakefiles/Enhancers.Snakefile"
 include: "snakefiles/figure1.Snakefile"
 include: "snakefiles/figure2.Snakefile"
 include: "snakefiles/figure3.Snakefile"
 include: "snakefiles/figure4.Snakefile"
 include: "snakefiles/sup_figure2.Snakefile"
-
 
         
 #==============================================================================#
@@ -131,6 +131,10 @@ def inputall(wilcards):
         collectfiles.append(join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'))
         collectfiles.append(join(DATAPATH, 'reports/02_SE_target_genes_report.html'))
     if config["phase01_consensusSE"]["consensus_tumor_SE"]:
+        # Enhancers
+        collectfiles.append(join(DATAPATH, 'analysis/tumor_cells/chipseq/H3K27ac/consensusEnhancers/tumor_cells_H3K27ac_noH3K4me3_consensusEnhancers_SignalScore.RDS'))
+        collectfiles.extend(expand(join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusEnhancers/{type}_H3K27ac_noH3K4me3_consensusEnhancers_SignalScore.txt'), zip, type = ["tumor", "cells"]))
+        # Super Enhancers
         collectfiles.append(join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed'))
         collectfiles.append(join(DATAPATH, 'analysis/tumor_cells/chipseq/H3K27ac/consensusSE/tumor_cells_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS'))
         collectfiles.extend(expand(join(DATAPATH, 'analysis/{type}/chipseq/H3K27ac/consensusSE/{type}_H3K27ac_noH3K4me3_consensusSE_SignalScore.txt'), zip, type = ["tumor", "cells"]))
@@ -636,26 +640,6 @@ rule SE_bigwigaverageoverbed:
         # Compute the average score of the SES_substract.bw bigWig over the noH3K4me3 consensus SE
         bigWigAverageOverBed {input.bw} {input.consensusSE} {output.bw_over_bed}
         """
-
-#================================================================================#
-#                     TUMORS CONSENSUS ENHANCERS  FILTER H3K4me3                 #
-#================================================================================#
-### Compute consensus enhancer list from enhancers called by rose for each sample after H3K4me3 filtering
-rule tumors_consensus_enhancers_noH3K4me3:
-    input:
-        enH3K27ac_noH3K4me3 = expand(join(DATAPATH, 'data/tumor/chipseq/H3K27ac/enhancers/{sample}_H3K27ac_ROSE_noH3K4me3_Enhancers.bed'), zip, sample=TUMOR_SAMPLES_CHIP)
-    output:
-        consensusbed        = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusEnhancers/tumor_H3K27ac_noH3K4me3_consensusEnhancers.bed')
-    conda:
-        'envs/generaltools.yaml'
-    shell:
-        """
-        # Merge all SE
-        cat {input.enH3K27ac_noH3K4me3}| sortBed | bedtools merge -c 4,4 -o distinct,count_distinct | 
-        awk '$5 > 1' |sed -e 's/$/\tEnhancer_/' | sed -n 'p;=' |
-        paste -d "" - - | awk 'BEGIN{{FS="\t";OFS="\t"}} {{ t = $4; $4 = $6; $6 = t; print;}} ' > {output.consensusbed}
-        """
-
 
 
 
