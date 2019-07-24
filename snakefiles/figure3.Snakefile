@@ -169,7 +169,7 @@ rule fig3_CRCplots:
         t_annot  = join(DATAPATH, 'annotation/annotation_tumor.RDS'),
         c_annot  = join(DATAPATH, 'annotation/annotation_cells.RDS')
     output:
-        crcList   = join(DATAPATH, 'results/supptables/crcTF_fractionObserved.txt'),
+        crcList   = join(DATAPATH, 'results/supptables/crcTF_fractionObserved_combined.txt'),
         tabSupp_1 = join(DATAPATH, 'results/supptables/TFactivity_across_all_signatures_ZnormPerSig.txt'),
         tabSupp_2 = join(DATAPATH, 'results/supptables/crcTF_modules.txt'),
 

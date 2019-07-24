@@ -17,9 +17,10 @@ se = as.character(unique(se$target_SYMBOL))
 # Enrichment analysis
 enr =  enrichr(se, "GO_Biological_Process_2018")
 GOenrich = enr$GO_Biological_Process_2018[,c(1:4,9)]
-GOenrich = GOenrich[GOenrich$Adjusted.P.value < 0.05,]
-GOenrich$P.value = signif(GOenrich$Adjusted.P.value, digits = 4)
-GOenrich$Adjusted.P.value = signif(GOenrich$Adjusted.P.value, digits = 4)
+GOenrich = GOenrich[GOenrich$Adjusted.P.value <= 0.055,]
+GOenrich$Adjusted.P.value = signif(GOenrich$Adjusted.P.value , 2)
+GOenrich$P.value = signif(GOenrich$Adjusted.P.value, digits = 2)
+
 rm(enr,se)
 
 # Going through the enriched geneset lists and manually assigning metageneset tags
@@ -44,6 +45,8 @@ tmp[grep("motility", GOenrich$Term)]="Cell migration and EMT"
 
 tmp[grep("macromolecule", GOenrich$Term)]="Metabolism"
 tmp[grep("compound", GOenrich$Term)]="Metabolism"
+tmp[grep("sterol", GOenrich$Term)]="Metabolism"
+
 
 tmp[grep("dendrite", GOenrich$Term)]="Neuronal developmental"
 tmp[grep("axon", GOenrich$Term)]="Neuronal developmental"
@@ -91,12 +94,12 @@ toShow[GOenrich$Term %in% c("positive regulation of epithelial cell migration",
 
 p = ggplot(GOenrich, aes(x = Class, y = Rank, size = Value, color = Class)) + theme_void(base_size = 9) + scale_y_reverse() +
   labs(size = expression(paste(-log[10],"(FDR)")), colour = "Meta-genesets") +
-  geom_quasirandom(shape=21) + 
+  geom_quasirandom(shape=19) + 
   geom_text_repel(data=subset(GOenrich, toShow == "Yes"), nudge_y = 0.5, aes(label=Term), size=2.5) + 
   scale_size_continuous(breaks = c(min(GOenrich$Value), median(GOenrich$Value), max(GOenrich$Value))) +
   guides(colour = guide_legend(nrow = 3, ncol=2, byrow = F, title.position = "top"), 
          size = guide_legend(nrow = 3, ncol=1, byrow = F, title.position = "top")) +
   theme(legend.position = "bottom") + scale_colour_brewer(palette = "Set1") 
-
+#p
 ggsave(filename = paste0(path,"results/figure1/GO_BP_enrichment_SE_target_genes.pdf"), 
        plot = p, width=4.2, height=3.5)

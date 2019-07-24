@@ -247,8 +247,8 @@ fracObs = split(data.frame(t(selCRC)),anno$Signature)
 fracObs = round(sapply(fracObs,function(x){colSums(x)/nrow(x)})*100,2)
 
 # Writing the fraction observed tables
-write.table(data.frame(TFs = rownames(fracObs), fracObs, stringsAsFactors = F), 
-            paste0(outpath,"supptables/crcTF_fractionObserved.txt"), quote=F, sep="\t")
+write.table(data.frame(TFs = rownames(fracObs_combo), fracObs_combo, stringsAsFactors = F), 
+            paste0(outpath,"supptables/crcTF_fractionObserved_combined.txt"), quote=F, sep="\t")
 
 WriteXLS(x = list(Sig_combined = data.frame(TFs = rownames(fracObs_combo), fracObs_combo, stringsAsFactors = F),
                   Sig_separate = data.frame(TFs = rownames(fracObs), fracObs, stringsAsFactors = F)),

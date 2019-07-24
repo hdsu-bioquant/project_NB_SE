@@ -33,7 +33,7 @@ rule fig4_primary_vs_relapse:
         NBexprs  = join(DATAPATH, 'data/tumor/rnaseq/exprs/tumor_RNAseq_Counts_Matrix.RDS'),
         rasSigr  = join(DATAPATH, 'db/publicGeneSigs/ras_target_genes.RDS'),
         NBreg    = join(DATAPATH, 'analysis/tumor/ARACNe/network.txt'),
-        crcList  = join(DATAPATH, 'results/supptables/crcTF_fractionObserved.txt'),
+        crcList  = join(DATAPATH, 'results/supptables/crcTF_fractionObserved_combined.txt'),
         mesTFact = join(DATAPATH, "analysis/tumor/VIPER/MES_TFactivity.RDS")
     output:
         diffTab  = join(DATAPATH, 'analysis/tumor/Rel_vs_Pri/RelapseVsPrimary_topDiffExpGenes.txt'),
