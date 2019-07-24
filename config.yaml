@@ -33,15 +33,15 @@
 #     ├── sup_table_4/
 #==============================================================================#
 ### SAMPLE Info - REQUIRED PARAMETERS ####
-tumor_annotation_csv: /icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/annotation/annotation_tumor.csv
-cells_annotation_csv: /icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/annotation/annotation_cells.csv
+tumor_annotation_csv: /icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/annotation/annotation_tumor.csv
+cells_annotation_csv: /icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/annotation/annotation_cells.csv
 #tumor_annotation_csv: /net/data.isilon/ag-cherrmann/hdsu/projects/neuroblastoma/publication_GEO/annotation/annotation_tumors.csv
 #cells_annotation_csv: /net/data.isilon/ag-cherrmann/hdsu/projects/neuroblastoma/publication_GEO/annotation/annotation_cells.csv
 
 
 
 # Paths to data and results
-main_working_directory: /icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/
+main_working_directory: /icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/
 #main_working_directory: /net/data.isilon/ag-cherrmann/hdsu/projects/neuroblastoma/publication_GEO/
 
 

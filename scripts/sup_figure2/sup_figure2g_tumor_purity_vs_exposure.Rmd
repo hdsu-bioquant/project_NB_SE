@@ -103,7 +103,8 @@ gg_SEsig <- as.data.frame(t(assign_signature(h_SEsig))) %>%
   geom_point(aes(color = IsSignature)) +
   geom_vline(xintercept = 0.5) +
   facet_wrap(.~Signature,  nrow = 1, scales = "free") +
-  stat_cor(method = "pearson") +
+  stat_cor(aes(label = paste(..r.label..))) +
+  #stat_cor(method = "pearson") +
   tm +
   theme(legend.title = element_blank())
 
@@ -128,7 +129,8 @@ gg_exprs <- as.data.frame(t(assign_signature(h_exprs))) %>%
   geom_point(aes(color = IsSignature)) +
   geom_vline(xintercept = 0.5) +
   facet_wrap(.~Signature,  nrow = 1, scales = "free") +
-  stat_cor(method = "pearson") +
+  stat_cor(aes(label = paste(..r.label..))) +
+  #stat_cor(method = "pearson") +
   tm +
   theme(legend.title = element_blank())
 

@@ -9,8 +9,8 @@ output:
     toc_depth: 4
     number_sections: false
 params:
-  nmf_tumor     : "path/to/data"
-  nmf_cells     : "path/to/data"
+  nmf_tumor     : "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_SignalScore_normNMF_W.RDS"
+  nmf_cells     : "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_SignalScore_normNMF_W.RDS"
   figure2d_tumor: "results/figures/figure2/..."
   figure2d_cells: "results/figures/figure2/..."
 editor_options: 
@@ -38,10 +38,10 @@ Read NMF object
   
 ```{r dataloading}
 
-# params <- list(annot_tumor = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/annotation/annotation_tumor.RDS",
-#                annot_cells = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/annotation/annotation_cells.RDS",
-#                nmf_tumor   = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_SignalScore_normNMF_W.RDS",
-#                nmf_cells   = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_SignalScore_normNMF_W.RDS")
+# params <- list(annot_tumor = "annotation/annotation_tumor.RDS",
+#                annot_cells = "annotation/annotation_cells.RDS",
+#                nmf_tumor   = "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_SignalScore_normNMF_W.RDS",
+#                nmf_cells   = "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_SignalScore_normNMF_W.RDS")
 
 
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
@@ -80,10 +80,10 @@ col.mag <- magma(5, begin = 0.1)
 
 
 col_vector=c(col.inf[1], col.vir[1], 
-             col.vir[2], col.pla[1], col.inf[2], 
-             col.pla[2], col.pla[2], col.inf[3], col.vir[3], 
-             col.inf[4], col.pla[3], col.vir[4], col.mag[2], col.pla[3],
-             col.pla[5], col.inf[5], col.mag[3], col.inf[5], col.pla[5], col.vir[5])
+             col.pla[1], col.vir[2], col.inf[2], 
+             col.pla[2], col.inf[3], col.vir[3], col.pla[2], 
+             col.pla[3], col.pla[3], col.mag[2], col.vir[4], col.inf[4],
+             col.inf[5], col.vir[5], col.pla[5], col.mag[3], col.inf[5], col.pla[5])
 
 
 
@@ -122,11 +122,11 @@ col.pla <- plasma(5, begin = 0.3)
 col.mag <- magma(5, begin = 0.1)
 
 
-col_vector=c(col.inf[1], col.pla[1], 
-             col.vir[2], col.inf[2], col.pla[2], 
-             col.mag[1], col.inf[3], col.vir[3], col.pla[3], 
-             col.pla[4], col.vir[4], col.pla[4], col.inf[4], col.mag[2], 
-             col.pla[5], col.vir[5], col.pla[5], col.mag[3], col.inf[5], col.mag[3])
+col_vector=c(col.pla[1], col.inf[1], 
+             col.vir[2], col.pla[2], col.inf[2], 
+             col.inf[3], col.pla[3], col.vir[3], col.mag[1], 
+             col.pla[4], col.mag[2], col.pla[4], col.vir[4], col.inf[4], 
+             col.pla[5], col.vir[5], col.mag[3], col.mag[3], col.inf[5], col.pla[5])
 
 
 
