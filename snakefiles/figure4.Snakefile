@@ -37,6 +37,7 @@ rule fig4_primary_vs_relapse:
         mesTFact = join(DATAPATH, "analysis/tumor/VIPER/MES_TFactivity.RDS")
     output:
         diffTab  = join(DATAPATH, 'analysis/tumor/Rel_vs_Pri/RelapseVsPrimary_topDiffExpGenes.txt'),
+        enrich   = join(DATAPATH, 'analysis/tumor/Rel_vs_Pri/RelapseVsPrimary_EnrichTFregulons.txt'),
         mainFig1 = join(DATAPATH, 'results/figure4/JunFos_Ras_enrichment_barcodeplot_relapsevsPrimary.pdf'),
         mainFig2 = join(DATAPATH, 'results/figure4/crcTF_in_relapse_pri_enriched.pdf'),
         suppFig1 = join(DATAPATH, 'results/sup_figure4/all_TF_in_relapse_pri_enriched.pdf')
@@ -58,7 +59,7 @@ rule fig4_primary_vs_relapse:
 rule fig4_RAS_JUN_FOS:
     input:
         NBexprs = join(DATAPATH, 'analysis/tumor/rnaseq/exprs/tumor_RNAseq_TPM_Matrix_filt_log.RDS'),
-        tumoNMF = join(DATAPATH, 'analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS'),
+        tumoNMF = join(DATAPATH, 'analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS'),
         rasSigr = join(DATAPATH, 'db/publicGeneSigs/ras_target_genes.RDS'),
         NBreg   = join(DATAPATH, 'analysis/tumor/ARACNe/network.txt'),
         NBmut   = join(DATAPATH, 'annotation/NB_mutation_matrix.RDS')

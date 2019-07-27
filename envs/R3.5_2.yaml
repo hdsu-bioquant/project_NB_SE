@@ -13,5 +13,7 @@ dependencies:
  - r-ggrepel
  - r-statmod
  - r-writexls
+ - r-writexl
+ - bioconductor-genomicranges
  - bioconductor-fgsea 
    

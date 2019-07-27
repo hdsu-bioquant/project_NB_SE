@@ -76,8 +76,8 @@ optK_tc = str(config['NMFparams']['tumor']['optimalK']['chipseq'])
 optK_tr = str(config['NMFparams']['tumor']['optimalK']['rnaseq'])
 rule sup_figure2g_tumor_purity_vs_exposure:
     input:
-        h_SEsig = join(DATAPATH, ('analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K' + optK_tc + '_Hmatrix_wnorm.RDS')),
-        h_exprs = join(DATAPATH, ('analysis/tumor/rnaseq/NMF/tumor_consensusSE_K' + optK_tr + '_Hmatrix_wnorm.RDS')),
+        h_SEsig = join(DATAPATH, ('analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K' + optK_tc + '_Hmatrix_hnorm.RDS')),
+        h_exprs = join(DATAPATH, ('analysis/tumor/rnaseq/NMF/tumor_consensusSE_K' + optK_tr + '_Hmatrix_hnorm.RDS')),
         purity  =  join(DATAPATH, 'annotation/purity_tumor.csv')
     output:
         report = join(DATAPATH, 'reports/sup_figure2g_tumor_purity_vs_exposure.html'),

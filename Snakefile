@@ -108,6 +108,7 @@ def inputall(wilcards):
         collectfiles.append(join(DATAPATH, 'results/figure3/figure3_paths.txt'))
     if config["compileFigs"]["figure4"]:
         collectfiles.append(join(DATAPATH, 'results/figure4/figure4_paths.txt'))
+        collectfiles.append(join(DATAPATH, 'reports/make_supptables.html'))
     if config["compileFigs"]["sup_figure2"]:
         collectfiles.append(join(DATAPATH, 'results/sup_figure2/sup_figure2_paths.txt'))
     # ARACNe
@@ -160,6 +161,79 @@ rule placeh:
     shell:
         """
         Rscript {params.script} {output.outtmp} {input.consensusSE} 
+        """
+
+#================================================================================#
+#                         Compile supplementary tables                           #
+#================================================================================#
+rule supp_tables:
+    input:
+        annot_t   = join(DATAPATH, 'annotation/annotation_tumor.RDS'),
+        annot_c   = join(DATAPATH, 'annotation/annotation_cells.RDS'),
+        purity_t  = join(DATAPATH, 'annotation/purity_tumor.csv'),
+        SEtarget  = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'),
+        go_enrich = join(DATAPATH, 'results/supptables/GO_BP_enrichment_SE_target_genes.txt'),
+        
+        Hchip_t   = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS'),
+        Hchip_c   = join(DATAPATH, 'analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K3_Hmatrix_wnorm.RDS'),
+        Hchip_tc  = join(DATAPATH, 'analysis/tumor_cells/chipseq/H3K27ac/NMF/tumor_cells_consensusSE_K5_Hmatrix_wnorm.RDS'),
+        Hrna_tt   = join(DATAPATH, 'analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS'),
+        Hrna_tmv  = join(DATAPATH, 'analysis/tumor/rnaseq/NMF_mostVariable/tumor_mostVariable_K4_Hmatrix_wnorm.RDS'),
+        
+        NBregulome = join(DATAPATH, 'analysis/tumor/ARACNe/network.txt'),
+        TFactivity = join(DATAPATH, 'results/supptables/TFactivity_across_all_signatures_ZnormPerSig.txt'),
+        CRCfracobs = join(DATAPATH, 'results/supptables/crcTF_fractionObserved.xls'),
+        CRCmodules = join(DATAPATH, 'results/supptables/crcTF_modules.txt'),
+        EnrichTF   = join(DATAPATH, 'analysis/tumor/Rel_vs_Pri/RelapseVsPrimary_EnrichTFregulons.txt')
+    output:
+        report  = join(DATAPATH, 'reports/make_supptables.html'),
+        rmd     = temp(join(DATAPATH, 'reports/make_supptables.Rmd')),
+        
+        S1t = join(DATAPATH, 'results/supptables/S1_annotation.xlsx'),
+        S2t = join(DATAPATH, 'results/supptables/S2_SE_regions_and_target.xlsx'),
+        S3t = join(DATAPATH, 'results/supptables/S3_SE_target_genes_GO_BP_enrichment.xlsx'),
+        S4t = join(DATAPATH, 'results/supptables/S4_NMF_H_Matrices.xlsx'),
+        S5t = join(DATAPATH, 'results/supptables/S5_NB_regulome.xlsx'),
+        S6t = join(DATAPATH, 'results/supptables/S6_TFactivity_across_all_signatures.xlsx'),
+        S7t = join(DATAPATH, 'results/supptables/S7_crcTF_fractionObserved.xlsx'),
+        S8t = join(DATAPATH, 'results/supptables/S8_RelapseVsPrimary_EnrichTFregulons.xlsx')
+    params:
+        script   = 'scripts/supptables/make_supptables.Rmd'
+    conda: 'envs/R3.5_2.yaml'
+    shell:
+        """
+    
+        cp {params.script} {output.rmd}
+
+        Rscript -e "rmarkdown::render( '{output.rmd}', \
+                params = list( \
+                  annot_t    = '{input.annot_t}', \
+                  annot_c    = '{input.annot_c}', \
+                  purity_t   = '{input.purity_t}', \
+                  SE         = '{input.SEtarget}', \
+                  go_enrich  = '{input.go_enrich}', \
+                  Hchip_t    = '{input.Hchip_t}', \
+                  Hchip_c    = '{input.Hchip_c}', \
+                  Hchip_tc   = '{input.Hchip_tc}', \
+                  Hrna_tt    = '{input.Hrna_tt}', \
+                  Hrna_tmv   = '{input.Hrna_tmv}', \
+                  NBregulome = '{input.NBregulome}', \
+                  TFactivity = '{input.TFactivity}', \
+                  CRCfracobs = '{input.CRCfracobs}', \
+                  CRCmodules = '{input.CRCmodules}', \
+                  EnrichTF   = '{input.EnrichTF}', \
+                  S1  = '{output.S1t}', \
+                  S2  = '{output.S2t}', \
+                  S3  = '{output.S3t}', \
+                  S4  = '{output.S4t}', \
+                  S5  = '{output.S5t}', \
+                  S6  = '{output.S6t}', \
+                  S7  = '{output.S7t}', \
+                  S8  = '{output.S8t}'\
+                ))"
+
+        
+        
         """
 
 #================================================================================#

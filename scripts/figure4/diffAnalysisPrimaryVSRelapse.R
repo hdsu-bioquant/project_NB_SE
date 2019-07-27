@@ -149,6 +149,10 @@ cam$Direction[cam$Direction == "Up"] = "High in Relapse"
 cam$Direction[cam$Direction == "Down"] = "High in Primary"
 rm(idx)
 
+# Write the enrichment analysis results
+write.table(cam, paste0(outpath1, "tumor/Rel_vs_Pri/RelapseVsPrimary_EnrichTFregulons.txt"),
+            row.names = F, quote = F, sep="\t")
+
 # Combine Camera results, Mes activity and CRC TF status
 resAllTF = merge(cam, mesTFact)
 

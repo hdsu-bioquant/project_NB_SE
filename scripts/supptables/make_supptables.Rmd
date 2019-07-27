@@ -1,0 +1,202 @@
+---
+title: "Supp. tables"
+author: "Health Data Science Unit"
+date: "`r date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    number_sections: false
+params:
+  annot_t    : "annotation/annotation_tumor.RDS"
+  annot_c    : "annotation/annotation_cells.RDS"
+  purity_t   : "annotation/purity_tumor.csv"
+  SE         : "analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS"
+  go_enrich  : "results/supptables/GO_BP_enrichment_SE_target_genes.txt"
+  Hchip_t    : "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS"
+  Hchip_c    : "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K3_Hmatrix_wnorm.RDS"
+  Hchip_tc   : "analysis/tumor_cells/chipseq/H3K27ac/NMF/tumor_cells_consensusSE_K5_Hmatrix_wnorm.RDS"
+  Hrna_tt    : "analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS"
+  Hrna_tmv   : "analysis/tumor/rnaseq/NMF_mostVariable/tumor_mostVariable_K4_Hmatrix_wnorm.RDS"
+  NBregulome : "analysis/tumor/ARACNe/network.txt"
+  TFactivity : "results/supptables/TFactivity_across_all_signatures_ZnormPerSig.txt"
+  CRCfracobs : "results/supptables/crcTF_fractionObserved.xls"
+  CRCmodules : "results/supptables/crcTF_modules.txt"
+  EnrichTF   : "analysis/tumor/Rel_vs_Pri/RelapseVsPrimary_EnrichTFregulons.txt"
+  S1 : "results/supptables/S1_annotation.xlsx"
+  S2 : "results/supptables/S2_SE_regions_and_target.xlsx"
+  S3 : "results/supptables/S3_SE_target_genes_GO_BP_enrichment.xlsx"
+  S4 : "results/supptables/S4_NMF_H_Matrices.xlsx"
+  S5 : "results/supptables/S5_NB_regulome.xlsx"
+  S6 : "results/supptables/S6_TFactivity_across_all_signatures.xlsx"
+  S7 : "results/supptables/S7_crcTF_fractionObserved.xlsx"
+  S8 : "results/supptables/S8_RelapseVsPrimary_EnrichTFregulons.xlsx"
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+#this chunk sets global options for Rmarkdown
+knitr::opts_chunk$set(echo = TRUE)
+#setting working directory. Should be home directory of the project
+knitr::opts_knit$set(root.dir=params$work_dir)
+options(knitr.table.format="html")
+
+library(GenomicRanges)
+library(writexl)
+library(readxl)
+library(tidyverse)
+library(knitr)
+
+
+```
+
+# Compile supp tables
+
+
+```{r dataloading}
+
+# params <- list(annot_t   = "annotation/annotation_tumor.RDS",
+#                annot_c   = "annotation/annotation_cells.RDS",
+#                purity_t  = "annotation/purity_tumor.csv",
+#                SE        = "analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS",
+#                go_enrich = "results/supptables/GO_BP_enrichment_SE_target_genes.txt",
+# 
+#                Hchip_t   = "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS",
+#                Hchip_c   = "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K3_Hmatrix_wnorm.RDS",
+#                Hchip_tc  = "analysis/tumor_cells/chipseq/H3K27ac/NMF/tumor_cells_consensusSE_K5_Hmatrix_wnorm.RDS",
+#                Hrna_tt   = "analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS",
+#                Hrna_tmv  = "analysis/tumor/rnaseq/NMF_mostVariable/tumor_mostVariable_K4_Hmatrix_wnorm.RDS",
+# 
+#                NBregulome = "analysis/tumor/ARACNe/network.txt",
+#                TFactivity = "results/supptables/TFactivity_across_all_signatures_ZnormPerSig.txt",
+#                CRCfracobs = "results/supptables/crcTF_fractionObserved.xls",
+#                CRCmodules = "results/supptables/crcTF_modules.txt",
+#                EnrichTF   = "analysis/tumor/Rel_vs_Pri/RelapseVsPrimary_EnrichTFregulons.txt",
+# 
+#                S1 = "results/supptables/S1_annotation.xlsx",
+#                S2 = "results/supptables/S2_SE_regions_and_target.xlsx",
+#                S3 = "results/supptables/S3_SE_target_genes_GO_BP_enrichment.xlsx",
+#                S4 = "results/supptables/S4_NMF_H_Matrices.xlsx",
+#                S5 = "results/supptables/S5_NB_regulome.xlsx",
+#                S6 = "results/supptables/S6_TFactivity_across_all_signatures.xlsx",
+#                S7 = "results/supptables/S7_crcTF_fractionObserved.xlsx",
+#                S8 = "results/supptables/S8_RelapseVsPrimary_EnrichTFregulons.xlsx")
+
+# add rownames as frist column
+
+paste_rownames <- function(x, colID){
+  idcol <- data.frame(rownames(x))
+  colnames(idcol) <- colID
+  data.frame(idcol, x)
+}
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                          S1_annotation                                     ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+annot_t <- readRDS(params$annot_t)
+annot_c <- readRDS(params$annot_c)
+purity_t <- read.csv(params$purity_t)
+
+annot_t$Purity <- purity_t$Purity[match(annot_t$ProjectID, purity_t$ProjectID)]
+annot_t$Ploidy <- purity_t$Ploidy[match(annot_t$ProjectID, purity_t$ProjectID)]
+
+
+
+write_xlsx(list(Tumors       = annot_t,
+                `Cell lines` = annot_c), 
+           path = params$S1)
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                    S2_SE_regions_and_target                                ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+SE <- readRDS(params$SE)
+SE <- as.data.frame(SE)
+SE <- paste_rownames(SE, "SE_ID")
+
+write_xlsx(list(`Super Enhancers` = SE), 
+           path = params$S2)
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                S3_SE_target_genes_GO_BP_enrichment                         ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+go_enrich <- read.table(params$go_enrich, sep = "\t", header = TRUE)
+
+write_xlsx(list(`GO BP enrichment` = go_enrich), 
+           path = params$S3)
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                       S4_NMF_H_Matrices                                    ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+Hchip_t  <- readRDS(params$Hchip_t)
+Hchip_c  <- readRDS(params$Hchip_c)
+Hchip_tc <- readRDS(params$Hchip_tc)
+Hrna_tt  <- readRDS(params$Hrna_tt)
+Hrna_tmv <- readRDS(params$Hrna_tmv)
+
+h_list <- list(`Tumor SE H3K27ac` = Hchip_t,
+               `Cell lines SE H3K27ac` = Hchip_c,
+               `Tumor & Cell lines SE H3K27ac` = Hchip_tc,
+               `Tumor SE targets RNAseq` = Hrna_tt,
+               `Tumor RNAseq most variable` = Hrna_tmv)
+
+h_list <- lapply(h_list, as.data.frame)
+h_list <- lapply(h_list, paste_rownames, colID = "SignatureID")
+
+write_xlsx(h_list, 
+           path = params$S4)
+
+
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                       S5_NB_regulome                                       ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+NBregulome  <- read.table(params$NBregulome, header = TRUE)
+
+write_xlsx(list(`NB regulome` = NBregulome), 
+           path = params$S5)
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                 S6_TFactivity_across_all_signatures                        ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+TFactivity  <- read.table(params$TFactivity, header = TRUE)
+
+write_xlsx(list(`TF activity` = TFactivity), 
+           path = params$S6)
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                 S7_crcTF_fractionObserved                                  ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+CRCfracobs <- list(`Sig combined` = read_excel(params$CRCfracobs, sheet = 1),
+                   `Sig separate` = read_excel(params$CRCfracobs, sheet = 2),
+                   modules        = read.table(params$CRCmodules, header = TRUE))
+
+write_xlsx(CRCfracobs, 
+           path = params$S7)
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                 S8_RelapseVsPrimary_EnrichTFregulons                       ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+EnrichTF <- list(`Enrich TF regulons` = read.table(params$EnrichTF, header = TRUE, sep = "\t"))
+
+write_xlsx(EnrichTF, 
+           path = params$S8)
+
+
+
+```
+
