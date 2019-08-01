@@ -9,12 +9,13 @@ output:
     toc_depth: 4
     number_sections: false
 params:
-  SE_target    : "path/to/data"
-  w_tumor      : "path/to/data"
-  f_tumor      : "path/to/data"
-  mouse_pstime : "path/to/data"
-  mouse_exprs  : "path/to/data"
-  figure : "results/figure..."
+  SE_target    : "analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS"
+  wc_tumor     : "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Wmatrix_Wnorm.RDS"
+  wr_tumor     : "analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Wmatrix_Wnorm.RDS"
+  mouse_pstime : "db/GSE99933_E12.5/GSE99933_E12.5.txt"
+  mouse_exprs  : "db/GSE99933_E12.5/GSE99933_E12.5_exprs_Zscore.txt"
+  figure : "results/figure2/figure2h_SEtargetExprs_mouseE12.5.pdf"
+
 editor_options: 
   chunk_output_type: console
 ---
@@ -57,8 +58,9 @@ library(matrixStats)
 SE <- readRDS(params$SE_target)
 
 # Read NMF results
-w_tumor <- readRDS(params$w_tumor)
-f_tumor <- readRDS(params$f_tumor)
+wc_tumor <- readRDS(params$wc_tumor)
+wr_tumor <- readRDS(params$wr_tumor)
+
 
 
 # Read Mouse GSE99933 E12.5 data
@@ -83,20 +85,20 @@ e12.5_exprs[1:5,1:5]
 
 
 
-```{r}
+```{r helper_functions}
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##                             Helper functions                               ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 # Basic function to convert human to mouse gene names
-convertHumanGeneList <- function(x){
-  
-  human = useMart("ensembl", dataset = "hsapiens_gene_ensembl")
-  mouse = useMart("ensembl", dataset = "mmusculus_gene_ensembl")
-  
-  genesV2 = getLDS(attributes = c("hgnc_symbol"), filters = "hgnc_symbol", values = x , mart = human, attributesL = c("mgi_symbol"), martL = mouse, uniqueRows=T)
-  humanx <- unique(genesV2[, 2])
-  return(humanx)
-}
+# convertHumanGeneList <- function(x){
+#   
+#   human = useMart("ensembl", dataset = "hsapiens_gene_ensembl")
+#   mouse = useMart("ensembl", dataset = "mmusculus_gene_ensembl")
+#   
+#   genesV2 = getLDS(attributes = c("hgnc_symbol"), filters = "hgnc_symbol", values = x , mart = human, attributesL = c("mgi_symbol"), martL = mouse, uniqueRows=T)
+#   humanx <- unique(genesV2[, 2])
+#   return(humanx)
+# }
 
 # Mouse to Human symbols
 mm_hs_map = read.delim("http://www.informatics.jax.org/downloads/reports/HOM_MouseHumanSequence.rpt", stringsAsFactors = F)
@@ -109,26 +111,42 @@ mm_hs_map = data.frame(mouse_symbol = noquote(as.character(mm_hs_map[,1])),
                        human_symbol = noquote(as.character(mm_hs_map[,2])))
 
 
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                        Extract associated features                         ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 
-```
-
-```{r}
-projection_plot <- function(sigID){
-  wmatrix <- w_tumor
-  # Extract signature specific gens
-  selec_wmatrix <- do.call(cbind, lapply(as.data.frame(wmatrix), function(sign_expo){
-    sign_expo[sign_expo < quantile(sign_expo, 0.90)] <- NA
-    sign_expo
-  }))
-  rownames(selec_wmatrix) <- rownames(wmatrix)
-  selec_wmatrix <- selec_wmatrix[!is.na(selec_wmatrix[,sigID]),,drop=FALSE]
-  # Keep only the top feature if there's an overlap
-  sig_SE_IDs <- rownames(selec_wmatrix[rowMaxs(selec_wmatrix, na.rm = TRUE) == selec_wmatrix[,sigID],])
-
+extract_W_features <- function(wmatrix, omics){
+  sigIDs <- setNames(colnames(wmatrix), colnames(wmatrix))
   
-  #sign_expo  <- w_tumor[,sigID]
-  #sig_SE_IDs <- names(sign_expo[sign_expo > quantile(sign_expo, 0.8)])
-  sig_geneIDs <- unique(SE[sig_SE_IDs]$target_SYMBOL)
+  lapply(sigIDs, function(sigID){
+    # Extract signature specific genes
+    selec_wmatrix <- do.call(cbind, lapply(as.data.frame(wmatrix), function(sign_expo){
+      sign_expo[sign_expo < quantile(sign_expo, 0.90)] <- NA
+      sign_expo
+    }))
+    rownames(selec_wmatrix) <- rownames(wmatrix)
+    selec_wmatrix <- selec_wmatrix[!is.na(selec_wmatrix[,sigID]),,drop=FALSE]
+    # Keep only the top feature if there's an overlap
+    sig_SE_IDs <- rownames(selec_wmatrix[rowMaxs(selec_wmatrix, na.rm = TRUE) == selec_wmatrix[,sigID],])
+    
+    if (omics == "ChIPseq") {
+      unique(SE[sig_SE_IDs]$target_SYMBOL)
+    } else if (omics == "RNAseq") {
+      unique(SE$target_SYMBOL[match(sig_SE_IDs, SE$target_ENSEMBL)])
+    }
+    
+    #sign_expo  <- w_tumor[,sigID]
+    #sig_SE_IDs <- names(sign_expo[sign_expo > quantile(sign_expo, 0.8)])
+    
+  })
+}
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                        Projection plot                                     ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+projection_plot <- function(signature_associated, sigID){
+  sig_geneIDs <- signature_associated[[sigID]]
   # Find Mouse Homologous
   #mouseIDs    <- convertHumanGeneList(sig_geneIDs)
   mouseIDs <- mm_hs_map$mouse_symbol[mm_hs_map$human_symbol %in% sig_geneIDs]
@@ -160,24 +178,88 @@ projection_plot <- function(sigID){
           panel.background = element_blank())
   
 }
+```
+
+```{r extractFeatures}
+
+signature_associated_ChIPseq <- extract_W_features(wc_tumor, omics = "ChIPseq")
+signature_associated_RNAseq  <- extract_W_features(wr_tumor, omics = "RNAseq")
 
 
+
+sigIDs <- setNames(colnames(wc_tumor), colnames(wc_tumor))
+
+signature_associated <- lapply(sigIDs, function(sigID){
+  chip <- signature_associated_ChIPseq[[sigID]]
+  rna <- signature_associated_RNAseq[[sigID]]
+  
+  unique(c(chip, rna))
+})
+
+
+
+```
+
+
+
+```{r ChIPseq_features}
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##                          Plot projections                                  ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 
-sigIDs <- setNames(colnames(f_tumor), colnames(f_tumor))
+#sigIDs <- setNames(colnames(w_tumor), colnames(w_tumor))
 
-mycn   <- projection_plot("MYCN")
-mes    <- projection_plot("MES")
-man_lr <- projection_plot("MNA-LR")
-man_hr <- projection_plot("MNA-HR")
+mycn   <- projection_plot(signature_associated_ChIPseq, "MYCN")
+mes    <- projection_plot(signature_associated_ChIPseq, "MES")
+man_lr <- projection_plot(signature_associated_ChIPseq, "MNA-LR")
+man_hr <- projection_plot(signature_associated_ChIPseq, "MNA-HR")
+
+
+projection_gg <- mycn + mes + man_lr + man_hr + plot_layout(ncol = 2)
+projection_gg
+
+
+```
+
+
+```{r RNAseq_features}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                          Plot projections                                  ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+#sigIDs <- setNames(colnames(w_tumor), colnames(w_tumor))
+
+mycn   <- projection_plot(signature_associated_RNAseq, "MYCN")
+mes    <- projection_plot(signature_associated_RNAseq, "MES")
+man_lr <- projection_plot(signature_associated_RNAseq, "MNA-LR")
+man_hr <- projection_plot(signature_associated_RNAseq, "MNA-HR")
 
 
 projection_gg <- mycn + mes + man_lr + man_hr + plot_layout(ncol = 2)
 projection_gg
 
 ggsave(params$figure, projection_gg, width = 10, height = 10)
+
+```
+
+
+
+```{r ChIP_RNAseq_features}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                          Plot projections                                  ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+#sigIDs <- setNames(colnames(w_tumor), colnames(w_tumor))
+
+mycn   <- projection_plot(signature_associated, "MYCN")
+mes    <- projection_plot(signature_associated, "MES")
+man_lr <- projection_plot(signature_associated, "MNA-LR")
+man_hr <- projection_plot(signature_associated, "MNA-HR")
+
+
+projection_gg <- mycn + mes + man_lr + man_hr + plot_layout(ncol = 2)
+projection_gg
+
 
 ```
 

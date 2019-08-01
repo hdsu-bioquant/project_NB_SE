@@ -37,11 +37,12 @@ rule compile_figure2:
 #           Figure 2h - expression mapped to Mouse GSE99933 E12.5                #
 #================================================================================#
 optK_tc = str(config['NMFparams']['tumor']['optimalK']['chipseq'])
+optK_tr = str(config['NMFparams']['tumor']['optimalK']['rnaseq'])
 rule fig2h_SEexprs_mouse:
     input:
         SE_target    = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'),
-        w_tumor      = join(DATAPATH, ('analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K' + optK_tc + '_Wmatrix_Wnorm.RDS')),
-        f_tumor      = join(DATAPATH, ('analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K' + optK_tc + '_NMF_features.RDS')),
+        wc_tumor     = join(DATAPATH, ('analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K' + optK_tc + '_Wmatrix_Wnorm.RDS')),
+        wr_tumor     = join(DATAPATH, ('analysis/tumor/rnaseq/NMF/tumor_consensusSE_K' + optK_tr + '_Wmatrix_Wnorm.RDS')),
         mouse_pstime = join(DATAPATH, 'db/GSE99933_E12.5/GSE99933_E12.5.txt'),
         mouse_exprs  = join(DATAPATH, 'db/GSE99933_E12.5/GSE99933_E12.5_exprs_Zscore.txt')
     output:
@@ -58,8 +59,8 @@ rule fig2h_SEexprs_mouse:
         Rscript -e "rmarkdown::render( '{output.rmd}', \
                 params = list( \
                   SE_target    = '{input.SE_target}', \
-                  w_tumor      = '{input.w_tumor}', \
-                  f_tumor      = '{input.f_tumor}', \
+                  wc_tumor     = '{input.wc_tumor}', \
+                  wr_tumor     = '{input.wr_tumor}', \
                   mouse_pstime = '{input.mouse_pstime}', \
                   mouse_exprs  = '{input.mouse_exprs}', \
                   figure = '{output.figure}' \
