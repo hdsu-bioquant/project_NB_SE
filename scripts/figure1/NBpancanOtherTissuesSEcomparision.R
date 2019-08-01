@@ -89,7 +89,11 @@ anno = anno[,c(1,3)]
 anno = cbind(anno,Class=tmp)
 rm(tmp)
 
-cmn = intersect(id,anno$`File Name`)
+# anno$`File Name`[!anno$`File Name` %in% id] 
+#[1] "UCSD_Psoas" "NHDF_Ad"    "VACO_9m"    "Panc1" 
+# These files are missing in the annotation file, hence not using them
+
+cmn = intersect(id, anno$`File Name`)
 files = files[which(id %in% cmn)]
 anno = anno[which(anno$`File Name` %in% cmn),]
 id = id[which(id %in% cmn)]
@@ -97,6 +101,12 @@ rm(cmn)
 
 files = files[match(anno$`File Name`,id)]
 id = id[match(anno$`File Name`,id)]
+
+# View(cbind(anno, files, id))
+
+#table(anno$Class)
+#Normal  Tumor 
+#24     15 
 
 # Making a list with all the tissue specific super enhancers and Neuroblastoma super enhancers
 SElist = vector("list", length(id))
@@ -113,6 +123,8 @@ rm(i,id,files)
 SElist$Neuroblastoma = readRDS(nbSE)
 
 # Find the fraction overlap of SE from other tissues with NB super enhancers (at least 50%)
+# Code adapted from https://support.bioconductor.org/p/72656/
+
 SEoverlap = rep(NA, length(SElist))
 for( i in 1: length(SElist))
 {
@@ -128,8 +140,12 @@ for( i in 1: length(SElist))
     hits = hits[percentOverlap > 0.5]
 
     # Compute jaccard's coefficient i.e intersection (at least 50%) divided by union
+    SEoverlap[i] = round(length(hits) / length(reduce(c(refGR, testGR))), 3)
+    
+    # SOME OTHER METRIC TO FIND  FRACTION OVERLAP (NOT USED !!)
     #SEoverlap[i] = round(length(hits) / c(length(refGR) + length(testGR)), 3)
-    SEoverlap[i] = round(length(hits) / length(reduce(c(refGR,testGR))), 3)
+    #SEoverlap[i] = round(c(length(hits) / length(testGR)) * 100, 2)
+
     rm(refGR, testGR, hits ,overlaps, percentOverlap)
 }
 rm(i)
