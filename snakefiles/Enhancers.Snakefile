@@ -1,58 +1,101 @@
 #================================================================================#
+#                              SE ChIPseq Signal NMF                             #
+#================================================================================#
+rule NMF_report_Enhancers_chipseq:
+    input:
+        matrix     = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusEnhancers/tumor_H3K27ac_noH3K4me3_consensusEnhancers_SignalScore.RDS'),
+        annotation = join(DATAPATH, 'annotation/annotation_tumor.RDS')
+    output:
+        report    = join(DATAPATH, 'reports/09_tumor_Enhancers_chipseq_NMF_report.html'),
+        rmd       = temp(join(DATAPATH, 'reports/09_tumor_Enhancers_chipseq_NMF_report.Rmd')),
+        nmf       = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusEnhancers/NMF/tumor_consensusEnhancers_SignalScore_NMF.RDS'),
+        norm_nmfW = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusEnhancers/NMF/tumor_consensusEnhancers_SignalScore_normNMF_W.RDS'),
+        norm_nmfH = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusEnhancers/NMF/tumor_consensusEnhancers_SignalScore_normNMF_H.RDS')
+    params:
+        script   = 'scripts/analysis/03_chipseq_NMF_report.Rmd',
+        assayID  = 'tumor_chipseq',
+        workdir  = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusEnhancers/NMF/'),
+        nmf_kmin = 2,
+        nmf_kmax = 6,
+        nmf_iter = 50
+    wildcard_constraints:
+        type = "[a-z]+"
+    conda: '../envs/R3.5.yaml'
+    shell:
+        """
+        #unset LD_LIBRARY_PATH
+        #export PATH="/usr/local/cuda/bin:$PATH"
+        #nvidia-smi
+    
+        cp {params.script} {output.rmd}
+
+        Rscript -e "rmarkdown::render( '{output.rmd}', \
+                params = list( \
+                  assayID   = '{params.assayID}', \
+                  work_dir  = '{params.workdir}', \
+                  nmf_kmin  = '{params.nmf_kmin}', \
+                  nmf_kmax  = '{params.nmf_kmax}', \
+                  nmf_iter  = '{params.nmf_iter}', \
+                  nmf       = '{output.nmf}', \
+                  norm_nmfW = '{output.norm_nmfW}', \
+                  norm_nmfH = '{output.norm_nmfH}', \
+                  matrix    = '{input.matrix}', \
+                  metadata  = '{input.annotation}' \
+                ))"
+        
+        
+        """
+
+
+#================================================================================#
 #                            Enhancers target genes                              #
 #================================================================================#
-# # Finds enhancers target gene, also saves RNAseq expression matrix (TPMs) for tumor and cells
-# rule enhancers_target_genes:
-#     input:
-#         tumor_annot    = join(DATAPATH, 'annotation/annotation_tumor.RDS'),
-#         SE_bed         = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed'),
-#         hichip_SK_N_AS = join(DATAPATH, 'data/cells/hichip/mango/SK-N-AS_HiChIP_mango.all'),
-#         hichip_CLB_GA  = join(DATAPATH, 'data/cells/hichip/mango/CLB-GA_HiChIP_mango.all'),
-#         SE_signal      = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS'),
-#         gene_exprs     = join(DATAPATH, 'data/tumor/rnaseq/exprs/tumor_RNAseq_TPM_Matrix.RDS'),
-#         gene_exprs_cl  = join(DATAPATH, 'data/cells/rnaseq/exprs/cells_RNAseq_TPM_Matrix.RDS'),
-#         hic            = join(DATAPATH, 'db/hic/GSE63525_K562_HiCCUPS_looplist.txt'),
-#         TADs           = join(DATAPATH, 'db/TADs/hESC_domains_hg19.RDS'),
-#         hsapiens_genes = join(DATAPATH, 'db/misc/EnsDb_Hsapiens_v75_genes.RDS')
-#     output:
-#         report          = join(DATAPATH, 'reports/02_SE_target_genes_report.html'),
-#         rmd             = temp(join(DATAPATH, 'reports/02_SE_target_genes_report.Rmd')),
-#         SE_target       = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'),
-#         SE_target_df    = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_annotation_df.RDS'),
-#         tumor_exprs_fil = join(DATAPATH, 'analysis/tumor/rnaseq/exprs/tumor_RNAseq_TPM_Matrix_filt_log.RDS'),
-#         cells_exprs_fil = join(DATAPATH, 'analysis/cells/rnaseq/exprs/cells_RNAseq_TPM_Matrix_filt_log.RDS')
-#     params:
-#         script   = 'scripts/analysis/02_SE_target_genes.Rmd',
-#         workdir  = DATAPATH
-#     conda: 'envs/R3.5.yaml'
-#     shell:
-#         """
-#         #unset LD_LIBRARY_PATH
-#         #export PATH="/usr/local/cuda/bin:$PATH"
-#         #nvidia-smi
-#
-#         cp {params.script} {output.rmd}
-#
-#         Rscript -e "rmarkdown::render( '{output.rmd}', \
-#             params = list( \
-#                 work_dir       = '{params.workdir}', \
-#                 tumor_annot    = '{input.tumor_annot}', \
-#                 SE             = '{input.SE_bed}', \
-#                 hichip_SK_N_AS = '{input.hichip_SK_N_AS}', \
-#                 hichip_CLB_GA  = '{input.hichip_CLB_GA}', \
-#                 SE_signal      = '{input.SE_signal}', \
-#                 gene_exprs     = '{input.gene_exprs}', \
-#                 hic            = '{input.hic}', \
-#                 TADs           = '{input.TADs}', \
-#                 hsapiens_genes = '{input.hsapiens_genes}', \
-#                 SE_target_gr   = '{output.SE_target}', \
-#                 gene_exprs_cells     = '{input.gene_exprs_cl}', \
-#                 tumor_exprs_filtered = '{output.tumor_exprs_fil}', \
-#                 cells_exprs_filtered = '{output.cells_exprs_fil}' \
-#                 ))"
-#
-#
-#         """
+# Finds enhancers target gene, also saves RNAseq expression matrix (TPMs) for tumor and cells
+rule enhancers_target_genes:
+    input:
+        tumor_annot    = join(DATAPATH, 'annotation/annotation_tumor.RDS'),
+        SE_bed         = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusEnhancers/tumor_H3K27ac_noH3K4me3_consensusEnhancers.bed'),
+        hichip_SK_N_AS = join(DATAPATH, 'data/cells/hichip/mango/SK-N-AS_HiChIP_mango.all'),
+        hichip_CLB_GA  = join(DATAPATH, 'data/cells/hichip/mango/CLB-GA_HiChIP_mango.all'),
+        SE_signal      = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusEnhancers/tumor_H3K27ac_noH3K4me3_consensusEnhancers_SignalScore.RDS'),
+        gene_exprs     = join(DATAPATH, 'data/tumor/rnaseq/exprs/tumor_RNAseq_TPM_Matrix.RDS'),
+        hic            = join(DATAPATH, 'db/hic/GSE63525_K562_HiCCUPS_looplist.txt'),
+        TADs           = join(DATAPATH, 'db/TADs/hESC_domains_hg19.RDS'),
+        hsapiens_genes = join(DATAPATH, 'db/misc/EnsDb_Hsapiens_v75_genes.RDS')
+    output:
+        report          = join(DATAPATH, 'reports/09_Enhancer_target_genes.html'),
+        rmd             = temp(join(DATAPATH, 'reports/09_Enhancer_target_genes.Rmd')),
+        SE_target       = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusEnhancers/tumor_consensusEnhancers_target_GRanges.RDS'),
+        SE_target_df    = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusEnhancers/tumor_consensusEnhancers_target_annotation_df.RDS')
+    params:
+        script   = 'scripts/analysis/09_Enhancer_target_genes.Rmd',
+        workdir  = DATAPATH
+    conda: '../envs/R3.5.yaml'
+    shell:
+        """
+        #unset LD_LIBRARY_PATH
+        #export PATH="/usr/local/cuda/bin:$PATH"
+        #nvidia-smi
+
+        cp {params.script} {output.rmd}
+
+        Rscript -e "rmarkdown::render( '{output.rmd}', \
+            params = list( \
+                work_dir       = '{params.workdir}', \
+                tumor_annot    = '{input.tumor_annot}', \
+                SE             = '{input.SE_bed}', \
+                hichip_SK_N_AS = '{input.hichip_SK_N_AS}', \
+                hichip_CLB_GA  = '{input.hichip_CLB_GA}', \
+                SE_signal      = '{input.SE_signal}', \
+                gene_exprs     = '{input.gene_exprs}', \
+                hic            = '{input.hic}', \
+                TADs           = '{input.TADs}', \
+                hsapiens_genes = '{input.hsapiens_genes}', \
+                SE_target_gr   = '{output.SE_target}' \
+                ))"
+
+
+        """
 
 
 #================================================================================#

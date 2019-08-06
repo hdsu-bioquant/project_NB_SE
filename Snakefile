@@ -124,11 +124,15 @@ def inputall(wilcards):
         collectfiles.extend(expand(join(DATAPATH, 'reports/04_{type}_SE_targets_rnaseq_NMF_report.html'), zip, type = ["tumor", "cells"]))
         collectfiles.extend(expand(join(DATAPATH, 'reports/05_{type}_mostVariable_rnaseq_NMF_report.html'), zip, type = ["tumor", "cells"]))        
     if config["phase02_NMF"]["NMF_chipseq"]:
+        collectfiles.append(join(DATAPATH, 'reports/09_tumor_Enhancers_chipseq_NMF_report.html'))
         collectfiles.append(join(DATAPATH, 'reports/03_tumor_chipseq_NMF_report.html'))
         collectfiles.append(join(DATAPATH, 'reports/03_tumor_cells_chipseq_NMF_report.html'))
         collectfiles.append(join(DATAPATH, 'reports/03_cells_chipseq_NMF_report.html'))        
     # Consensus SE
     if config["phase01_consensusSE"]["SE_target_gene"]:
+        # Enhancers 
+        collectfiles.append(join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/consensusEnhancers/tumor_consensusEnhancers_target_GRanges.RDS'))
+        # Super Enhancers
         collectfiles.append(join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'))
         collectfiles.append(join(DATAPATH, 'reports/02_SE_target_genes_report.html'))
     if config["phase01_consensusSE"]["consensus_tumor_SE"]:

@@ -18,6 +18,11 @@ SE_target_genes:
     cores    : 20
     walltime : 01:30
     memory   : 10240
+
+enhancers_target_genes:
+    cores    : 20
+    walltime : 01:30
+    memory   : 10240
   
 tumors_consensus_SE_noH3K4me3:
     walltime: 01:30
