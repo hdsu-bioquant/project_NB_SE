@@ -147,10 +147,14 @@ rule fig2panels_signature_enrichment:
         wRNAs_tumor = join(DATAPATH, ('analysis/tumor/rnaseq/NMF/tumor_consensusSE_K' + optK_tr + '_Wmatrix_Wnorm.RDS')),
         wRNAv_tumor = join(DATAPATH, ('analysis/tumor/rnaseq/NMF_mostVariable/tumor_mostVariable_K' + optK_tr + '_Wmatrix_Wnorm.RDS'))
     output:
-        report     = join(DATAPATH, 'reports/figure2panels_signature_enrichment.html'),
-        rmd        = temp(join(DATAPATH, 'reports/figure2panels_signature_enrichment.Rmd')),
-        figure     = join(DATAPATH, 'results/figure2/figure2panels_signature_enrichment.pdf'),
-        sup_figure = join(DATAPATH, 'results/sup_figure2/sup_figure2_MostVariable_signature_enrichment.pdf')
+        report      = join(DATAPATH, 'reports/figure2panels_signature_enrichment.html'),
+        rmd         = temp(join(DATAPATH, 'reports/figure2panels_signature_enrichment.Rmd')),
+        eChIP_tumor = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_GO_BP_enrichment.RDS'),
+        eChIP_cells = join(DATAPATH, 'analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K3_GO_BP_enrichment.RDS'),
+        eRNAs_tumor = join(DATAPATH, 'analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_GO_BP_enrichment.RDS'),
+        eRNAv_tumor = join(DATAPATH, 'analysis/tumor/rnaseq/NMF_mostVariable/tumor_mostVariable_K4_GO_BP_enrichment.RDS'),
+        figure      = join(DATAPATH, 'results/figure2/figure2panels_signature_enrichment.pdf'),
+        sup_figure  = join(DATAPATH, 'results/sup_figure2/sup_figure2_MostVariable_signature_enrichment.pdf')
     params:
         script   = 'scripts/figure2/figure2panels_signature_enrichment.Rmd',
         optimalK = optK_tr
@@ -168,6 +172,10 @@ rule fig2panels_signature_enrichment:
                   wChIP_cells    = '{input.wChIP_cells}', \
                   wRNAs_tumor    = '{input.wRNAs_tumor}', \
                   wRNAv_tumor    = '{input.wRNAv_tumor}', \
+                  eChIP_tumor= '{output.eChIP_tumor}', \
+                  eChIP_cells= '{output.eChIP_cells}', \
+                  eRNAs_tumor= '{output.eRNAs_tumor}', \
+                  eRNAv_tumor= '{output.eRNAv_tumor}', \
                   figure         = '{output.figure}', \
                   sup_figure     = '{output.sup_figure}' \
                 ))"

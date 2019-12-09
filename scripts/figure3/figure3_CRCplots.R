@@ -14,7 +14,7 @@ cellAnno  = as.character(args[8])
 outpath  = as.character(args[9])
 
 #-------------------------------------------------------------------------------------------------
-# DATAPATH = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/"
+# DATAPATH = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/"
 # 
 # KDdata   = paste0(DATAPATH, 'analysis/cells/crcGIEMSAkd/nbKDinhouse.RDS')
 # TFact    = paste0(DATAPATH, 'analysis/tumor/VIPER/')
@@ -27,7 +27,7 @@ outpath  = as.character(args[9])
 # cellAnno  = paste0(DATAPATH, 'annotation/annotation_cells.RDS')
 # 
 # outpath  = paste0(DATAPATH, "results/")
-#-------------------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------------------
 
 ## Load required packages
 library(RColorBrewer)
@@ -295,16 +295,20 @@ if(identical(rownames(selTF), rownames(ids_combo))){
   TFact_CRC = TFact_CRC[ TFact_CRC$Module == "MES",]
   
   my_comparisons <- list( c("MES", "MYCN"), c("MES", "MNA.HR"), c("MES", "MNA.LR") )
-  p <- ggboxplot(TFact_CRC, x = "variable", y = "value", xlab = "", ylab = "TF activity (Z normalized)",
-                 color = "variable", palette = "npg",
-                 add = "jitter", outlier.shape = NA) + 
+  p <- ggboxplot(TFact_CRC, x = "variable", y = "value",
+                 xlab = "", ylab = "TF activity (Z normalized)",
+                 color = "variable", 
+                 #fill = "variable",
+                 palette = c("#40004B", "#006837", "#31a354", "#78c679"),
+                 outlier.shape = NA) + 
+    geom_jitter(position = position_jitter(seed = 1)) +
     stat_compare_means(label = "p.format", method="wilcox", label.x=2, size=3, comparisons = my_comparisons) +
-    geom_text_repel(aes(label=Genes), size=2) + 
+    geom_text_repel(aes(label=Genes), size=2, position = position_jitter(seed = 1)) + 
     theme_pubr(base_size = 7)
   
   #p = facet(p, facet.by = "Module", scales="free") # In case also showing ADRN
   
-  pdf(paste0(outpath,"sup_figure3/crcTF_TFactivity_per_crcModule_and_Signature_labelled.pdf"), width = 5, height = 5)
+  pdf(paste0(outpath,"sup_figure3/crcTF_TFactivity_per_crcModule_and_Signature_labelled.pdf"), width = 7, height = 6)
   print(p)
   dev.off()
   rm(p, my_comparisons)

@@ -9,10 +9,10 @@ NBmut   = as.character(args[5])
 outpath = as.character(args[6])
 
 #-------------------------------------------------------------------------------------------------
-# DATAPATH = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/"
+# DATAPATH = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/"
 # 
 # NBexprs = paste0(DATAPATH, 'analysis/tumor/rnaseq/exprs/tumor_RNAseq_TPM_Matrix_filt_log.RDS')
-# tumoNMF = paste0(DATAPATH, 'analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS')
+# tumoNMF = paste0(DATAPATH, 'analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS')
 # rasSigr = paste0(DATAPATH, 'db/publicGeneSigs/ras_target_genes.RDS')
 # NBreg   = paste0(DATAPATH, 'analysis/tumor/ARACNe/network.txt')
 # NBmut   = paste0(DATAPATH, 'annotation/NB_mutation_matrix.RDS')
@@ -156,64 +156,70 @@ rm(xmark, ymark)
 mtext(text="RAS target genes median expression per sample (log2 TPM)", side=1,outer=T, line=0, cex=0.72)
 dev.off()
 
-#----------------------------------
-# Correlation to only RAS proteins
-#----------------------------------
+##################################
 
-rasp = dat[sym %in% c("HRAS","KRAS","NRAS"),]
-pdf(paste0(outpath,"sup_figure4/ras_proteins_corr_exposures.pdf"), width=7, height=7)
-layout(matrix(c(1:12), ncol=3, nrow=4, byrow=T), width=1,height=1)
-par(mar=c(3.5,3.5,1,0.25), mgp=c(2.5,0.5,0),cex=0.7) # xaxs="i", yaxs="i", 
 
-for(i in 1:nrow(expo))
+if(FALSE)
 {
-  for(j in 1: nrow(rasp))
+  #----------------------------------
+  # Correlation to only RAS proteins
+  #----------------------------------
+  
+  rasp = dat[sym %in% c("HRAS","KRAS","NRAS"),]
+  pdf(paste0(outpath,"sup_figure4/ras_proteins_corr_exposures.pdf"), width=7, height=7)
+  layout(matrix(c(1:12), ncol=3, nrow=4, byrow=T), width=1,height=1)
+  par(mar=c(3.5,3.5,1,0.25), mgp=c(2.5,0.5,0),cex=0.7) # xaxs="i", yaxs="i", 
+  
+  for(i in 1:nrow(expo))
   {
-    x = as.numeric(rasp[j,])
-    y = as.numeric(expo[i,])
-    
-    if(j==1){yl=rownames(expo)[i]; xl=""}else{yl="";xl=""}
-    if(i==4){xl=rownames(rasp)[j]; yl=rownames(expo)[i]}
-
-    corr = round(cor(x,y,method="spearman"),2)
-    plot(x=x, y=y, xlab=xl, ylab=yl, cex=0.5, pch=20, las=2, frame=F, col=rgb(0, 0, 1, 0.2), main=paste0("rho=",corr), cex.main=0.8)
-    abline(lm(y~x))
-    
-    xmark = x[which(colnames(rasp) %in% colnames(NBmuts))]
-    ymark = y[which(colnames(expo) %in% colnames(NBmuts))]
-    points(x = xmark, y = ymark, pch = 4, col = "firebrick")
-    rm(xmark, ymark)
+    for(j in 1: nrow(rasp))
+    {
+      x = as.numeric(rasp[j,])
+      y = as.numeric(expo[i,])
+      
+      if(j==1){yl=rownames(expo)[i]; xl=""}else{yl="";xl=""}
+      if(i==4){xl=rownames(rasp)[j]; yl=rownames(expo)[i]}
+      
+      corr = round(cor(x,y,method="spearman"),2)
+      plot(x=x, y=y, xlab=xl, ylab=yl, cex=0.5, pch=20, las=2, frame=F, col=rgb(0, 0, 1, 0.2), main=paste0("rho=",corr), cex.main=0.8)
+      abline(lm(y~x))
+      
+      xmark = x[which(colnames(rasp) %in% colnames(NBmuts))]
+      ymark = y[which(colnames(expo) %in% colnames(NBmuts))]
+      points(x = xmark, y = ymark, pch = 4, col = "firebrick")
+      rm(xmark, ymark)
+    }
   }
-}
-dev.off()
-
-#-------------------------------------------
-# Correlation to only AP1 complex  proteins
-#-------------------------------------------
-
-ap1 = dat[sym %in% c("FOS", "FOSB", "FOSL1", "FOSL2", "JUN", "JUNB", "JUND"),]
-rownames(ap1) = sapply(strsplit(rownames(ap1),"|",fixed=T), function(x)x[2])
-ap1 = ap1[match(c("FOS", "FOSB", "FOSL1", "FOSL2", "JUN", "JUNB", "JUND"),rownames(ap1)),]
-
-pdf(paste0(outpath,"sup_figure4/AP1_complex_proteins_corr_exposures.pdf"), width=9.5, height=6.5)
-layout(matrix(c(1:28), ncol=7, nrow=4, byrow=T), width=1,height=1)
-par(mar=c(3.5,3.5,1,0.25), mgp=c(2.5,0.5,0), cex=0.7) #xaxs="i", yaxs="i", 
-
-for(i in 1:nrow(expo))
-{
-  for(j in 1: nrow(ap1))
+  dev.off()
+  
+  #-------------------------------------------
+  # Correlation to only AP1 complex  proteins
+  #-------------------------------------------
+  
+  ap1 = dat[sym %in% c("FOS", "FOSB", "FOSL1", "FOSL2", "JUN", "JUNB", "JUND"),]
+  rownames(ap1) = sapply(strsplit(rownames(ap1),"|",fixed=T), function(x)x[2])
+  ap1 = ap1[match(c("FOS", "FOSB", "FOSL1", "FOSL2", "JUN", "JUNB", "JUND"),rownames(ap1)),]
+  
+  pdf(paste0(outpath,"sup_figure4/AP1_complex_proteins_corr_exposures.pdf"), width=9.5, height=6.5)
+  layout(matrix(c(1:28), ncol=7, nrow=4, byrow=T), width=1,height=1)
+  par(mar=c(3.5,3.5,1,0.25), mgp=c(2.5,0.5,0), cex=0.7) #xaxs="i", yaxs="i", 
+  
+  for(i in 1:nrow(expo))
   {
-    x = as.numeric(ap1[j,])
-    y = as.numeric(expo[i,])
-    
-    if(j==1){yl=rownames(expo)[i];xl=""}else{yl="";xl=""}
-    if(i==4){xl=rownames(ap1)[j]; yl=rownames(expo)[i]}
-    
-    corr = round(cor(x,y,method="spearman"),2)
-    plot(x=x, y=y, xlab=xl, ylab=yl, cex=0.5, pch=20, las=2, frame=F, col=rgb(0, 0, 1, 0.2), main=paste0("rho=",corr), cex.main=0.8)
-    abline(lm(y~x))
+    for(j in 1: nrow(ap1))
+    {
+      x = as.numeric(ap1[j,])
+      y = as.numeric(expo[i,])
+      
+      if(j==1){yl=rownames(expo)[i];xl=""}else{yl="";xl=""}
+      if(i==4){xl=rownames(ap1)[j]; yl=rownames(expo)[i]}
+      
+      corr = round(cor(x,y,method="spearman"),2)
+      plot(x=x, y=y, xlab=xl, ylab=yl, cex=0.5, pch=20, las=2, frame=F, col=rgb(0, 0, 1, 0.2), main=paste0("rho=",corr), cex.main=0.8)
+      abline(lm(y~x))
+    }
   }
+  dev.off()
 }
-dev.off()
 
 

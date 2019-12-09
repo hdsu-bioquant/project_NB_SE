@@ -11,11 +11,17 @@ output:
 params:
   
   SE: "analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS"
-  terms: "results/supplables/GO_BP_enrichment_SE_target_genes.txt"
+  terms: "results/supptables/GO_BP_enrichment_SE_target_genes.txt"
   wChIP_tumor : "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Wmatrix_Wnorm.RDS"
   wChIP_cells : "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K3_Wmatrix_Wnorm.RDS"
   wRNAs_tumor : "analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Wmatrix_Wnorm.RDS"
-  wRNAv_tumor : "results/figure2/figure2panels_signature_enrichment.pdf"
+  wRNAv_tumor : "analysis/tumor/rnaseq/NMF_mostVariable/tumor_mostVariable_K4_Wmatrix_Wnorm.RDS"
+  
+  eChIP_tumor : "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_GO_BP_enrichment.RDS"
+  eChIP_cells : "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K3_GO_BP_enrichment.RDS"
+  eRNAs_tumor : "analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_GO_BP_enrichment.RDS"
+  eRNAv_tumor : "analysis/tumor/rnaseq/NMF_mostVariable/tumor_mostVariable_K4_GO_BP_enrichment.RDS"
+  
   figure : "results/figure2/figure2panels_signature_enrichment.pdf"
   sup_figure : "results/sup_figure2/sup_figure2_MostVariable_signature_enrichment.pdf"
   targetannot_df : "analysis/tumor/SE_annot/tumor_consensusSE_target_annotation_df.RDS"
@@ -88,7 +94,7 @@ wRNAv_tumor <- readRDS(params$wRNAv_tumor)
 ```
 
 
-```{r}
+```{r helper_function}
 
 fisher.test.Signatures.Sets <- function(wmatrix, SE, sets, gene.symbols, Specific=TRUE, view="ChIPseq"){
   # Top features
@@ -201,7 +207,7 @@ fisher.test.Signatures.Sets <- function(wmatrix, SE, sets, gene.symbols, Specifi
 
 
 
-```{r}
+```{r enrich_plots}
 ggChIP_tumor <- fisher.test.Signatures.Sets(wChIP_tumor, SE, gene_sets, unique(SE$target_ENSEMBL), Specific=T)
 ggChIP_cells <- fisher.test.Signatures.Sets(wChIP_cells, SE, gene_sets, unique(SE$target_ENSEMBL), Specific=T)
 ggRNAs_tumor <- fisher.test.Signatures.Sets(wRNAs_tumor, SE, gene_sets, unique(SE$target_ENSEMBL), Specific=T, view="RNAseq")
@@ -222,6 +228,88 @@ ggsave(params$sup_figure, sup, width = 6, height = 5)
 # ggsave(params$figure, main, width = 3, height = 15)
 # ggsave(params$sup_figure, sup, width = 4, height = 5)
 
+
+```
+
+
+```{r enrich_tables}
+fisher.test.Signatures.Sets <- function(wmatrix, SE, sets, gene.symbols, Specific=TRUE, view="ChIPseq"){
+  # Top features
+  nmf.feat <- lapply(setNames(colnames(wmatrix), colnames(wmatrix)), function(sigID){
+    selec_wmatrix <- do.call(cbind, lapply(as.data.frame(wmatrix), function(sign_expo){
+      sign_expo[sign_expo < quantile(sign_expo, 0.90)] <- NA
+      sign_expo
+    }))
+    rownames(selec_wmatrix) <- rownames(wmatrix)
+    selec_wmatrix <- selec_wmatrix[!is.na(selec_wmatrix[,sigID]),,drop=FALSE]
+    # Keep only the top feature if there's an overlap
+    sig_SE_IDs <- rownames(selec_wmatrix[rowMaxs(selec_wmatrix, na.rm = TRUE) == selec_wmatrix[,sigID],])
+    
+    
+    # sign_expo  <- wmatrix[,sigID]
+    # sig_SE_IDs <- names(sign_expo[sign_expo > quantile(sign_expo, 0.80)])
+    
+    if(view=="RNAseq"){
+      unique(targetannot_df$SYMBOL[match(sig_SE_IDs, targetannot_df$ENSEMBL)])
+      #unique(SE$target_SYMBOL[match(sig_SE_IDs, SE$target_ENSEMBL)])
+    } else if (view=="ChIPseq"){
+      unique(SE$target_SYMBOL[match(sig_SE_IDs, SE$ID)])
+    }
+  })
+  
+  print(lapply(nmf.feat, length))
+  #Fisher test
+  fish.res <- lapply(nmf.feat, function(signa.feat){
+    sapply(sets, function(test.set){
+      #Genes in Signature and in the set
+      SigYes.SetYes <- sum(signa.feat %in% test.set)
+      #Genes in the Signatures Not present in the set
+      SigYes.SetNo <- sum(!signa.feat %in% test.set)
+      #Genes that are not in the Signture
+      SigNo <- gene.symbols[!gene.symbols %in% signa.feat]
+      #Genes not present in Signature, but present in the set
+      SigNo.SetYes <- sum(SigNo %in% test.set)
+      #Genes not present in Signature and set
+      SigNo.SetNo <- sum(!SigNo %in% test.set)
+      
+      test.matrix <- matrix(c(SigYes.SetYes,
+                              SigYes.SetNo,
+                              SigNo.SetYes,
+                              SigNo.SetNo),
+                            nrow=2,
+                            dimnames=list(Set=c("anno", "NotAnno"),
+                                          SignatureFeature=c("Yes", "No")))
+      #print(test.matrix)
+      fisher.test(test.matrix, alternative = "greater")$p.val
+    })
+  })
+  #return(fish.res)
+  fish.res <- do.call(cbind, fish.res)
+  fish.df <- as.data.frame(fish.res)
+  fish.df <- data.frame(Term = rownames(fish.df),
+                        fish.res, row.names = NULL)
+  #fish.df$Set <- rownames(fish.df)
+  #fish.df <- gather(fish.df, Signature, p.val, -Set)
+  #fish.df$Signature <- factor(fish.df$Signature, levels = rev(unique(fish.df$Signature)))
+  # Map Class of the terms
+  #fish.df$Class <- enriched_terms$Class[match(fish.df$Set, enriched_terms$Term)]
+  #return(fish.df)
+  #print(head(fish.df))
+  
+  fish.df
+  
+}
+
+
+eChIP_tumor <- fisher.test.Signatures.Sets(wChIP_tumor, SE, gene_sets, unique(SE$target_ENSEMBL), Specific=T)
+eChIP_cells <- fisher.test.Signatures.Sets(wChIP_cells, SE, gene_sets, unique(SE$target_ENSEMBL), Specific=T)
+eRNAs_tumor <- fisher.test.Signatures.Sets(wRNAs_tumor, SE, gene_sets, unique(SE$target_ENSEMBL), Specific=T, view="RNAseq")
+eRNAv_tumor <- fisher.test.Signatures.Sets(wRNAv_tumor, SE, gene_sets, unique(SE$target_ENSEMBL), Specific=T, view="RNAseq")
+
+saveRDS(eChIP_tumor, file = params$eChIP_tumor)
+saveRDS(eChIP_cells, file = params$eChIP_cells)
+saveRDS(eRNAs_tumor, file = params$eRNAs_tumor)
+saveRDS(eRNAv_tumor, file = params$eRNAv_tumor)
 
 ```
 

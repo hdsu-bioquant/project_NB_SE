@@ -341,8 +341,8 @@ dfgg$labelpos[dfgg$val <= median(dfgg$val)] <- rev(seq(min(dfgg$val), max(dfgg$v
 
 
 m <- ggplot(dfgg, aes(x = pos, y = val, color = mes)) + 
-  geom_point(size=2) +
-  xlim(-20, 100) +
+  #geom_point(size=4) +
+  xlim(-8, 90) +
   # geom_text(data = dfgg,
   #           mapping = aes(x = 80, y = labelpos, label = name),
   #           parse = TRUE, hjust = 0) +
@@ -350,7 +350,7 @@ m <- ggplot(dfgg, aes(x = pos, y = val, color = mes)) +
             mapping = aes(x = 80, y = labelpos, label = name),
             parse = TRUE, hjust = 0, color = "black") +
   geom_text(data = dfgg[dfgg$val <= median(dfgg$val),],
-            mapping = aes(x = -20, y = labelpos, label = name),
+            mapping = aes(x = -8, y = labelpos, label = name),
             parse = TRUE, hjust = 0, color = "black") +
   geom_segment(data = dfgg[dfgg$val > median(dfgg$val),],
                mapping = aes(x = pos, xend = 79, y = val, yend = labelpos),
@@ -358,11 +358,12 @@ m <- ggplot(dfgg, aes(x = pos, y = val, color = mes)) +
   geom_segment(data = dfgg[dfgg$val <= median(dfgg$val),],
                mapping = aes(x = pos, xend = -2, y = val, yend = labelpos),
                color = "black", size = 0.1) +
+  geom_point(size=4) +
   scale_colour_gradientn(colours = col)
 m 
 
 
-ggsave(params$figure, m, width = 7.5, height = 6.5) 
+ggsave(params$figure, m, width = 15, height = 6.5) 
 ```
 
 

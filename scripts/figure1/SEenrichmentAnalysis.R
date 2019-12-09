@@ -8,8 +8,6 @@ library(ggbeeswarm)
 
 path = as.character(args[1])
 
-
-
 # Super enhancers target genes
 se = readRDS(paste0(path, "analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS"))
 se = as.character(unique(se$target_SYMBOL))
@@ -18,8 +16,9 @@ se = as.character(unique(se$target_SYMBOL))
 enr =  enrichr(se, "GO_Biological_Process_2018")
 GOenrich = enr$GO_Biological_Process_2018[,c(1:4,9)]
 GOenrich = GOenrich[GOenrich$Adjusted.P.value <= 0.055,]
+
 GOenrich$Adjusted.P.value = signif(GOenrich$Adjusted.P.value , 2)
-GOenrich$P.value = signif(GOenrich$Adjusted.P.value, digits = 2)
+GOenrich$P.value = signif(GOenrich$P.value, digits = 2)
 
 rm(enr,se)
 
@@ -46,7 +45,6 @@ tmp[grep("motility", GOenrich$Term)]="Cell migration and EMT"
 tmp[grep("macromolecule", GOenrich$Term)]="Metabolism"
 tmp[grep("compound", GOenrich$Term)]="Metabolism"
 tmp[grep("sterol", GOenrich$Term)]="Metabolism"
-
 
 tmp[grep("dendrite", GOenrich$Term)]="Neuronal developmental"
 tmp[grep("axon", GOenrich$Term)]="Neuronal developmental"
