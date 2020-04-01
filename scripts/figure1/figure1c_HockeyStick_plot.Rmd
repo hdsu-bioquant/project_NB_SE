@@ -400,7 +400,8 @@ hockey_box
 
 # listt of Know SE
 #knownSE = c("MYCN","PHOX2A","PHOX2B","GATA3","TBX2","HAND2","ALK", "MAML3","RUNX3","PBX1","SMAD2","KLF6","ETS2","SOX11","SOX9","SOX6","LMO1","HIF1A","NFIB","FOSL2","MYT1L","MYT1", "MYC","IRF2BPL","IRF2BP2","GLI2")
-knownSE = c("MYCN","PHOX2A","PHOX2B","GATA3","TBX2","HAND2","ALK", "MAML3","RUNX3","PBX1","SMAD2","KLF6","ETS2","SOX11","SOX9","SOX6","LMO1","HIF1A", "FOSL2","MYT1L","MYT1", "MYC","IRF2BPL","IRF2BP2","GLI2", "PRRX1")
+# knownSE = c("MYCN","PHOX2A","PHOX2B","GATA3","TBX2","HAND2","ALK", "MAML3","RUNX3","PBX1","SMAD2","KLF6","ETS2","SOX11","SOX9","SOX6","LMO1","HIF1A", "FOSL2","MYT1L","MYT1", "MYC","IRF2BPL","IRF2BP2","GLI2", "PRRX1")
+knownSE = c("MYCN","PHOX2A","PHOX2B","GATA3","TBX2","HAND2","ALK", "MAML3","RUNX3","PBX1","SMAD2","KLF6","ETS2","SOX11","SOX9","SOX6","LMO1","HIF1A", "FOSL2","MYT1L","MYT1", "MYC","IRF2BPL","IRF2BP2","GLI2")
 # extract signal
 SE_summ        <- totalSignal_to_hockey(SE_total_Signal, "median", "SE")
 enhancers_summ <- totalSignal_to_hockey(enhancers_total_Signal, "median", "Enhancers")
@@ -484,6 +485,37 @@ hockey_box
 ggsave(params$figure, hockey_box, width = 6, height = 7)
 
 #ggsave("results/figure1/figure1c_HockeyStick_plot.pdf", hockey_box, width = 6, height = 7)
+# save total signal matrix
+
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                          Total Signal over SE                              ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+SE_total_Signal_by_ID <- do.call(cbind, mclapply(bw_paths, function(bw_path){
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##                       Read file                        ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  bwf <- BigWigFile(bw_path)
+  bw  <- rtracklayer::import(bwf)
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##             Find total signal over each SE             ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  # signal over SE regions
+  bw         <- subsetByOverlaps(bw, SE)
+  bw_SE_over <- findOverlaps(bw, SE)
+  bw         <- bw[from(bw_SE_over)]
+  # Summarize by SE target SYMBOL
+  bw$ID <- SE$ID[to(bw_SE_over)]
+  #bw$ID <- SE$target_SYMBOL[to(bw_SE_over)]
+  #print(bw)
+  sapply(split(bw, bw$ID), function(SE_sig){
+    sum(SE_sig$score)
+  })
+}, mc.cores = NCORES))
+
+saveRDS(SE_total_Signal_by_ID, "analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_SE_total_Signal.RDS")
+
 
 ```
 

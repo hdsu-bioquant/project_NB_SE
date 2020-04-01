@@ -9,11 +9,16 @@ output:
     toc_depth: 4
     number_sections: false
 params:
-  annot_t    : "annotation/annotation_tumor.RDS"
+  #annot_t    : "annotation/annotation_tumor.RDS"
+  annot_t    : "annotation/annotation_tumor_with_external_phenoData.RDS"
   annot_c    : "annotation/annotation_cells.RDS"
   purity_t   : "annotation/purity_tumor.csv"
   SE         : "analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS"
   go_enrich  : "results/supptables/GO_BP_enrichment_SE_target_genes.txt"
+  eChIP_tumor : "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_GO_BP_enrichment.RDS"
+  eChIP_cells : "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K3_GO_BP_enrichment.RDS"
+  eRNAs_tumor : "analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_GO_BP_enrichment.RDS"
+  eRNAv_tumor : "analysis/tumor/rnaseq/NMF_mostVariable/tumor_mostVariable_K4_GO_BP_enrichment.RDS"
   Hchip_t    : "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS"
   Hchip_c    : "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K3_Hmatrix_wnorm.RDS"
   Hchip_tc   : "analysis/tumor_cells/chipseq/H3K27ac/NMF/tumor_cells_consensusSE_K5_Hmatrix_wnorm.RDS"
@@ -104,8 +109,26 @@ purity_t <- read.csv(params$purity_t)
 
 annot_t$Purity <- purity_t$Purity[match(annot_t$ProjectID, purity_t$ProjectID)]
 annot_t$Ploidy <- purity_t$Ploidy[match(annot_t$ProjectID, purity_t$ProjectID)]
+colnames(annot_t)
 
 
+# Add signature assignment 
+
+tumor_hchip <- readRDS("analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS")
+tumor_hchip <- setNames(rownames(tumor_hchip)[apply(tumor_hchip, 2, which.max)],
+                             colnames(tumor_hchip))
+
+tumor_hrna <- readRDS("analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS")
+tumor_hrna <- setNames(rownames(tumor_hrna)[apply(tumor_hrna, 2, which.max)],
+                             colnames(tumor_hrna))
+
+annot_t <- annot_t %>% 
+  mutate(Signature_ChIPseq = tumor_hchip[match(ProjectID, names(tumor_hchip))]) %>% 
+  mutate(Signature_RNAseq = tumor_hrna[match(ProjectID, names(tumor_hrna))])
+
+
+# Save 
+saveRDS(annot_t, "annotation/annotation_tumor_phenoData_NMFassign.RDS")
 
 write_xlsx(list(Tumors       = annot_t,
                 `Cell lines` = annot_c), 
@@ -119,6 +142,11 @@ SE <- readRDS(params$SE)
 SE <- as.data.frame(SE)
 SE <- paste_rownames(SE, "SE_ID")
 
+SE_total_Signal_by_ID <- readRDS("analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_SE_total_Signal.RDS")
+SE_rank <- setNames(rowMedians(SE_total_Signal_by_ID), rownames(SE_total_Signal_by_ID))
+#SE$SE_rank <- SE_rank[match(SE$SE_ID, names(SE_rank))]
+SE$SE_rank <- rank(SE_rank[match(SE$SE_ID, names(SE_rank))])
+
 write_xlsx(list(`Super Enhancers` = SE), 
            path = params$S2)
 
@@ -128,8 +156,19 @@ write_xlsx(list(`Super Enhancers` = SE),
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 
 go_enrich <- read.table(params$go_enrich, sep = "\t", header = TRUE)
+eChIP_tumor <- readRDS(params$eChIP_tumor)
+eChIP_cells <- readRDS(params$eChIP_cells)
+eRNAs_tumor <- readRDS(params$eRNAs_tumor)
+eRNAv_tumor <- readRDS(params$eRNAv_tumor)
 
-write_xlsx(list(`GO BP enrichment` = go_enrich), 
+enrich_list <- list(`GO BP enrichment` = go_enrich,
+                    `Tumor SE H3K27ac` = eChIP_tumor,
+                    `Cell lines SE H3K27ac` = eChIP_cells,
+                    `Tumor SE targets RNAseq` = eRNAs_tumor,
+                    `Tumor RNAseq most variable` = eRNAv_tumor)
+
+
+write_xlsx(enrich_list, 
            path = params$S3)
 
 
