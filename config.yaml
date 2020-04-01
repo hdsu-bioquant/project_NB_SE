@@ -50,6 +50,7 @@ main_working_directory: /icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/supe
 #==============================================================================#
 phase01_consensusSE:
     consensus_tumor_SE : True
+    consensus_cells_SE : True
     SE_target_gene     : True
 
 phase02_NMF:

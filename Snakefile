@@ -135,6 +135,8 @@ def inputall(wilcards):
         # Super Enhancers
         collectfiles.append(join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'))
         collectfiles.append(join(DATAPATH, 'reports/02_SE_target_genes_report.html'))
+    if config["phase01_consensusSE"]["consensus_cells_SE"]:
+        collectfiles.append(join(DATAPATH, 'analysis/cells/chipseq/H3K27ac/consensusSE/cells_H3K27ac_noH3K4me3_consensusSE.bed'))
     if config["phase01_consensusSE"]["consensus_tumor_SE"]:
         # Enhancers
         collectfiles.append(join(DATAPATH, 'analysis/tumor_cells/chipseq/H3K27ac/consensusEnhancers/tumor_cells_H3K27ac_noH3K4me3_consensusEnhancers_SignalScore.RDS'))
@@ -176,7 +178,12 @@ rule supp_tables:
         annot_c   = join(DATAPATH, 'annotation/annotation_cells.RDS'),
         purity_t  = join(DATAPATH, 'annotation/purity_tumor.csv'),
         SEtarget  = join(DATAPATH, 'analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS'),
-        go_enrich = join(DATAPATH, 'results/supptables/GO_BP_enrichment_SE_target_genes.txt'),
+        
+        go_enrich   = join(DATAPATH, 'results/supptables/GO_BP_enrichment_SE_target_genes.txt'),
+        eChIP_tumor = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_GO_BP_enrichment.RDS'),
+        eChIP_cells = join(DATAPATH, 'analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K3_GO_BP_enrichment.RDS'),
+        eRNAs_tumor = join(DATAPATH, 'analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_GO_BP_enrichment.RDS'),
+        eRNAv_tumor = join(DATAPATH, 'analysis/tumor/rnaseq/NMF_mostVariable/tumor_mostVariable_K4_GO_BP_enrichment.RDS'),
         
         Hchip_t   = join(DATAPATH, 'analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS'),
         Hchip_c   = join(DATAPATH, 'analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K3_Hmatrix_wnorm.RDS'),
@@ -216,6 +223,10 @@ rule supp_tables:
                   purity_t   = '{input.purity_t}', \
                   SE         = '{input.SEtarget}', \
                   go_enrich  = '{input.go_enrich}', \
+                  eChIP_tumor= '{input.eChIP_tumor}', \
+                  eChIP_cells= '{input.eChIP_cells}', \
+                  eRNAs_tumor= '{input.eRNAs_tumor}', \
+                  eRNAv_tumor= '{input.eRNAv_tumor}', \
                   Hchip_t    = '{input.Hchip_t}', \
                   Hchip_c    = '{input.Hchip_c}', \
                   Hchip_tc   = '{input.Hchip_tc}', \
@@ -719,6 +730,25 @@ rule SE_bigwigaverageoverbed:
         bigWigAverageOverBed {input.bw} {input.consensusSE} {output.bw_over_bed}
         """
 
+
+#================================================================================#
+#              CELL LINES CONSENSUS SUPER ENHANCERS  FILTER H3K4me3              #
+#================================================================================#
+### Compute consensus SE list from SE called by rose for each sample after H3K4me3 filtering
+rule cells_consensus_SE_noH3K4me3:
+    input:
+        seH3K27ac_noH3K4me3 = expand(join(DATAPATH, 'data/cells/chipseq/H3K27ac/SE/{sample}_H3K27ac_ROSE_noH3K4me3_SuperEnhancers.bed'), zip, sample=CELLS_SAMPLES_CHIP)
+    output:
+        consensusbed        = join(DATAPATH, 'analysis/cells/chipseq/H3K27ac/consensusSE/cells_H3K27ac_noH3K4me3_consensusSE.bed')
+    conda:
+        'envs/generaltools.yaml'
+    shell:
+        """
+        # Merge all SE
+        cat {input.seH3K27ac_noH3K4me3}| sortBed | bedtools merge -c 4,4 -o distinct,count_distinct | 
+        awk '$5 > 1' |sed -e 's/$/\tcellSE_/' | sed -n 'p;=' |
+        paste -d "" - - | awk 'BEGIN{{FS="\t";OFS="\t"}} {{ t = $4; $4 = $6; $6 = t; print;}} ' > {output.consensusbed}
+        """
 
 
 #================================================================================#
