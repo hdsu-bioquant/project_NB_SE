@@ -9,7 +9,7 @@ output:
     toc_depth: 4
     number_sections: false
 params:
-  work_dir  : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO"
+  work_dir  : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB"
   annot     : "annotation/annotation_tumor.RDS"
   SE_target : "analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS"
   enhancers : "analysis/tumor/chipseq/H3K27ac/consensusEnhancers/tumor_H3K27ac_noH3K4me3_consensusEnhancers.bed"
@@ -334,7 +334,7 @@ plot_hockey(summarization = "mean") +
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 
 # listt of Know SE
-knownSE = c("MYCN","PHOX2A","PHOX2B","GATA3","TBX2","HAND2","ALK", "MAML3","RUNX3","PBX1","SMAD2","KLF6","ETS2","SOX11","SOX9","SOX6","LMO1","HIF1A","NFIB","FOSL2","MYT1L","MYT1", "MYC","IRF2BPL","IRF2BP2","GLI2")
+knownSE = c("MYCN","PHOX2A","PHOX2B","GATA3","TBX2","HAND2","ALK", "MAML3","RUNX3","PBX1","SMAD2","KLF6","ETS2","SOX11","SOX9","SOX6","LMO1","HIF1A","NFIB","FOSL2","MYT1L","MYT1", "MYC","IRF2BPL","IRF2BP2","GLI2", "PRRX1")
 
 # extract signal
 SE_summ        <- totalSignal_to_hockey(SE_total_Signal, "mean", "SE")
@@ -400,7 +400,7 @@ hockey_box
 
 # listt of Know SE
 #knownSE = c("MYCN","PHOX2A","PHOX2B","GATA3","TBX2","HAND2","ALK", "MAML3","RUNX3","PBX1","SMAD2","KLF6","ETS2","SOX11","SOX9","SOX6","LMO1","HIF1A","NFIB","FOSL2","MYT1L","MYT1", "MYC","IRF2BPL","IRF2BP2","GLI2")
-knownSE = c("MYCN","PHOX2A","PHOX2B","GATA3","TBX2","HAND2","ALK", "MAML3","RUNX3","PBX1","SMAD2","KLF6","ETS2","SOX11","SOX9","SOX6","LMO1","HIF1A", "FOSL2","MYT1L","MYT1", "MYC","IRF2BPL","IRF2BP2","GLI2")
+knownSE = c("MYCN","PHOX2A","PHOX2B","GATA3","TBX2","HAND2","ALK", "MAML3","RUNX3","PBX1","SMAD2","KLF6","ETS2","SOX11","SOX9","SOX6","LMO1","HIF1A", "FOSL2","MYT1L","MYT1", "MYC","IRF2BPL","IRF2BP2","GLI2", "PRRX1")
 # extract signal
 SE_summ        <- totalSignal_to_hockey(SE_total_Signal, "median", "SE")
 enhancers_summ <- totalSignal_to_hockey(enhancers_total_Signal, "median", "Enhancers")
@@ -486,3 +486,120 @@ ggsave(params$figure, hockey_box, width = 6, height = 7)
 #ggsave("results/figure1/figure1c_HockeyStick_plot.pdf", hockey_box, width = 6, height = 7)
 
 ```
+
+
+
+
+
+
+
+
+```{r hockeyMedian}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                            Hockey stick Median                             ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+# listt of Know SE
+#knownSE = c("MYCN","PHOX2A","PHOX2B","GATA3","TBX2","HAND2","ALK", "MAML3","RUNX3","PBX1","SMAD2","KLF6","ETS2","SOX11","SOX9","SOX6","LMO1","HIF1A","NFIB","FOSL2","MYT1L","MYT1", "MYC","IRF2BPL","IRF2BP2","GLI2")
+knownSE = c("MYCN","PHOX2A","PHOX2B","GATA3","TBX2","HAND2","ALK", "MAML3","RUNX3","PBX1","SMAD2","KLF6","ETS2","SOX11","SOX9","SOX6","LMO1","HIF1A", "FOSL2","MYT1L","MYT1", "MYC","IRF2BPL","IRF2BP2","GLI2", "PRRX1")
+# extract signal
+SE_summ        <- totalSignal_to_hockey(SE_total_Signal, "max", "SE")
+enhancers_summ <- totalSignal_to_hockey(enhancers_total_Signal, "max", "Enhancers")
+
+knownSE[!knownSE %in% SE_summ$ID ]
+
+# add label tag
+bind_rows(enhancers_summ, SE_summ) %>% 
+  mutate(rank = rank(signal)) %>% 
+  mutate(knownSE = ID %in% knownSE) -> 
+  hockey_df
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                            Hockey stick with annot                         ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+highlight50 <- data.frame(ymin = sort(hockey_df$signal[hockey_df$class == "SE"], decreasing = TRUE)[1:50][50],
+                    ymax = sort(hockey_df$signal[hockey_df$class == "SE"], decreasing = TRUE)[1:50][1] + 400,
+                    xmin = mean(sort(hockey_df$rank[hockey_df$class == "SE"], decreasing = TRUE)[1:50])-1000,
+                    xmax = mean(sort(hockey_df$rank[hockey_df$class == "SE"], decreasing = TRUE)[1:50])+1000)
+highlight50
+
+
+top_SE <- names(sort(setNames(summ_SE_signal$rank, summ_SE_signal$ID), decreasing = TRUE)[1:50])
+
+head(hockey_df)
+hockey <- ggplot(hockey_df, aes(x = rank, y = signal, color = knownSE)) +
+  geom_point() +
+  geom_text_repel(data=filter(hockey_df, knownSE), aes(label=ID), color = "black", size =3) + 
+  scale_color_manual(values = c("#969696", magma(10)[6])) +
+  geom_rect(data = highlight50, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            color="grey20", alpha=0.5, fill = NA, inherit.aes = FALSE) +
+  ylab("Average H3K27ac signal") +
+  xlab("Rank by H3K27ac signal") +
+  theme_bw() +
+  theme(legend.position = "none",
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank())
+
+
+hockey <- ggplot(hockey_df, aes(x = rank, y = signal)) +
+  geom_point(color = "grey70") +
+  geom_point(data = filter(hockey_df, knownSE), color = magma(10)[6]) +
+  geom_text_repel(data=filter(hockey_df, knownSE), aes(label=ID), color = "black", size =3) + 
+  #scale_color_manual(values = c("#969696", magma(10)[6])) +
+  geom_rect(data = highlight50, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            color="grey20", alpha=0.5, fill = NA, inherit.aes = FALSE) +
+  ylab("Average H3K27ac signal") +
+  xlab("Rank by H3K27ac signal") +
+  theme_bw() +
+  theme(legend.position = "none",
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank())
+
+
+
+hockey
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                               Embed boxplot                                ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+hockey_box <- hockey +
+  annotation_custom(ggplotGrob(top50_box), xmin = -100, xmax = 22000, 
+                       ymin = 3000, ymax = 550000)
+
+hockey_box
+
+
+
+```
+
+
+```{r}
+tumor_h <- readRDS("analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS")
+tumor_sig_assign <- setNames(rownames(tumor_h)[apply(tumor_h, 2, which.max)],
+                             colnames(tumor_h))
+data.frame(ProjectID = names(tumor_sig_assign),
+           Signature = tumor_sig_assign,
+           PRRX1     = SE_total_Signal["PRRX1",match(names(tumor_sig_assign), colnames(SE_total_Signal))],
+           stringsAsFactors = FALSE) %>% 
+  mutate(Signature = factor(Signature, levels = rownames(tumor_h))) %>% 
+  #mutate(PRRX1 = log10(PRRX1)) %>% 
+  ggplot(aes(x = Signature, y = PRRX1, color = Signature)) + 
+  geom_point() +
+  scale_color_manual(values = c("firebrick", "#00afaf", "#420A68FF", "#2FB47CFF")) +
+  cowplot::theme_cowplot()
+  
+
+
+
+dim(SE_total_Signal)
+
+
+
+```
+
+

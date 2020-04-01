@@ -8,7 +8,7 @@ otherSE = as.character(args[4])
 outpath = as.character(args[5])
 
 #-------------------------------------------------------------------------------------------------
-# DATAPATH = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/"
+# DATAPATH = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/"
 # expdata  = paste0(DATAPATH,"db/TCGA_TARGET_GTex/TcgaTargetGtex_log2_fpkm.RDS")
 # sampdesp = paste0(DATAPATH,"db/TCGA_TARGET_GTex/TcgaTargetGtex_sample_information.RDS")
 # nbSE     = paste0(DATAPATH,"analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS")
@@ -103,6 +103,8 @@ files = files[match(anno$`File Name`,id)]
 id = id[match(anno$`File Name`,id)]
 
 # View(cbind(anno, files, id))
+#identical(anno$`File Name`, id)
+#identical(anno$`File Name`, gsub(".csv","", basename(files)))
 
 #table(anno$Class)
 #Normal  Tumor 
@@ -126,25 +128,23 @@ SElist$Neuroblastoma = readRDS(nbSE)
 # Code adapted from https://support.bioconductor.org/p/72656/
 
 SEoverlap = rep(NA, length(SElist))
+overlap_threshold = 0.50 
+
 for( i in 1: length(SElist))
 {
     print(paste("At step: ",i," of ",length(SElist),sep=""))
   
-    refGR  = SElist[[i]]
-    testGR = SElist$Neuroblastoma
-    
+    refGR  = SElist$Neuroblastoma
+    testGR = SElist[[i]]
+      
     # overlap with atleast 50% coverage
-    hits = findOverlaps(refGR, testGR)
+    hits = findOverlaps(query = refGR, subject = testGR)
     overlaps = pintersect(refGR[queryHits(hits)], testGR[subjectHits(hits)])
     percentOverlap = width(overlaps) / width(testGR[subjectHits(hits)])
-    hits = hits[percentOverlap > 0.5]
+    hits = hits[percentOverlap > overlap_threshold]
 
-    # Compute jaccard's coefficient i.e intersection (at least 50%) divided by union
-    SEoverlap[i] = round(length(hits) / length(reduce(c(refGR, testGR))), 3)
-    
-    # SOME OTHER METRIC TO FIND  FRACTION OVERLAP (NOT USED !!)
-    #SEoverlap[i] = round(length(hits) / c(length(refGR) + length(testGR)), 3)
-    #SEoverlap[i] = round(c(length(hits) / length(testGR)) * 100, 2)
+    # % of neuroblastoma super enhancers found in trhe overlap
+    SEoverlap[i] = round(c(length(unique(queryHits(hits)))/length(refGR)) * 100, 2)
 
     rm(refGR, testGR, hits ,overlaps, percentOverlap)
 }
@@ -159,15 +159,16 @@ rm(collab, anno, SElist)
 
 # Main figure 
 pdf(paste0(outpath,"figure1/SE_multiple_tissue_overlap_to_NB_SE_MainFig.pdf"),width=1.5, height=1.5)
-  par(mar=c(2.5,2.5,0.25,0.25), mgp=c(1.6,0.5,0),xaxs="i", yaxs="i", cex=0.6)
+  par(mar=c(2.5,2.5,0.25,0.25), mgp=c(1.6,0.5,0), cex=0.6)
   colr = rep("#5aa02c", length(SEoverlap))
   colr[which(names(SEoverlap) %in% grep("|",names(SEoverlap),value=T,fixed=T))]="#ff7f2a"
   colr[length(colr)] = "black"
   
-  plot(SEoverlap, pch=20, cex=1.2, ylab= "Fraction overlap", xlab="Samples", ylim = c(-0.03,1.03),xlim=c(0,41),las=2,col=colr,frame=F)
+  plot(SEoverlap, pch=20, cex=1.2, ylab= "% of neuroblastoma super enhancers found", xlab="Samples", las=2,col=colr,frame=F)
   legend("topleft", legend=c("Primary tissue","Cell-lines"), fill=c("#5aa02c","#ff7f2a"), border=c("#5aa02c","#ff7f2a"),bty="n",x.intersp=0.3, y.intersp=0.8)
   abline(h=min(tail(SEoverlap,2)),lty=1,col="grey30")
-  text(x=length(SEoverlap)/2, y=min(tail(SEoverlap,2)), paste0("max overlap ~",round(min(tail(SEoverlap,2))*100),"%"),cex=0.8,pos=3)
+  text(x=length(SEoverlap)/2, y=min(tail(SEoverlap,2)), cex=0.8, pos=3,
+       paste0("Neuroblastoma SE identified ~",round(min(tail(SEoverlap,2))),"% (using at least ", overlap_threshold*100, "% overlap)"))
   rm(colr)
 dev.off()
 
@@ -177,11 +178,12 @@ pdf(paste0(outpath,"sup_figure1/SE_multiple_tissue_overlap_to_NB_SE_SupplFig.pdf
   colr = rep("#5aa02c", length(SEoverlap))
   colr[which(names(SEoverlap) %in% grep("|",names(SEoverlap),value=T,fixed=T))]="#ff7f2a"
   colr[length(colr)] = "grey"
-  barplot(SEoverlap, ylab= "Fraction overlap", ylim = c(-0.03,1.03),las=2,col=colr,border=NA)
+  barplot(SEoverlap, ylab= "% of neuroblastoma super enhancers found",las=2,col=colr,border=NA)
   legend("topleft", legend=c("Primary tissue","Cell-lines"), fill=c("#5aa02c","#ff7f2a"), border=c("#5aa02c","#ff7f2a"),bty="n",x.intersp=0.3, y.intersp=0.8)
   abline(h=min(tail(SEoverlap,2)),lty=1,col="grey30")
-  text(x=length(SEoverlap)/2, y=min(tail(SEoverlap,2)), paste0("max overlap ~",round(min(tail(SEoverlap,2))*100),"%"),cex=0.8,pos=3)
+  text(x=length(SEoverlap)/2, y=min(tail(SEoverlap,2)), cex=0.8, pos=3,
+       paste0("Neuroblastoma SE identified ~",round(min(tail(SEoverlap,2))),"% (using at least ", overlap_threshold*100, "% overlap)"))
   rm(colr)
 dev.off()
 
-rm(SEoverlap)
+rm(SEoverlap, overlap_threshold)
