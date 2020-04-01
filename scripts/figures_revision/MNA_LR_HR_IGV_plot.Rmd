@@ -1,0 +1,907 @@
+---
+title: "IGV plots"
+author: "Health Data Science Unit"
+date: "`r date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    number_sections: false
+params:
+  work_dir     : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/"
+  path_high_bed: "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/src/project_NB_SE/scripts/figure3/figure3_IGV_highlight_ranges.bed"
+  cells_h      : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K3_Hmatrix_hnorm.RDS"
+  tumor_h      : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS"
+  MES_activity : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/analysis/tumor/VIPER/MES_TFactivity.RDS"
+  width_window : 2000
+  chr   : "chr11"
+  start : 68776977
+  end   : 69667477
+  name  : "CCND1"
+  figure: "results/figures_revision/figureMNA-HR_MNA-LR_IGV.pdf"
+  width : 11
+  height: 6
+  summbw : "sumbw"
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+#this chunk sets global options for Rmarkdown
+knitr::opts_chunk$set(echo = TRUE)
+#setting working directory. Should be home directory of the project
+knitr::opts_knit$set(root.dir=params$work_dir)
+options(knitr.table.format="html")
+"/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K3_Hmatrix_hnorm.RDS"
+
+library(tidyverse)
+library(viridis)
+library(rtracklayer)
+library(biovizBase)
+library(ggbio)
+library(Homo.sapiens)
+library(GenomicInteractions)
+library(knitr)
+
+NCORES_tracks <- 1L
+NCORES_summ   <- 20L
+```
+
+## Data loading
+
+```{r helper_functions_read}
+```
+
+```{r helper_functions_tracks}
+```
+  
+```{r makeConfig}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                     Split tracks between MES and ADRN                      ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                     assign samples to MES signature                        ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+assign_signature <- function(h){
+  is_h <- t(apply(h, 1, function(x){
+    k <- kmeans(x, 2)
+    max_idx <- which.max(k$centers)
+    if_else(k$cluster == max_idx, TRUE, FALSE)
+  }))
+  colnames(is_h) <- colnames(h)
+  rownames(is_h) <- rownames(h)
+  is_h
+}
+
+cells_h <- readRDS(params$cells_h)
+tumor_h <- readRDS(params$tumor_h)
+
+tumor_sig_assign <- setNames(rownames(tumor_h)[apply(tumor_h, 2, which.max)],
+                             colnames(tumor_h))
+
+cells_mes <- assign_signature(cells_h)["MES",]
+tumor_mes <- assign_signature(tumor_h)["MES",]
+
+
+tumor_mnalr <- tumor_sig_assign == "MNA-LR"
+tumor_mnahr <- tumor_sig_assign == "MNA-HR"
+# tumor_mnalr <- assign_signature(tumor_h)["MNA-LR",]
+# tumor_mnahr <- assign_signature(tumor_h)["MNA-HR",]
+
+
+# cells_mes <- assign_signature(cells_h)["MES",][1:4]
+# tumor_mes <- assign_signature(tumor_h)["MES",][c(1,12, 2,3)]
+
+
+cells_mes
+tumor_mes
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                     Split tracks between MES and ADRN                      ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+tracksIDs <- c("MNA-LR H3K27ac tumors",
+               "Tumor SE",
+               "MNA-HR H3K27ac tumors")
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                       Build track data frame                               ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+bind_rows(
+  
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##              MNA-LR H3K27ac tumors                 ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  data.frame(sampleID = names(tumor_mnalr)[tumor_mnalr],
+             type	    = "tumor",
+             scale    = "type",
+             class    = params$summbw,
+             color    = "#00afaf",
+             trackID  = "MNA-LR H3K27ac tumors",
+             labels	  = TRUE,
+             height   = 3,
+             path     = paste0("data/tumor/chipseq/H3K27ac/bw/", names(tumor_mnalr)[tumor_mnalr], "_H3K27ac.bw"), 
+             stringsAsFactors = FALSE),
+  
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##                  Tumor SE                          ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  data.frame(sampleID = "TumorSE",
+             type	    = "tumor",
+             scale    = NA,
+             class    = "bed",
+             color    = "black",
+             trackID  = "Tumor SE",
+             labels	  = TRUE,
+             height   = 0.4,
+             path     = "analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed" , 
+             stringsAsFactors = FALSE),
+  
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##              MNA-HR H3K27ac tumors                 ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  data.frame(sampleID = names(tumor_mnahr)[tumor_mnahr],
+             type	    = "tumor",
+             scale    = "type",
+             class    = params$summbw,
+             color    = "firebrick",
+             trackID  = "MNA-HR H3K27ac tumors",
+             labels	  = TRUE,
+             height   = 3,
+             path     = paste0("data/tumor/chipseq/H3K27ac/bw/", names(tumor_mnahr)[tumor_mnahr], "_H3K27ac.bw"), 
+             stringsAsFactors = FALSE)
+  
+) -> tracks_df
+tracks_df
+
+#the tracks should be in the correct order in the config file
+trackIDs <- factor(tracks_df$trackID, levels = unique(tracks_df$trackID))
+tracks_config <- split(tracks_df, trackIDs)
+names(tracks_config)
+
+
+```
+
+```{r plot, message=FALSE}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                      Define region of interest                             ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+roi <- GRanges(seqnames = params$chr,
+               ranges   = IRanges(start = params$start,
+                                  end   = params$end,
+                                  name  = params$name))
+roi
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                      Read regions to highlight                             ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+
+highlight_ranges <- read.table(params$path_high_bed, stringsAsFactors=FALSE)
+
+#highlight_ranges <- read.table("/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/src/project_NB_SE/scripts/figure3/figure3g_highlight_ranges.bed", stringsAsFactors=FALSE)
+colnames(highlight_ranges) <- c("chr", "start", "end", "type", "color")
+highlight_ranges <- makeGRangesFromDataFrame(highlight_ranges, keep.extra.column = TRUE)
+highlight_ranges
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                      Read TF MES activity                                  ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+#MES_activity <- readRDS("analysis/tumor/VIPER/MES_TFactivity.RDS")
+MES_activity <- readRDS(params$MES_activity)
+MES_activity <- MES_activity$es$nes
+
+tf_activity <- data.frame(Activity.Mes = MES_activity, 
+                          row.names    = names(MES_activity) )
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                              Read Track info                               ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# ymax <- params$ymax
+# ymax <- ifelse(ymax == "max", ymax, as.numeric(ymax))
+
+#plot_tracks_from_config(tracks_config, roi, width_window = 5000)
+plot_tracks_from_config(tracks_config, roi, width_window = params$width_window)
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                 Save Plot Tracks                       ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# ggsave(filename = params$figure,
+#        plot     = gg_tracks,
+#        width    = 8,
+#        height   = 4)
+
+
+
+```
+
+
+
+```{r helper_functions_read}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                        Read tracks functions                               ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                  Read BigWig files and make Tracks                         ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+read_BW <- function(config, region2plot, width_window, ...){
+  # if more than one file return error
+  if (nrow(config) > 1) {
+    stop(paste("More than one file with the trackID: ",
+               unique(config$trackID),
+               "\n did you mean sumbw in class?"))
+  }
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##  Bin region to plot and assign mean score of BigWigs   ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  region2plot_bin <- tile(region2plot, width = width_window)
+  region2plot_bin <- unlist(region2plot_bin)
+  region2plot_bin$sampleID <- rep(config$sampleID, length(region2plot_bin))
+  
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##                       Read file                        ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  bwf <- BigWigFile(config$path)
+  bw <- rtracklayer::import(bwf)
+  # keep only region to plot
+  bw <- subsetByOverlaps(bw, region2plot)
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##           Find signal in region to plot bins           ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  # center BigWig regions and assign one of the bins
+  bw_df <- data.frame(regionCenter = round(start(bw) + width(bw)/2),
+                      score        = bw$score)
+  bw_df$bin <- cut(bw_df$regionCenter, 
+                   breaks = start(region2plot_bin), 
+                   labels = FALSE, 
+                   include.lowest = TRUE)
+  bw_df <- bw_df[!is.na(bw_df$bin),]
+  # Keep only mean signal per bin
+  bw_df <- bw_df %>% 
+    group_by(bin) %>% 
+    summarise(avg_score = mean(score))
+  # Build vector of signal according to bins
+  signal <- rep(0, length(region2plot_bin))
+  signal[bw_df$bin] <- bw_df$avg_score
+  signal[signal <= 0] <- -0.05 
+  
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##          Assign values to binned region                ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  region2plot_bin$score <- signal
+  
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##        Return list with data and config params         ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  list(config = config,
+       data   = region2plot_bin,
+       ylim   = c(-1, max(region2plot_bin$score)))
+}
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##       Read BigWig files and make summary BigWig Barplot Track              ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+#output of this function is plotted with the track_BW function
+read_sumBW_bar <- function(config, region2plot, width_window, ...){
+  # files: named character vector with paths
+  files <- setNames(config$path, config$sampleID)
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##  Bin region to plot and assign mean score of BigWigs   ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  region2plot_bin <- tile(region2plot, width = width_window)
+  region2plot_bin <- unlist(region2plot_bin)
+  region2plot_bin$sampleID <- rep("avg_signal", length(region2plot_bin))
+  
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##             Summarize Bigwig signal                    ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  signal_over_bins <- mclapply(files, function(file){
+    ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+    ##                       Read file                        ##
+    ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+    bwf <- BigWigFile(file)
+    bw <- rtracklayer::import(bwf)
+    # keep only region to plot
+    bw <- subsetByOverlaps(bw, region2plot)
+    ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+    ##           Find signal in region to plot bins           ##
+    ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+    # center BigWig regions and assign one of the bins
+    bw_df <- data.frame(regionCenter = round(start(bw) + width(bw)/2),
+                        score = bw$score)
+    bw_df$bin <- cut(bw_df$regionCenter, breaks = start(region2plot_bin), labels = FALSE, include.lowest = TRUE)
+    bw_df <- bw_df[!is.na(bw_df$bin),]
+    # Keep only mean signal per bin
+    bw_df <- bw_df %>% 
+      group_by(bin) %>% 
+      summarise(avg_score = mean(score))
+    # Build vector of signal to bind with others BigWigs
+    signal <- rep(0, length(region2plot_bin))
+    signal[bw_df$bin] <- bw_df$avg_score
+    signal[signal <= 0] <- -0.05 
+    return(signal)
+  }, mc.cores = NCORES_summ)
+  signal_over_bins <- do.call(cbind, signal_over_bins)
+  
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##          Assign values to binned region                ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  region2plot_bin$score <- rowMeans(signal_over_bins)
+  
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##        Return list with data and config params         ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  list(config = config,
+       data   = region2plot_bin,
+       ylim   = c(-1, max(region2plot_bin$score)))
+}
+
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##             Read BigWig files and make summary Track                       ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+read_sumBW <- function(config, region2plot, ...){
+  # files: named character vector with paths
+  files <- setNames(config$path, config$sampleID)
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##                       Read files                       ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  vals <-mclapply(names(files), function(name){
+    file <- files[name]
+    # Read bigwig
+    bw <- rtracklayer::import(file)
+    bw <- subsetByOverlaps(bw, region2plot)
+    # center values 
+    v <- (values(bw)$score) # as the ranges are the same, ignore these
+    m <- round(start(bw) + width(bw)/2)
+    val <- data.frame(m = m, v = v, n = rep(name, length(m)))
+    
+    # split regions into bins
+    nBins  <- 800
+    breaks <- seq(start(region2plot), end(region2plot), length.out = nBins)
+    
+    val$bin <- cut(val$m, breaks = breaks, labels = F, include.lowest = T)
+    val <- group_by(val, bin) %>% summarise(signal = median(v), mid = breaks[median(bin)])
+    val$name <- name
+    return(val)
+  }, mc.cores = NCORES_summ)
+  
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##             Summarize Bigwig signal                    ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ds <- do.call(rbind, vals)
+  
+  dsD <- ds %>% 
+    group_by(mid ) %>% 
+    summarise(lowest = quantile(signal)[1],
+              lower  = quantile(signal)[2],
+              median = median(signal),
+              upper  = quantile(signal)[4],
+              uppest = quantile(signal)[5])
+  
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##             Smooth with loess                          ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  x <- as.matrix(dsD[,1])
+  span <- 0.01
+  n    <- 700
+  d <- apply(as.matrix(dsD[,2:5]), 2, function(y){
+  #d <- apply(as.matrix(dsD[,2:6]), 2, function(y){
+    loess.smooth(x,y, span = span, evaluation = n)$y
+  })
+  # get x values, using same parameters
+  x <-  loess.smooth(x,as.matrix(dsD[,2]), span = span, evaluation = n)$x
+  allBWS <- as.tibble(cbind(x,d))
+  # allBWS <- dsD
+  # allBWS$x <- dsD$mid
+  
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##        Return list with data and config params         ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  list(config = config,
+       data   = allBWS,
+       ylim   = c(-1, max(allBWS$upper)))
+}
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                           Read BED files                                   ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# Read Bed files
+read_Bed <- function(config, region2plot, ...){
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##                          Read file                     ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  bed <- read.table(config$path, as.is=TRUE)
+  if (config$labels) {
+    bed <- bed[,1:4]
+    colnames(bed) = c('chr','start','end','id')
+  } else {
+    tmp <-strrep(" ",1:nrow(bed))
+    bed <- cbind(bed[,1:3], tmp)
+    colnames(bed) = c('chr','start','end','id')
+    bed$id = as.character(bed$id)
+  }
+  
+  bed <-  makeGRangesFromDataFrame(bed, keep.extra.column = TRUE)
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##                Regions of interest                     ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  bed <- subsetByOverlaps(bed, region2plot)
+  
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##                   Format to plot                       ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  bed$sampleID <- rep(config$sampleID, length(bed))
+  bed$type     <- rep("exon", length(bed))
+  names(bed)   <- bed$id
+  bed <- split(bed, bed$id)
+  
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##        Return list with data and config params         ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  list(config = config,
+       data   = bed,
+       ylim   = NA)
+  
+}
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                           Read BEDPE files                                 ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# Read Bedpe files
+read_Bedpe <- function(config, region2plot, FDR = 0.25, ...){
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##                          Read file                     ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  hic_data <- makeGenomicInteractionsFromFile(config$path, 
+                                              type="bedpe", 
+                                              experiment_name = config$sampleID, 
+                                              description = config$sampleID)
+  meta <- read.table(config$path, colClasses = c(rep("NULL", 7), "numeric"))
+  colnames(meta) <- "FDR"
+  hic_data$FDR <- meta$FDR
+  bedpe <- hic_data[hic_data$FDR <= FDR]
+  
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##                Regions of interest                     ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  bedpe <- subsetByOverlaps(bedpe, region2plot)
+  if (exists("highlight_ranges")) {
+    bedpe <- subsetByOverlaps(bedpe, highlight_ranges)
+  }
+  
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##                Format bedpe to plot                    ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  hichip <- anchorOne(bedpe)
+  start(hichip) <- start(hichip) + floor(width(hichip)/2)
+  end(hichip)   <- start(anchorTwo(bedpe)) + floor(width(anchorTwo(bedpe))/2)
+  
+  hichip$FDR  <- -log10(bedpe$FDR)
+  hichip$rank <-  if (length(bedpe) > 0) rank(hichip$FDR)+3 else numeric()
+  
+  hichip <- hichip[start(hichip) >= start(region2plot)]
+  hichip <- hichip[end(hichip) <= end(region2plot)]
+  
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##        Return list with data and config params         ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  list(config = config,
+       data   = hichip,
+       ylim   = NA)
+  
+}
+
+
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                           Read footprint files                             ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+read_footprint <- function(config, region2plot, tf_activity = NA, ...){
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##                          Read file                     ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  bed <- read.table(config$path, as.is=TRUE)
+  if (config$labels) {
+    bed <- bed[,1:4]
+    colnames(bed) = c('chr','start','end','id')
+  } else {
+    tmp <-strrep(" ",1:nrow(bed))
+    bed <- cbind(bed[,1:3], tmp)
+    colnames(bed) = c('chr','start','end','id')
+    bed$id = as.character(bed$id)
+  }
+  
+  bed <-  makeGRangesFromDataFrame(bed, keep.extra.column = TRUE)
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##                Regions of interest                     ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  bed <- subsetByOverlaps(bed, region2plot)
+  if (exists("highlight_ranges")) {
+    bed <- subsetByOverlaps(bed, highlight_ranges)
+  }
+  
+  # Collapse nearby footprints from same TF
+  bed <- unlist(GenomicRanges::reduce(split(bed + 1000, bed$id )))
+  bed$id <- names(bed)
+  
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##                Find TF MES activity                    ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  if (is.na(tf_activity)) {
+    bed$tf_activity <- 1:length(bed)
+  } else {
+    # Drop TFs without activity score
+    bed <- bed[bed$id %in% rownames(tf_activity)]
+    # Summarize TF activity
+    tf.mes <- tf_activity$Activity.Mes[match(bed$id, rownames(tf_activity))] 
+    bed$tf_activity <- tf.mes
+    bed$tf_Mes      <- tf.mes > 1
+  }
+  
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##        Return list with data and config params         ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  list(config = config,
+       data   = bed,
+       ylim   = NA)
+  
+}
+```
+
+
+```{r helper_functions_tracks}
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                        Plot tracks functions                               ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+
+track_BW <- function(track_data, region2plot, ...){
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##                Plot BigWig track                       ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  color <- unique(as.character(track_data$config$color))
+  ggplot(track_data$data, aes(y=score, fill = sampleID)) +
+    scale_fill_manual(values = color) +
+    geom_bar() +
+    xlim(region2plot) +
+    ylim(track_data$ylim)
+}
+
+track_sumBW <- function(track_data, region2plot, ...){
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##                Plot BigWig summary                     ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  color <- unique(as.character(track_data$config$color))
+  ggplot(track_data$data, aes(x, upper)) + 
+    geom_ribbon(aes(ymin = lower, ymax = upper), fill = as.character(color) , alpha = 1) + 
+    #geom_ribbon(aes(ymin = lowest, ymax = uppest), fill = color, alpha = 1) + 
+    ylab("") + 
+    ylim(track_data$ylim)
+}
+
+track_Bed <- function(track_data, region2plot, ...){
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##                    Plot Bed                            ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  if (length(track_data$data) == 0) {
+    return(ggplot(data.frame()) + geom_point())
+  }
+  color <- unique(as.character(track_data$config$color))
+  
+  autoplot(track_data$data, aes(type = type),
+           color = as.character(color),
+           fill = as.character(color),
+           #size = .1,
+           label.size = .5,
+           range.geom = "rect") +
+    xlim(region2plot) +
+    theme(legend.position="none")
+}
+
+track_Bedpe <- function(track_data, region2plot, ...){
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##                Plot BEDPE.                             ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  color <- unique(as.character(track_data$config$color))
+  ggplot(track_data$data) +
+    geom_arch(track_data$data, aes(height=rank), color=color, size=.4) + 
+    xlim(region2plot) +
+    theme(axis.text.y  = element_blank(),
+          axis.ticks.y = element_blank()) 
+  
+}
+
+track_footprint <- function(track_data, region2plot, ...){
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##                    Plot footprint                      ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  if (length(track_data$data) == 0) {
+    return(ggplot(data.frame()) + geom_point())
+  }
+  
+  ggplot(track_data$data) +
+    stat_identity(aes(x = start, y = tf_activity, color = tf_activity), geom = "point") +
+    geom_text(aes(x = start, y = tf_activity, label=id), size=1, color="black") +
+    scale_color_gradient2(low = viridis(5)[4], mid = "white",
+                          high = inferno(5)[2], midpoint = 0, space = "Lab",
+                          na.value = "grey50", guide = "colourbar", aesthetics = "color") +
+    xlim(region2plot) +
+    scale_y_continuous(breaks= scales::pretty_breaks(n=3)) +
+    theme(legend.position="none")
+  
+}
+
+
+
+
+
+
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                          Gene model Track                                  ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+track_GeneModels <- function(db = Homo.sapiens, regionGR) {
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##         Get genes in the Selected region               ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  # Read organism DB info
+  txdb <- OrganismDbi:::.getTxDb(db)
+  # Parse all genes that are inside the selected region
+  gr <- crunch(txdb, regionGR, 
+               truncate.gaps = FALSE,
+               columns = c("tx_id", "tx_name", "gene_id"),
+               ratio = 0.0025)
+  # Find gene SYMBOL
+  grl <- split(gr, gr$tx_id)
+  lbs <- AnnotationDbi::select(db, names(grl), "SYMBOL", "TXID")
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##               Keep only annotated genes                ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  # Keep only genes with a symbol
+  lbs <- lbs[!is.na(lbs$SYMBOL),,drop=FALSE]
+  grl <- grl[match(lbs$TXID, names(grl))]
+  # keep only the longest transcript
+  lbs$len <- unlist(width(GenomicRanges::reduce(grl, ignore.strand=TRUE)))
+  lbs <- lbs %>%
+    group_by(SYMBOL) %>%
+    arrange(desc(len)) %>%
+    top_n(1) %>%
+    ungroup()
+  grl <- grl[match(lbs$TXID, names(grl))]
+  names(grl) <- lbs$SYMBOL[match(names(grl), lbs$TXID)] 
+  # keep only the longest transcript
+  lbs <- data.frame(SYMBOL = names(grl),
+                    len = unlist(width(GenomicRanges::reduce(grl, ignore.strand=TRUE)))) %>%
+    group_by(SYMBOL) %>%
+    mutate(order = order(len, decreasing = TRUE)) %>%
+    ungroup()
+  grl <- grl[which(lbs$order == 1)]
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##                       Plot track                       ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  gg_roi <- autoplot(grl, aes(type = type),
+                     color = inferno(5)[4],
+                     fill = inferno(5)[4],
+                     #size = .1,
+                     label.size = .5,
+                     exon.rect.h = 0.05,
+                     cds.rect.h  = 0.05,
+                     utr.rect.h  = 0.05/2,
+                     group.selfish = FALSE,
+                     #stat = "stepping", 
+                     #arrow.rate = 0.015,
+                     #length = unit(0.1, "points"),
+                     range.geom = "rect",
+                     rect.height = 0.05/4,
+                     gap.geom = "arrow") +
+    theme(legend.position="none")
+}
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                           Highlight Track                                  ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+track_highlight <- function(highlight_ranges, region2plot){
+  highlight_ranges <- subsetByOverlaps(highlight_ranges, region2plot)
+  ggplot(highlight_ranges, aes(fill = type)) + 
+    geom_rect(color = NA, alpha = 0.3) +
+    scale_fill_manual(values = c("grey80", "#921BBA", "#B2DF8A")) +
+    xlim(region2plot)
+
+
+}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                       Read Tracks list of funtions                         ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+read_track <- list(bw        = read_BW,
+                   bed       = read_Bed,
+                   bedpe     = read_Bedpe,
+                   sumbw     = read_sumBW,
+                   sumbw_bar = read_sumBW_bar,
+                   footprint = read_footprint)
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                       Plot Tracks list of funtions                         ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+
+plot_track <- list(bw        = track_BW,
+                   bed       = track_Bed,
+                   bedpe     = track_Bedpe,
+                   sumbw     = track_sumBW,
+                   sumbw_bar = track_BW,
+                   footprint = track_footprint)
+
+
+
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                             Plot Tracks                                    ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+plot_tracks_from_config <- function(tracks_config, roi, width_window = 5000){
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##                           basic ggplot theme                             ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  tm <- theme_bw() +
+    theme(legend.text = element_text(size=5),
+          axis.title.y = element_blank(),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.border = element_blank(),
+          panel.background = element_blank())
+  
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  ##                     plot tracks for each one of the regions              ##
+  ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+  lapply(names(roi), function(region2plotID){
+    region2plot <- roi[region2plotID]
+    message(names(region2plot))
+    ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+    ##    Read data using the list of functions read_track    ##
+    ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+    tracks_data_list <- mclapply(tracks_config, function(config){
+      message(unique(config$trackID))
+      # Find which class of track and files will be read
+      classID <- unique(config$class)
+      print(paste(paste(config$sampleID, collapse = " "),
+                  "",
+                  classID))
+      # error if more than one class for each track
+      if (length(classID) != 1) {
+        stop(paste("More than one or no class found for trackID: ",
+                   unique(config$trackID),
+                   "\n use unique trackID for different plot classes of the same sample"))
+      }
+      # read data
+      #read_track[[classID]](config, region2plot, width_window=width_window, tf_activity = NA)
+      read_track[[classID]](config, region2plot, width_window=width_window, tf_activity = tf_activity)
+    }, mc.cores = NCORES_tracks)
+    
+    ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+    ##                    Configure y axis limits             ##
+    ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+    # Extract config info for Y axis limit
+    ylim_df <- do.call(rbind, lapply(tracks_data_list, function(track_data) {
+      config <- track_data$config[,c("type", "scale", "class", "trackID")]
+      unique(config)
+      
+    }))
+    # Remove tracks that don't have a ylim
+    ylim_df <- ylim_df[!is.na(ylim_df$scale),,drop=FALSE]
+    # Remove tracks that will use local maxim as ylim
+    ylim_df <- ylim_df[!ylim_df$scale == "sampleID",,drop=FALSE]
+    
+    # find limits function
+    findlim <- function(x){
+      tracklim <- do.call(rbind, lapply(setNames(x$trackID, x$trackID), function(trackID){
+        setNames(tracks_data_list[[trackID]]$ylim,
+                 c("lower", "upper"))
+      }))
+      data.frame(trackID = x$trackID,
+                 lower   = min(tracklim[,"lower"]),
+                 upper   = max(tracklim[,"upper"]))
+    }
+    
+    # find limit according to config options
+    if (unique(ylim_df$scale == "global")) {
+      ylim_df <- findlim(ylim_df)
+    } else {
+      ylim_df_TypeClass <- split(ylim_df, paste0(ylim_df$type, ylim_df$class))
+      ylim_df <- do.call(rbind, lapply(ylim_df_TypeClass, findlim))
+    }
+    
+    # Assign new limits
+    tracks_data_list <- lapply(tracks_data_list, function(track_data){
+      #lapply(head(tracks_data_list), function(track_data){
+      trackID <- unique(track_data$config$trackID)
+      idx <- match(trackID, ylim_df$trackID)
+      if (is.na(idx)) {
+        track_data
+      } else {
+        track_data$ylim <- c(ylim_df[idx, "lower"], ylim_df[idx, "upper"])
+        track_data
+      }
+    })
+    
+    ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+    ##  Plot tracks using the list of functions plot_track    ##
+    ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+    track2plot.gg <- mclapply(tracks_data_list, function(track_data){
+      # Find which class of track
+      classID <- unique(track_data$config$class)
+      plot_track[[classID]](track_data, region2plot)
+    #}, mc.cores = 1)  
+    }, mc.cores = NCORES_tracks)
+    
+    ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+    ##          Add highlight and gene tracks                 ##
+    ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+    track2plot.gg <- c(#Highlight = track_highlight(highlight_ranges, region2plot),
+                       track2plot.gg,
+                       `Gene Region` = track_GeneModels(Homo.sapiens, region2plot))
+    
+    ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+    ##                Plot Tracks                             ##
+    ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+    # Heights of each track
+    track2plot.gg$heights <- c(#1,
+                               sapply(tracks_config, function(x) unique(x$height)) , 
+                               2)
+    # Parameters to change track label colors
+    track2plot.gg$label.bg.fill    <- "Grey90"
+    track2plot.gg$label.text.color <- "Grey20"
+    track2plot.gg$label.text.cex   <- 0.5
+    track2plot.gg$label.text.angle <- 0
+    track2plot.gg$label.width      <- unit(5.0, "lines")
+    track2plot.gg$xlim <- region2plot
+    track2plot.gg <- track2plot.gg[!sapply(track2plot.gg, is.null)] 
+    print("one step")
+    
+    #return(track2plot.gg)
+    
+    # make tracks object to plot
+    tracks.r <- do.call(tracks, track2plot.gg)  + 
+      tm + 
+      theme(legend.position="none",
+            axis.text.y = element_text(size=5))
+    
+    ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+    ##                 Save Plot Tracks                       ##
+    ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+    ggsave(filename = params$figure,
+           plot     = tracks.r,
+           width    = params$width,
+           height   = params$height)
+    
+    return(tracks.r)
+    
+  })
+  
+}
+
+x <- plot_tracks_from_config(tracks_config, roi, width_window = params$width_window)
+```
+
+
+
