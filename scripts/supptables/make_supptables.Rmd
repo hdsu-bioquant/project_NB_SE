@@ -134,6 +134,11 @@ write_xlsx(list(Tumors       = annot_t,
                 `Cell lines` = annot_c), 
            path = params$S1)
 
+
+
+```
+
+```{r s2}
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##                    S2_SE_regions_and_target                                ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
@@ -142,13 +147,99 @@ SE <- readRDS(params$SE)
 SE <- as.data.frame(SE)
 SE <- paste_rownames(SE, "SE_ID")
 
+# Add rank
 SE_total_Signal_by_ID <- readRDS("analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_SE_total_Signal.RDS")
 SE_rank <- setNames(rowMedians(SE_total_Signal_by_ID), rownames(SE_total_Signal_by_ID))
 #SE$SE_rank <- SE_rank[match(SE$SE_ID, names(SE_rank))]
 SE$SE_rank <- rank(SE_rank[match(SE$SE_ID, names(SE_rank))])
 
+
+
+#------------------------------------------------------------------------------#
+#                              Add SE assignment                               #
+#------------------------------------------------------------------------------#
+# Add signature assignment 
+tumor_hchip <- readRDS("analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Wmatrix_Wnorm.RDS")
+
+
+#------------------------------------------------------------------------------#
+#                  Add sig assignment based on top 10%                         #
+#------------------------------------------------------------------------------#
+top_10perc_assing <- function(wmatrix){
+  sig_assign <- lapply(setNames(colnames(wmatrix), colnames(wmatrix)), function(sigID){
+    selec_wmatrix <- do.call(cbind, lapply(as.data.frame(wmatrix), function(sign_expo){
+      sign_expo[sign_expo < quantile(sign_expo, 0.90)] <- NA
+      sign_expo
+    }))
+    rownames(selec_wmatrix) <- rownames(wmatrix)
+    selec_wmatrix <- selec_wmatrix[!is.na(selec_wmatrix[,sigID]),,drop=FALSE]
+    # Keep only the top feature if there's an overlap
+    sig_SE_IDs <- rownames(selec_wmatrix[rowMaxs(selec_wmatrix, na.rm = TRUE) == selec_wmatrix[,sigID],])
+    setNames(rep(sigID, length(sig_SE_IDs)), sig_SE_IDs)
+  })
+  unlist(unname(sig_assign))
+}
+
+
+tumor_hchip_top10perc <- top_10perc_assing(tumor_hchip)
+
+
+#------------------------------------------------------------------------------#
+#                  Add sig assignment based on cluster                         #
+#------------------------------------------------------------------------------#
+
+# Run k means over all rows and assign features to the clusters
+SignFeatures <- function(wmatrix){
+  ssf <- apply(wmatrix, 1, function(x){
+    #print(x)
+    x <- sigmoidTransform(x)
+    k <- kmeans(x, 2)
+    max_idx <- which.max(k$centers)
+    #paste(if_else(k$cluster == max_idx, "1", "0"), collapse = "")
+    setNames(if_else(k$cluster == max_idx, 1, 0), names(x))
+  })
+  ssf
+  
+  ssf <- ssf[,colSums(ssf) == 1]
+  setNames(rownames(ssf)[apply(ssf, 2, which.max)], colnames(ssf))
+}
+
+
+# Add signature assignment 
+tumor_hchip_kmeansk2 <- SignFeatures(tumor_hchip)
+
+
+#------------------------------------------------------------------------------#
+#                  Add sig assignment based max exposure                       #
+#------------------------------------------------------------------------------#
+
+tumor_hchip_maxexposure <- setNames(colnames(tumor_hchip)[apply(tumor_hchip, 1, which.max)],
+                                    rownames(tumor_hchip))
+
+
+
+
+head(SE)
+SE <- SE %>% 
+  mutate(Signature_ChIPseq_Top10Percent = tumor_hchip_top10perc[match(SE_ID, names(tumor_hchip_top10perc))]) %>% 
+  mutate(Signature_ChIPseq_KmeansK2     = tumor_hchip_kmeansk2[match(SE_ID, names(tumor_hchip_kmeansk2))]) %>% 
+  mutate(Signature_ChIPseq_MaxExposure  = tumor_hchip_maxexposure[match(SE_ID, names(tumor_hchip_maxexposure))])
+
+saveRDS(SE, "analysis/tumor/SE_annot/tumor_consensusSE_NMF_assignment.RDS")
+
+
+SE <- SE %>% 
+  select(-Signature_ChIPseq_KmeansK2, -Signature_ChIPseq_MaxExposure) %>% 
+  rename(Signature_ChIPseq_Top10Percent = "Signature_ChIPseq")
+
 write_xlsx(list(`Super Enhancers` = SE), 
            path = params$S2)
+
+```
+
+
+
+```{r}
 
 
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
@@ -234,7 +325,6 @@ EnrichTF <- list(`Enrich TF regulons` = read.table(params$EnrichTF, header = TRU
 
 write_xlsx(EnrichTF, 
            path = params$S8)
-
 
 
 ```
