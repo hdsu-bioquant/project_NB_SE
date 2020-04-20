@@ -20,6 +20,9 @@ library(readxl)
 library(pheatmap)
 library(RColorBrewer)
 library(GenomicRanges)
+library(rio)
+library(ggplot2)
+library(ggrepel)
 
 #---------------------------------------------------------------------------------------------------
 # Comparision of NB super enhancer target gene expression across multiple tumor and normal tissues
@@ -122,13 +125,73 @@ for(i in 1: length(SElist))
   rm(dat)
 }
 rm(i,id,files)
+
+######################################
+# NB cell line SE from Groningen et.al 
+######################################
+
+se2 = import(file = "https://media.nature.com/original/nature-assets/ng/journal/v49/n8/extref/ng.3899-S4.xlsx")
+se2 = se2[,2:4]
+se2 = se2[-1,]
+colnames(se2) = se2[1,]
+se2 = se2[-1,]
+se2 = makeGRangesFromDataFrame(se2)
+
+####################################
+# NB cell line SE from Boeva et.al
+####################################
+se3 = import(file = "https://media.nature.com/original/nature-assets/ng/journal/v49/n9/extref/ng.3921-S3.xlsx")
+se3 = se3[-1,]
+colnames(se3) = se3[1,]
+se3 = se3[-1,]
+se3 = se3[, c(1:3,5,14,15,19)]
+
+# Chosing a SE specific gene (single gene) based on highest correlation
+se3$`Gene(s)` = sapply(strsplit(se3$`Gene(s)`, "|", fixed=T), function(x)x[1])
+se3$`FC Score Group I over Group II` = round(log2(as.numeric(se3$`FC Score Group I over Group II`)),3)
+se3$`Wilcoxon p-value (two sided test)` = signif(as.numeric(se3$`Wilcoxon p-value (two sided test)`),3)
+se3 = se3[, -ncol(se3)]
+tmp = makeGRangesFromDataFrame(se3[,1:3])
+mcols(tmp) = se3[4:ncol(se3)]
+se3 = tmp
+rm(tmp)
+
+###################################################
+# Add NB specific SEs to multiple tissue derived SE
+###################################################
+
 SElist$Neuroblastoma = readRDS(nbSE)
+SElist$Groningen_et_al = se2
+SElist$Boeva_et_al = se3
+rm(se2, se3)
+
+colnames(anno) = c("Name", "Subtype", "Class")
+NB_anno = data.frame(Name = c("Neuroblastoma", "Groningen_et_al","Boeva_et_al"),
+                     Subtype = "Neuroblastoma",
+                     Class = "Tumor", stringsAsFactors = F)
+anno = rbind(anno, NB_anno)
+
+anno$Type = rep("Primary", nrow(anno))
+anno$Type[anno$Name %in% c("H1", "HMEC", "HUVEC", "DND41","GM12878", 
+                          "Jurkat", "MM1S", "RPMI-8402", "K562", "u87", 
+                          "HCC1954", "MCF-7", "HeLa", "HCT-116", "VACO_400", 
+                          "VACO_503", "H2171", "LnCAP", "Groningen_et_al", "Boeva_et_al")] = "Cell-line"
+
+rm(NB_anno)
 
 # Find the fraction overlap of SE from other tissues with NB super enhancers (at least 50%)
 # Code adapted from https://support.bioconductor.org/p/72656/
 
 SEoverlap = rep(NA, length(SElist))
-overlap_threshold = 0.50 
+
+if(identical(names(SElist), anno$Name))
+{
+  names(SEoverlap) = anno$Subtype
+  names(SEoverlap)[which(anno$Type == "Cell-line")] = paste(names(SEoverlap)[which(anno$Type == "Cell-line")],
+                                                            anno$Name[which(anno$Type == "Cell-line")], sep=" | ")
+}
+
+overlap_threshold = 0.25
 
 for( i in 1: length(SElist))
 {
@@ -150,40 +213,38 @@ for( i in 1: length(SElist))
 }
 rm(i)
 
-collab = anno$Subtype
-collab[which(anno$Class == "Tumor")] = paste(collab[which(anno$Class == "Tumor")],anno$`File Name`[which(anno$Class == "Tumor")],sep="|")
-collab = c(collab,"Neuroblastoma")
-names(SEoverlap) = collab
-SEoverlap = sort(SEoverlap)
-rm(collab, anno, SElist)
+SEoverlap = data.frame(Label = names(SEoverlap), Overlap = as.numeric(SEoverlap))
+SEoverlap = cbind(anno, SEoverlap)
 
 # Main figure 
-pdf(paste0(outpath,"figure1/SE_multiple_tissue_overlap_to_NB_SE_MainFig.pdf"),width=1.5, height=1.5)
-  par(mar=c(2.5,2.5,0.25,0.25), mgp=c(1.6,0.5,0), cex=0.6)
-  colr = rep("#5aa02c", length(SEoverlap))
-  colr[which(names(SEoverlap) %in% grep("|",names(SEoverlap),value=T,fixed=T))]="#ff7f2a"
-  colr[length(colr)] = "black"
-  
-  plot(SEoverlap, pch=20, cex=1.2, ylab= "% of neuroblastoma super enhancers found", xlab="Samples", las=2,col=colr,frame=F)
-  legend("topleft", legend=c("Primary tissue","Cell-lines"), fill=c("#5aa02c","#ff7f2a"), border=c("#5aa02c","#ff7f2a"),bty="n",x.intersp=0.3, y.intersp=0.8)
-  abline(h=min(tail(SEoverlap,2)),lty=1,col="grey30")
-  text(x=length(SEoverlap)/2, y=min(tail(SEoverlap,2)), cex=0.8, pos=3,
-       paste0("Neuroblastoma SE identified ~",round(min(tail(SEoverlap,2))),"% (using at least ", overlap_threshold*100, "% overlap)"))
-  rm(colr)
-dev.off()
+ggplot(SEoverlap, aes(x = reorder(Label, Overlap), y = Overlap)) + 
+  theme_bw(base_size = 9) +
+  labs(x = "", y = "% of all SE in neuroblastoma (n=1973)") + 
+  geom_point() +
+  #scale_fill_manual(values=c("#397FB9", "#994F9F")) +
+  geom_text_repel(data = subset(SEoverlap, Overlap > 10.5), aes(label = Label), size=2) +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(colour="black"), 
+        axis.line = element_blank(),
+        axis.ticks.x = element_blank(),
+        legend.position = c(0.8,0.8),
+        axis.text.x = element_blank())  +
+  ggsave(paste0(outpath,"figure1/SE_multiple_tissue_overlap_to_NB_SE_MainFig.pdf"), width=3, height=3)
 
 # Supplementary figure with sample names
-pdf(paste0(outpath,"sup_figure1/SE_multiple_tissue_overlap_to_NB_SE_SupplFig.pdf"),width=4.5, height=2.5)
-  par(mar=c(11,2.5,0.25,0.25), mgp=c(1.5,0.5,0),xaxs="i", yaxs="i", cex=0.6)
-  colr = rep("#5aa02c", length(SEoverlap))
-  colr[which(names(SEoverlap) %in% grep("|",names(SEoverlap),value=T,fixed=T))]="#ff7f2a"
-  colr[length(colr)] = "grey"
-  barplot(SEoverlap, ylab= "% of neuroblastoma super enhancers found",las=2,col=colr,border=NA)
-  legend("topleft", legend=c("Primary tissue","Cell-lines"), fill=c("#5aa02c","#ff7f2a"), border=c("#5aa02c","#ff7f2a"),bty="n",x.intersp=0.3, y.intersp=0.8)
-  abline(h=min(tail(SEoverlap,2)),lty=1,col="grey30")
-  text(x=length(SEoverlap)/2, y=min(tail(SEoverlap,2)), cex=0.8, pos=3,
-       paste0("Neuroblastoma SE identified ~",round(min(tail(SEoverlap,2))),"% (using at least ", overlap_threshold*100, "% overlap)"))
-  rm(colr)
-dev.off()
+ggplot(SEoverlap, aes(x = reorder(Label, Overlap), y = Overlap)) + 
+  theme_bw(base_size = 9) + ylim(0,106) + coord_flip() +
+  labs(x = "", y = "% of all SE in neuroblastoma (n=1973)") + 
+  geom_bar(stat="identity") +
+  #scale_fill_manual(values=c("#397FB9", "#994F9F")) +
+  geom_text(aes(label = paste0(round(Overlap),"%"), y = Overlap+6), 
+            vjust = 0.5, hjust = 1, angle = 0, size=2) +
+  theme(panel.grid = element_blank(),
+        axis.text = element_text(colour="black"), 
+        axis.line = element_blank(),
+        axis.ticks.y = element_blank(),
+        legend.position = c(0.8,0.8),
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5))  +
+  ggsave(paste0(outpath,"sup_figure1/SE_multiple_tissue_overlap_to_NB_SE_SupplFig.pdf"), width=4.2, height=5)
 
-rm(SEoverlap, overlap_threshold)
+rm(SEoverlap, overlap_threshold, anno, SElist)

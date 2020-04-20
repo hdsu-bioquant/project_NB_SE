@@ -229,8 +229,9 @@ saveRDS(SE, "analysis/tumor/SE_annot/tumor_consensusSE_NMF_assignment.RDS")
 
 
 SE <- SE %>% 
-  select(-Signature_ChIPseq_KmeansK2, -Signature_ChIPseq_MaxExposure) %>% 
-  rename(Signature_ChIPseq_Top10Percent = "Signature_ChIPseq")
+  select(-Signature_ChIPseq_KmeansK2) #%>% 
+  #rename(Signature_ChIPseq_Top10Percent = "Signature_ChIPseq")
+ #Signature_ChIPseq_MaxExposure
 
 write_xlsx(list(`Super Enhancers` = SE), 
            path = params$S2)
