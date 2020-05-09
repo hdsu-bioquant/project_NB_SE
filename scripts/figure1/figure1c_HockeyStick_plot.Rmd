@@ -516,6 +516,7 @@ SE_total_Signal_by_ID <- do.call(cbind, mclapply(bw_paths, function(bw_path){
 
 saveRDS(SE_total_Signal_by_ID, "analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_SE_total_Signal.RDS")
 
+saveRDS(SE_total_Signal, "analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_SE_total_Signal_by_target.RDS")
 
 ```
 
@@ -610,10 +611,21 @@ hockey_box
 ```
 
 
-```{r}
+```{r PRRX1}
+library(ggbeeswarm)
+library(ggpubr)
+
 tumor_h <- readRDS("analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS")
 tumor_sig_assign <- setNames(rownames(tumor_h)[apply(tumor_h, 2, which.max)],
                              colnames(tumor_h))
+SE_total_Signal <- readRDS("analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_SE_total_Signal_by_target.RDS")
+
+
+
+# Comparisons I care about
+my_comparisons <- list(c("MES", "MYCN"),c("MES", "MNA-LR"),c("MES", "MNA-HR"))
+
+
 data.frame(ProjectID = names(tumor_sig_assign),
            Signature = tumor_sig_assign,
            PRRX1     = SE_total_Signal["PRRX1",match(names(tumor_sig_assign), colnames(SE_total_Signal))],
@@ -621,11 +633,19 @@ data.frame(ProjectID = names(tumor_sig_assign),
   mutate(Signature = factor(Signature, levels = rownames(tumor_h))) %>% 
   #mutate(PRRX1 = log10(PRRX1)) %>% 
   ggplot(aes(x = Signature, y = PRRX1, color = Signature)) + 
-  geom_point() +
+  geom_quasirandom() +
+  stat_summary(fun.y = median, geom = "errorbar", 
+             aes(ymax = ..y.., ymin = ..y.., group = Signature),
+             width = 1, linetype = "solid") +
+  stat_compare_means(comparisons = my_comparisons, 
+                     method = "t.test", 
+                     paired = FALSE)+ # Add pairwise comparisons p-value
+  #geom_point() +
   scale_color_manual(values = c("firebrick", "#00afaf", "#420A68FF", "#2FB47CFF")) +
   cowplot::theme_cowplot()
   
-
+ggsave(filename = "results/figure1/PRRX1_signal_by_signature.pdf", 
+       width = 5.5, height = 3.5)
 
 
 dim(SE_total_Signal)

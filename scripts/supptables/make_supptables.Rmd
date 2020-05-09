@@ -160,6 +160,7 @@ SE$SE_rank <- rank(SE_rank[match(SE$SE_ID, names(SE_rank))])
 #------------------------------------------------------------------------------#
 # Add signature assignment 
 tumor_hchip <- readRDS("analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Wmatrix_Wnorm.RDS")
+tumor_hrna  <- readRDS("analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Wmatrix_Wnorm.RDS")
 
 
 #------------------------------------------------------------------------------#
@@ -182,6 +183,7 @@ top_10perc_assing <- function(wmatrix){
 
 
 tumor_hchip_top10perc <- top_10perc_assing(tumor_hchip)
+tumor_hrna_top10perc <- top_10perc_assing(tumor_hrna)
 
 
 #------------------------------------------------------------------------------#
@@ -207,6 +209,7 @@ SignFeatures <- function(wmatrix){
 
 # Add signature assignment 
 tumor_hchip_kmeansk2 <- SignFeatures(tumor_hchip)
+tumor_hrna_kmeansk2 <- SignFeatures(tumor_hrna)
 
 
 #------------------------------------------------------------------------------#
@@ -215,6 +218,8 @@ tumor_hchip_kmeansk2 <- SignFeatures(tumor_hchip)
 
 tumor_hchip_maxexposure <- setNames(colnames(tumor_hchip)[apply(tumor_hchip, 1, which.max)],
                                     rownames(tumor_hchip))
+tumor_hrna_maxexposure <- setNames(colnames(tumor_hrna)[apply(tumor_hrna, 1, which.max)],
+                                    rownames(tumor_hrna))
 
 
 
@@ -223,13 +228,23 @@ head(SE)
 SE <- SE %>% 
   mutate(Signature_ChIPseq_Top10Percent = tumor_hchip_top10perc[match(SE_ID, names(tumor_hchip_top10perc))]) %>% 
   mutate(Signature_ChIPseq_KmeansK2     = tumor_hchip_kmeansk2[match(SE_ID, names(tumor_hchip_kmeansk2))]) %>% 
-  mutate(Signature_ChIPseq_MaxExposure  = tumor_hchip_maxexposure[match(SE_ID, names(tumor_hchip_maxexposure))])
+  mutate(Signature_ChIPseq_MaxExposure  = tumor_hchip_maxexposure[match(SE_ID, names(tumor_hchip_maxexposure))]) %>% 
+  
+  mutate(Signature_Target_RNAseq_Top10Percent = tumor_hrna_top10perc[match(target_ENSEMBL, names(tumor_hrna_top10perc))]) %>% 
+  mutate(Signature_Target_RNAseq_KmeansK2     = tumor_hrna_kmeansk2[match(target_ENSEMBL, names(tumor_hrna_kmeansk2))]) %>% 
+  mutate(Signature_Target_RNAseq_MaxExposure  = tumor_hrna_maxexposure[match(target_ENSEMBL, names(tumor_hrna_maxexposure))])
+
+table(SE$Signature_ChIPseq_MaxExposure, SE$Signature_Target_RNAseq_MaxExposure)
+table(SE$Signature_ChIPseq_Top10Percent, SE$Signature_Target_RNAseq_Top10Percent)
+table(SE$Signature_ChIPseq_KmeansK2, SE$Signature_Target_RNAseq_KmeansK2)
+
 
 saveRDS(SE, "analysis/tumor/SE_annot/tumor_consensusSE_NMF_assignment.RDS")
 
 
 SE <- SE %>% 
-  select(-Signature_ChIPseq_KmeansK2) #%>% 
+  select(-Signature_ChIPseq_KmeansK2) %>% 
+  select(-Signature_Target_RNAseq_KmeansK2) #%>% 
   #rename(Signature_ChIPseq_Top10Percent = "Signature_ChIPseq")
  #Signature_ChIPseq_MaxExposure
 
