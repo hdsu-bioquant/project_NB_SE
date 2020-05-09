@@ -1,0 +1,766 @@
+---
+title: "Projection of cell lines and tumors to mouse cells"
+author: "HDSU"
+date: "`r date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    number_sections: false
+params:
+  #"~/phd/projects/neuroblastoma/singlecell_integration/"
+  
+  #work_dir                 : "/icgc/dkfzlsdf/analysis/B080/quintera/Projects/neuroblastoma/singlecell_projection/"
+  #work_dir                 : "/icgc/dkfzlsdf/analysis/B080/quintera/Projects/neuroblastoma/singlecell_integration/"
+  #pathe_Tumor_counts_sym   : "data/tumor/rnaseq/tumor_RNAseq_Counts_Matrix_symbol.RDS"
+  pathe_Mouse-ADR-Medulla_counts_sym : "db/GSE99933_E12.5/UMAP_projections/GSE99933_E12.5_counts_Hsapiens_symbols.RDS"
+  pathe_In-house-Neuroblastoma_TPM_sym      :  "analysis/tumor/rnaseq/exprs/tumor_RNAseq_TPM_Matrix_symbol.RDS"
+  pathe_Tumor18253-sc_counts_sym: "data/tumor_singlecell/18253/18253-sc_counts.RDS"
+  pathe_TARGET-Neuroblastoma_norm_sym : "db/TCGA_TARGET_GTex/TARGET_neuroblastoma_exprs.RDS"
+  pathe_KELLY_counts_sym   : "data/cells_singlecell/KELLY/KELLY_counts.RDS"
+  pathe_SK-N-AS_counts_sym : "data/cells_singlecell/SK-N-AS/SK-N-AS_counts.RDS"
+  pathe_SK-N-SH_counts_sym : "data/cells_singlecell/SK-N-SH/SK-N-SH_counts.RDS"
+  
+  pathm_Mouse-ADR-Medulla_annotation : "db/GSE99933_E12.5/UMAP_projections/GSE99933_E12.5_cluster_assign.RDS"
+  pathm_In-house-Neuroblastoma_annotation   : "annotation/annotation_tumor.RDS"
+  pathm_TARGET-Neuroblastoma_annotation : "db/TCGA_TARGET_GTex/TARGET_neuroblastoma_metadata.RDS"
+  pathHmatrix_Tumor        : "analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS"
+  run_Mouse_NMF            : FALSE
+  mouse_umap:  "db/GSE99933_E12.5/UMAP_projections/mouseE12.5_NMF_umap.RDS"
+  pathResults_Mouse_NMF    : "results/Mouse_common_features_NMF/Mouse_common_features_NMF_noCycleCorrect.RDS"
+  pathResults_data_list    : "analysis/singlecell_projections/mouseE12.5_query_data_list.RDS"
+  #pathm_KELLY_annotation   : "data/cell_lines/KELLY/KELLY_NA"
+  #pathm_SK-N-AS_annotation : "data/cell_lines/SK-N-AS/SK-N-AS_NA"
+  #pathm_SK-N-SH_annotation : "data/cell_lines/SK-N-SH/SK-N-SH_NA"
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+#knitr::opts_knit$set(root.dir=params$work_dir)
+knitr::opts_chunk$set(echo     = FALSE, 
+                      warning  = FALSE)
+
+
+
+library(Bratwurst)
+library(liger)
+library(ggplot2)
+library(viridis)
+library(ComplexHeatmap)
+
+
+library(DT)
+library(knitr)
+library(tidyverse)
+library(cowplot)
+library(YAPSA)
+library(umap)
+#library(plotly)
+library(limma)
+
+library(ggsci)
+
+```
+
+```{r helperfunctions}
+
+##----------------------------------------------------------------------------##
+##                                Setup                                       ##
+##----------------------------------------------------------------------------##
+#library(Bratwurst)
+library(YAPSA)
+library(umap)
+library(tidyverse)
+library(cowplot)
+library(proxy)
+
+##----------------------------------------------------------------------------##
+##                 Projection to UMAP- function definition                  ####
+##----------------------------------------------------------------------------##
+# input : Wmatrix , query_matrix
+project_to_umap <- function(query_data, query_id, subject_data, subject_id, annot_col, closest = 10) {
+  ##----------------------------------------------------------##
+  ##                     find common features                 ##
+  ##----------------------------------------------------------##
+  
+  # only common features
+  common_features <- intersect(rownames(query_data$exprs), rownames(subject_data$W_matrix))
+  query_exprs    <- query_data$exprs[common_features,]
+  subject_wmatrix <- subject_data$W_matrix[common_features,]
+  
+  ##----------------------------------------------------------##
+  ##               Project to UMAP embedding                  ##
+  ##----------------------------------------------------------##
+  
+  # Project 1 step: find exposures to subject H matrix
+  query_hmatrix <- t(LCD(query_exprs, subject_wmatrix ))
+  rownames(query_hmatrix) <- colnames(query_exprs)
+  
+  # Project 2 step: predict coordinates in sibject embedding
+  query_umap <- predict(subject_data$umap, query_hmatrix)
+  
+  ##----------------------------------------------------------##
+  ##   Correction factor by correlation to closest points     ##
+  ##----------------------------------------------------------##
+  
+  # load subject original expression data
+  subject_umap <- subject_data$umap$layout
+  subject_exprs <- subject_data$exprs
+  #subject_exprs <- readRDS(subject_data$exprs_path)$exprs
+  subject_exprs <- subject_exprs[common_features,]
+  
+  
+  # Find closest points to every query point. 1 distance
+  query_subject_dist <- dist(query_umap, subject_umap, method = "euclidean")
+  
+  # Find closest points to every query point. 2 closest points and correlation
+  query_ids <- setNames(rownames(query_subject_dist),rownames(query_subject_dist))
+  
+  
+  
+  # Cluster assignment
+  query_closest_assign <- do.call(rbind, mclapply(query_ids, function(query_id){
+    # Closest points
+    x <- query_subject_dist[query_id,]
+    idx <- order(x)[1:closest]
+    
+    #mouseE12.5_NMF_umap$annot
+    closest_cluster <- subject_data$annot[idx,annot_col]
+    #closest_cluster <- as.matrix(table(closest_cluster))
+    closest_cluster <- as.data.frame(table(closest_cluster))
+    closest_cluster <- closest_cluster[order(closest_cluster$Freq, decreasing = TRUE),]
+    as.character(closest_cluster[1,1])
+  }, mc.cores = 20))
+  
+  # Correlation correction
+  query_closest_points <- do.call(rbind, mclapply(query_ids, function(query_id){
+    # Closest points
+    x <- query_subject_dist[query_id,]
+    idx <- order(x)[1:closest]
+    
+    c(cor((query_exprs[,query_id,drop=FALSE]), 
+          (subject_exprs[, idx, drop=FALSE]), 
+          method = "spearman"))
+  }, mc.cores = 20))
+  
+  ##----------------------------------------------------------##
+  ##                  Build output data frame                 ##
+  ##----------------------------------------------------------##
+  
+  umap_projection <- data.frame(query_data$annot,
+                                query_id  = query_id,
+                                UMAP1     = query_umap[,1],
+                                UMAP2      = query_umap[,2],
+                                UMAP_correction     = rowMeans(query_closest_points),
+                                UMAP_cluster_assign = query_closest_assign,
+                                subject_id = subject_id,
+                                stringsAsFactors = FALSE)
+  umap_projection
+}
+
+##----------------------------------------------------------------------------##
+##                             scale data and center                        ####
+##----------------------------------------------------------------------------##
+# scale data and center
+scaleNotCenter <- function (x, remove.missing = TRUE) {
+  if (remove.missing) {
+    print("removing genes with 0 Counts")
+    idx <- rowSums(x) > 0
+    x <- x[idx,]
+  }
+  #x <- log2(x + 1)
+  x <- sweep(x, 2, colSums(x), "/")
+  t(scale(t(x), center = FALSE, scale = TRUE))
+}
+
+##----------------------------------------------------------------------------##
+##                             Empty plot with text                         ####
+##----------------------------------------------------------------------------##
+
+just_text_gg <- function(mytext, size){
+  ggplot() + 
+    annotate("text", x = 0, y = 0, label = c(mytext), size = size) +
+    #annotate("text", x = 0, y = 0, label = c("UMAP embedding of Furlan's \nMouse E12.5 developing adrenal medulla \nsingle cell data"), size = 8) +
+    theme_void()
+}
+
+```
+
+
+
+```{r readData, eval=FALSE}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                       Read expression matrices                             ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+# retrieve keys in params from gene expression matrices
+exprs_path_keys <- grep("^pathe_", names(params), value = TRUE)
+names(exprs_path_keys) <- sapply(strsplit(exprs_path_keys, "_"), "[[", 2)
+exprs_path_keys
+
+view_keys <- setNames(names(exprs_path_keys), names(exprs_path_keys))
+
+# read data and scale
+# read data
+exprs_norm_list <- lapply(exprs_path_keys, function(key){
+  x <- readRDS(params[[key]])
+  idx <- rowSums(x) > 0
+  x[idx,]
+})
+
+# Common features and scale
+common_features <- Reduce(intersect,  lapply(exprs_norm_list, rownames))
+exprs_norm_list <- lapply(exprs_norm_list, function(x) x[common_features,])
+exprs_norm_list <- lapply(exprs_norm_list, scaleNotCenter)
+lapply(exprs_norm_list, dim)
+names(exprs_norm_list)
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                       Read annotation data                                 ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# retrieve keys in params from annotation data frames
+annot_path_keys <- grep("^pathm_", names(params), value = TRUE)
+names(annot_path_keys) <- sapply(strsplit(annot_path_keys, "_"), "[[", 2)
+annot_path_keys
+
+
+# read data rames or create dummy annotation
+query_data_list <- lapply(view_keys, function(key){
+  print(key)
+  
+  query_exprs <- exprs_norm_list[[key]]
+  
+  # Read existing annotation data frames
+  if (key %in% names(annot_path_keys)) {
+    path_annot_key <- annot_path_keys[[key]]
+    query_annot <- readRDS(params[[path_annot_key]])
+    # add cell_id key
+    query_annot$sample <- query_annot[,1]
+    # match to cells in expression matrices
+    idx <- match(colnames(exprs_norm_list[[key]]), query_annot$sample)
+    query_annot <- query_annot[idx,]
+    # add cluster if missing
+    if (!"Cluster" %in% colnames(query_annot)) {
+      query_annot$Cluster <- key
+    }
+    query_annot
+  } else {
+    # create basic annotation for datasets witout metadata
+    query_annot <- data.frame(sample = colnames(query_exprs),
+                              Cluster = key, 
+                              stringsAsFactors = FALSE)
+  }
+  
+  list(exprs = query_exprs,
+       annot = query_annot)
+  
+  #scaleNotCenter(x, remove.missing = FALSE)
+})
+
+#head(query_data_list$`TARGET-Neuroblastoma`$annot)
+# include NMF signature H matrix exposure to tumor annotation
+Htumor <- readRDS(params$pathHmatrix_Tumor)
+signature_ids <- rownames(Htumor)
+rownames(Htumor) <- paste0("Tumor_", rownames(Htumor), "_exposure")
+signature_ids <- setNames(rownames(Htumor), signature_ids)
+idx <- match(query_data_list$`In-house-Neuroblastoma`$annot$sample, colnames(Htumor))
+query_data_list$`In-house-Neuroblastoma`$annot <- cbind(query_data_list$`In-house-Neuroblastoma`$annot, t(Htumor[,idx]))
+
+head(query_data_list$`In-house-Neuroblastoma`$annot)
+
+
+rm(exprs_path_keys, common_features, exprs_norm_list, annot_path_keys)
+gc()
+
+saveRDS(query_data_list, params$pathResults_data_list)
+
+
+```
+
+
+# NMF mouse E12.5 developing adrenal medulla 
+
+##  UMAP of Hmatrix
+
+```{r umapvis, eval=FALSE}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                          Plot UMAP                                         ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+# Read NMF results
+K <- 7
+norm_nmf_exp <- readRDS(params$pathResults_Mouse_NMF)
+
+# Extract matrices
+subject_hmatrix <- HMatrix(norm_nmf_exp, k = K)
+colnames(subject_hmatrix) <- colnames(norm_nmf_exp)
+
+subject_wmatrix <- WMatrix(norm_nmf_exp, k = K)
+rownames(subject_wmatrix) <- rownames(norm_nmf_exp)
+
+# Run UMAP
+set.seed(555)
+subject_umap <- umap(t(subject_hmatrix))
+#plot(subject_umap$layout)
+
+umapView_df <- as.data.frame(subject_umap$layout)
+colnames(umapView_df) <- c("UMAP1", "UMAP2")
+umapView_df <- cbind(query_data_list$`Mouse-ADR-Medulla`$annot, umapView_df)
+
+cluster_ids <- c("Bridge", "Chromaffin", "Dividing Cells mitotic", "SCPs", "Sympathoblasts", "No assign")
+
+dot_size <- 1
+gg_umap <- umapView_df %>% 
+  mutate(Cluster = if_else(is.na(Cluster), "No assign", as.character(Cluster))) %>% 
+  mutate(Cluster = factor(Cluster, levels = cluster_ids)) %>% 
+  ggplot(aes(x=UMAP1, y=UMAP2, color = Cluster)) + 
+  ggtitle("Mouse E12.5 developing adrenal medulla") +
+  #geom_point_rast(size=3, raster.width = 5, raster.height = 5, raster.dpi = 1200) +
+  geom_point(alpha=0.8, size = dot_size) + 
+  #geom_point(size = 1.5, alpha=0.8) + 
+  theme_cowplot(font_size = 6) +
+  scale_color_npg() +
+  xlim(-10,8.5) +
+  ylim(-7,10) +
+  theme(
+    #plot.title = element_text(size = 9), 
+    legend.position = c(0.0, 0.8),
+    legend.background = element_blank(),
+    #legend.box.background = element_rect(colour = "black"), 
+    #legend.text = element_text(size = 7), 
+    #legend.title = element_text(size = 8), 
+    legend.title = element_blank(), 
+    legend.key.height = unit(0.7,"line"))
+    #axis.text = element_text(size = 7), 
+    #axis.title = element_text(size = 8))
+gg_umap
+
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                    Create object for projection                            ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+mouseE12.5_NMF_umap <- list(H_matrix = subject_hmatrix,
+                             W_matrix = subject_wmatrix,
+                             umap     = subject_umap,
+                             annot    = query_data_list$`Mouse-ADR-Medulla`$annot,
+                             exprs    = query_data_list$`Mouse-ADR-Medulla`$exprs)
+mouseE12.5_NMF_umap$annot$UMAP1 <- umapView_df$UMAP1
+mouseE12.5_NMF_umap$annot$UMAP2 <- umapView_df$UMAP2
+
+rm(subject_hmatrix, subject_umap, subject_wmatrix)
+
+
+
+query_data_list$`Mouse-ADR-Medulla`$annot$C
+
+
+saveRDS(mouseE12.5_NMF_umap, "/icgc/dkfzlsdf/analysis/B080/quintera/Projects/neuroblastoma/singlecell_integration/results/UMAP_projections/mouseE12.5_NMF_umap.RDS")
+
+```
+
+```{r projection_to_UMAP, eval=FALSE}
+##----------------------------------------------------------------------------##
+##                                Setup                                       ##
+##----------------------------------------------------------------------------##
+#view_keys
+query_projection_list <- lapply(view_keys, function(view_key){
+  # Projecto to trajectory
+  project_to_umap(query_data   = query_data_list[[view_key]],
+                  query_id     = view_key, 
+                  subject_data = mouseE12.5_NMF_umap,
+                  subject_id   = "Mouse E12.5 adrenal gland",
+                  annot_col    = "Cluster")
+
+})
+saveRDS(query_projection_list, "/icgc/dkfzlsdf/analysis/B080/quintera/Projects/neuroblastoma/singlecell_integration/results/UMAP_projections/mouseE12.5_query_projections_list.RDS")
+
+umap_correction_t <- 0.01
+```
+
+
+
+
+# Single cell figure panels:
+
+## Mouse umap and color by clusters
+
+```{r}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                              Data and params                               ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+mouseE12.5_NMF_umap <- readRDS("db/GSE99933_E12.5/UMAP_projections/mouseE12.5_NMF_umap.RDS")
+query_projection_list <- readRDS("db/GSE99933_E12.5/UMAP_projections/mouseE12.5_query_projections_list.RDS")
+query_data_list <- readRDS(params$pathResults_data_list)
+umap_correction_t <- 0.02
+cluster_ids <- c("Bridge", "Chromaffin", "Dividing Cells mitotic", "SCPs", "Sympathoblasts", "No assign")
+dot_size <- 1
+#mouseE12.5_NMF_umap <- readRDS("/icgc/dkfzlsdf/analysis/B080/quintera/Projects/neuroblastoma/singlecell_integration/results/UMAP_projections/mouseE12.5_NMF_umap.RDS")
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                              UMAP plot                                     ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+
+gg_umap <- mouseE12.5_NMF_umap$annot %>% 
+  mutate(Cluster = if_else(is.na(Cluster), "No assign", as.character(Cluster))) %>% 
+  mutate(Cluster = factor(Cluster, levels = cluster_ids)) %>% 
+  ggplot(aes(x=UMAP1, y=UMAP2, color = Cluster)) + 
+  ggtitle("Mouse E12.5 developing adrenal medulla") +
+  geom_point(alpha=0.8, size = dot_size) + 
+  theme_cowplot(font_size = 6) +
+  scale_color_npg() +
+  xlim(-10,8.5) +
+  ylim(-7,10) +
+  theme(
+    legend.position = c(0.0, 0.8),
+    legend.background = element_blank(),
+    legend.title = element_blank(), 
+    legend.key.height = unit(0.7,"line"))
+gg_umap
+```
+
+## Projections to queries 
+
+
+```{r panel1_projection_cluster}
+
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                              Projection plots                              ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+plot_umap_projection <- function(umap_projection, umap_correction_t, subject_umap_data, cluster_ids) {
+  cluster_id <- unique(umap_projection$Cluster)
+  total <- nrow(umap_projection)
+  
+  
+  
+  gg_cluster_assign <- umap_projection %>% 
+    mutate(UMAP_cluster_assign = if_else(UMAP_correction > umap_correction_t, UMAP_cluster_assign, "No assign")) %>% 
+    mutate(UMAP_cluster_assign = factor(UMAP_cluster_assign, levels = cluster_ids)) %>% 
+    group_by(query_id, UMAP_cluster_assign) %>% 
+    summarise(n = n()) %>% 
+    ungroup() %>% 
+    group_by(query_id) %>% 
+    mutate(freq = n / sum(n)) %>% 
+    ggplot(aes(x = UMAP_cluster_assign, y = freq, fill = UMAP_cluster_assign)) +
+    geom_bar(stat = "identity") +
+    #facet_grid(.~query_id) +
+    #ylim(0, 1) +
+    scale_y_continuous(labels=scales::percent, limits = c(0, 1)) +
+    #scale_x_discrete(limits = cluster_ids) +
+    scale_x_discrete(limits = rev(cluster_ids))+
+    scale_fill_npg() +
+    #xlab("Assignment to\nmouse 12.5\nadrenal gland clusters") +
+    #ylab("Percentage of sample/cells") +
+    theme_cowplot(font_size = 6) +
+    coord_flip() +
+    theme(
+      #axis.text = element_text(size = 7), 
+      legend.position = "none",
+      axis.title = element_blank(),
+      axis.text.y = element_blank(),
+      axis.ticks.y = element_blank(),
+      #axis.text = element_blank(),
+      axis.text.x = element_text(angle = 90, 
+                                 hjust = 1, 
+                                 vjust = 0.5),
+      panel.border = element_rect(colour = "black", fill=NA)
+      # axis.text.x = element_text(angle = 90, 
+      #                            hjust = 1, 
+      #                            vjust = 0.5)
+    )
+  
+  
+  
+  umap_projection <- umap_projection %>% 
+    filter(UMAP_correction > umap_correction_t) 
+  
+  # Create label with percentage of projected samples
+  n <- nrow(umap_projection)
+  label <- round((n/total)*100, digits = 2)
+  label <- paste0("Number of \n", label, "% (", n,"/", total,")")
+  
+  
+  umapView_df <- subject_umap_data$annot
+  umapView_df$`Mouse cell type` <- umapView_df$Cluster
+  umap_projection$`Projected view` <- umap_projection$Cluster
+  # Create corect label if bulk or singel cell
+  #print(grepl(pattern = "Nuroblastoma", cluster_id))
+  if (grepl(pattern = "Neuroblastoma", cluster_id)) {
+    label_n = paste("n = ", nrow(umap_projection), "projected bulk samples")
+  } else {
+    label_n = paste("n = ", nrow(umap_projection), "projected single-cells")
+  }
+  
+  
+  
+  
+  gg_df <- bind_rows(umapView_df, umap_projection)
+  ggplot(gg_df, aes(x=UMAP1, y=UMAP2)) + 
+    ggtitle(paste0("Projected data: ", cluster_id)) +
+    geom_point(data = function(x){x %>% filter(!Cluster == cluster_id)}, color = "grey80", alpha=0.2, size = dot_size) + 
+    geom_point(data = function(x){x %>% filter(Cluster %in% cluster_id)}, aes(color = UMAP_cluster_assign), alpha=0.8, size = dot_size) + 
+    #annotate("text", x = -9, y = 10, label = label, size = 3, hjust =0) +
+    #geom_text(data = data.frame(t = label , x = -10, y = 10), aes(x=x, y=x, label=t)) +
+    geom_text(data = data.frame(t = label , UMAP1 = -10, UMAP2 = 0), aes(label=t), 
+              size = (6 * 0.352777778), 
+              hjust = 0) +
+    geom_text(data = data.frame(t = label_n , UMAP1 = -10, UMAP2 = 10), aes(label=t), 
+              size = (6 * 0.352777778), 
+              hjust = 0) +
+    scale_color_npg() +
+    xlim(-10,8.5) +
+    ylim(-7,10) +
+    theme_cowplot(font_size = 6) +
+    theme(legend.position = "none")+
+    # theme(legend.position = "none", 
+    #       plot.title = element_text(size = 9), 
+    #       axis.text  = element_text(size = 7), 
+    #       axis.title = element_text(size = 8)) +
+    annotation_custom(ggplotGrob(gg_cluster_assign), 
+                      xmin = -10, xmax = -5, 
+                      ymin = 2.5, ymax = 9.5) 
+    # annotation_custom(ggplotGrob(gg_cluster_assign), 
+    #                   xmin = 2, xmax = 7, 
+    #                   ymin = 0, ymax = 7) 
+    # annotation_custom(ggplotGrob(gg_cluster_assign), xmin = -10, xmax = -4, 
+    #                   ymin = -4, ymax = 5)
+  
+  
+  
+  
+  
+}
+view_keys <- setNames(names(query_projection_list), names(query_projection_list))
+
+query_keys <- view_keys[-1]
+query_keys
+gg_proj_UMAP_list <- lapply(query_projection_list[query_keys], plot_umap_projection, umap_correction_t, mouseE12.5_NMF_umap, cluster_ids)
+#wrap_plots(gg_proj_UMAP_list)
+
+l1 <- gg_umap +
+  gg_proj_UMAP_list$`In-house-Neuroblastoma` +
+  gg_proj_UMAP_list$`TARGET-Neuroblastoma`
+  
+l2 <- gg_proj_UMAP_list$KELLY +
+  gg_proj_UMAP_list$`SK-N-AS` +
+  gg_proj_UMAP_list$`SK-N-SH` + plot_layout(ncol = 3)
+l1/l2
+
+
+
+ggsave("results/figures_revision/tumor_and_cells_projections_to_mouse_panelA.pdf", 
+       plot = l1/l2, width = 6, height = 4)
+
+
+
+```
+
+
+```{r}
+
+add_exposure_to_Signatures <- function(query_data, query_umap, subject_wmatrix, key){
+  ##----------------------------------------------------------##
+  ##                     find common features                 ##
+  ##----------------------------------------------------------##
+  
+  # only common features
+  common_features <- intersect(rownames(query_data$exprs), rownames(subject_wmatrix))
+  query_exprs    <- query_data$exprs[common_features,]
+  subject_wmatrix <- subject_wmatrix[common_features,]
+  
+  ##----------------------------------------------------------##
+  ##               Exposure to NMF Signatures                 ##
+  ##----------------------------------------------------------##
+  query_hmatrix <- t(LCD(query_exprs, subject_wmatrix ))
+  rownames(query_hmatrix) <- colnames(query_exprs)
+  
+  query_hmatrix <- as.data.frame(query_hmatrix)
+  query_umap <- bind_cols(query_umap, query_hmatrix)
+  
+  query_umap
+  
+}
+
+
+
+##----------------------------------------------------------------------------##
+##                Assign exposures to tumor bulk projection                   ##
+##----------------------------------------------------------------------------##
+tumor_hmatrix <- t(readRDS(params$pathHmatrix_Tumor))
+tumor_hmatrix <- as.data.frame(tumor_hmatrix)
+colnames(tumor_hmatrix) <- paste0(colnames(tumor_hmatrix), " exposure")
+head(tumor_hmatrix)
+
+idx <- match(query_projection_list$`In-house-Neuroblastoma`$sample, rownames(tumor_hmatrix))
+query_projection_list$`In-house-Neuroblastoma` <- bind_cols(query_projection_list$`In-house-Neuroblastoma`, tumor_hmatrix[idx,])
+
+
+##----------------------------------------------------------------------------##
+##          LCD to find exposures to Neoroblastoma signatures                 ##
+##----------------------------------------------------------------------------##
+tumor_wmatrix <- readRDS("analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Wmatrix_Wnorm.RDS")
+tumor_wmatrix <- as.data.frame(tumor_wmatrix)
+hsapiens_genes <- readRDS("db/misc/EnsDb_Hsapiens_v75_genes.RDS")
+
+tumor_wmatrix <- tumor_wmatrix %>% 
+  rownames_to_column("gene_id") %>% 
+  mutate(symbol = hsapiens_genes$symbol[match(gene_id, hsapiens_genes$gene_id)]) %>% 
+  dplyr::select(-gene_id) %>% 
+  group_by(symbol) %>%
+  summarise_all(mean) %>% 
+  column_to_rownames("symbol")
+colnames(tumor_wmatrix) <- colnames(tumor_hmatrix)
+head(tumor_wmatrix)
+
+##----------------------------------------------------------------------------##
+##                        Exposure to tumor and color                         ##
+##----------------------------------------------------------------------------##
+
+
+
+query_projection_ExpNMF_list <- lapply(query_keys[-1], function(key){
+  add_exposure_to_Signatures(query_data = query_data_list[[key]], 
+                             query_umap = query_projection_list[[key]],
+                             subject_wmatrix = tumor_wmatrix,
+                             key = key)
+})
+lapply(query_projection_ExpNMF_list, dim)
+
+query_projection_list$`Tumor18253-sc`        <- query_projection_ExpNMF_list$`Tumor18253-sc`
+query_projection_list$`TARGET-Neuroblastoma` <- query_projection_ExpNMF_list$`TARGET-Neuroblastoma`
+query_projection_list$KELLY                  <- query_projection_ExpNMF_list$KELLY
+query_projection_list$`SK-N-AS`              <- query_projection_ExpNMF_list$`SK-N-AS`
+query_projection_list$`SK-N-SH`              <- query_projection_ExpNMF_list$`SK-N-SH`
+
+
+signature_ids <- setNames(colnames(tumor_wmatrix), colnames(tumor_wmatrix))
+signature_ids
+query_keys
+
+gg_proj_UMAP_Exposure_list <- lapply(query_keys[-2], function(key){
+  
+  collim <- ifelse(grepl("house", key), 5500, 650)
+  pal <- ifelse(grepl("house", key), "B", "D")
+  
+  
+  myPalette <- colorRampPalette(viridis(100, option = pal))
+  sc <- scale_colour_gradientn(colours = myPalette(100), limits=c(0, collim))
+  
+  
+  vars <- lapply(c(UMAP1 = "UMAP1", UMAP2 = "UMAP2",signature_ids), sym)
+  umap_projection <- query_projection_list[[key]]
+  umap_projection %>% 
+    dplyr::select(!!!vars) %>% 
+    gather(key = Signature, value = Exposure, -UMAP1, -UMAP2) %>% 
+    arrange(Exposure) %>% 
+    mutate(Signature = factor(Signature, levels = signature_ids)) %>% 
+    mutate(key = key) %>% 
+    ggplot(aes(x = UMAP1, y = UMAP2, color = Exposure)) +
+    geom_point(alpha=0.8, size = dot_size) +
+    facet_grid(key~Signature) +
+    #facet_grid(Signature~.) +
+    #scale_color_viridis() +
+    scale_colour_gradientn(colours = myPalette(100), limits=c(0, collim)) +
+    # xlim(min(mouseE12.5_NMF_umap$annot$UMAP1), 
+    #      max(mouseE12.5_NMF_umap$annot$UMAP1)) +
+    # ylim(min(mouseE12.5_NMF_umap$annot$UMAP2), 
+    #      max(mouseE12.5_NMF_umap$annot$UMAP2)) +
+    xlim( -10, 10) +
+    ylim( -10, 10) +
+    theme_cowplot() +
+    theme(
+      #legend.position = "none",
+      axis.text = element_blank(), 
+      #axis.line = element_blank(),
+      axis.ticks = element_blank(),
+      axis.title = element_blank(), strip.background = element_blank()
+    )
+  
+})
+
+#wrap_plots(gg_proj_UMAP_Exposure_list) + plot_layout(nrow = 5)
+
+
+
+gg_exposures <- gg_proj_UMAP_Exposure_list$`In-house-Neuroblastoma` +
+  #gg_proj_UMAP_Exposure_list$`TARGET-Neuroblastoma` + 
+  gg_proj_UMAP_Exposure_list$KELLY + 
+  gg_proj_UMAP_Exposure_list$`SK-N-AS` + 
+  gg_proj_UMAP_Exposure_list$`SK-N-SH` + 
+  plot_layout(nrow = 4)
+gg_exposures
+#arrange((!!rlang::sym(color_id)))
+
+
+
+lapply(query_projection_list, summary)
+
+
+
+ggsave("results/figures_revision/tumor_and_cells_projections_to_mouse_exposure_to_Tumor_signatures_panelB.pdf", 
+       plot = gg_exposures, width = 6, height = 6)
+
+
+
+```
+
+
+```{r completeannot, eval=FALSE}
+# Complete annotation
+tummor_annot_oldids <- readRDS("/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/src/data2publication/annotation/annotation_tumors.RDS")
+
+# Table of old IDs assigned to Furlan 
+query_projection_list <- readRDS("results/UMAP_projections/mouseE12.5_query_projections_list.RDS")
+head(query_projection_list$`In-house-Neuroblastoma`)
+
+
+in_house_nb_furlan <- query_projection_list$`In-house-Neuroblastoma` %>% 
+  mutate(Furlan_cluster_assign_ID = UMAP_cluster_assign) %>% 
+  select(ProjectID, Furlan_cluster_assign_ID) %>% 
+  left_join(tummor_annot_oldids, by = "ProjectID")
+
+
+
+dim(in_house_nb_furlan)
+dim(query_projection_list$`In-house-Neuroblastoma`)
+
+#install.packages("writexl")
+library(writexl)
+write_xlsx(list(Tumors_to_Furlan = in_house_nb_furlan), 
+           path = "results/UMAP_projections/In_house_NB_Tumors_assigment_to_Furlan_mouseE12.5.xlsx")
+```
+
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

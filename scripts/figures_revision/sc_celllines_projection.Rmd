@@ -1,0 +1,488 @@
+---
+title: "Projection of SK-N-SH and tumors to mouse cells"
+author: "HDSU"
+date: "`r date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    number_sections: false
+params:
+  #work_dir                 : "/icgc/dkfzlsdf/analysis/B080/quintera/Projects/neuroblastoma/singlecell_projection/"
+  SE_target    : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS"
+  wc_tumor     : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Wmatrix_Wnorm.RDS"
+  wr_tumor     : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Wmatrix_Wnorm.RDS"
+  pathe_KELLY_counts_sym   : "/icgc/dkfzlsdf/analysis/B080/quintera/Projects/neuroblastoma/singlecell_projection/data/cell_lines/KELLY/KELLY_counts.RDS"
+  pathe_SK-N-AS_counts_sym : "/icgc/dkfzlsdf/analysis/B080/quintera/Projects/neuroblastoma/singlecell_projection/data/cell_lines/SK-N-AS/SK-N-AS_counts.RDS"
+  pathe_SK-N-SH_counts_sym : "/icgc/dkfzlsdf/analysis/B080/quintera/Projects/neuroblastoma/singlecell_projection/data/cell_lines/SK-N-SH/SK-N-SH_counts.RDS"
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+#knitr::opts_knit$set(root.dir=params$work_dir)
+knitr::opts_chunk$set(echo     = FALSE, 
+                      warning  = FALSE)
+
+
+
+library(ggplot2)
+library(viridis)
+
+library(DT)
+library(knitr)
+library(tidyverse)
+library(cowplot)
+library(ggsci)
+
+```
+
+
+
+
+```{r readData}
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                       Read projection results                              ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+#mouseE12.5_NMF_umap   <- readRDS("results/UMAP_projections/mouseE12.5_NMF_umap.RDS")
+mouseE12.5_NMF_umap <- readRDS("db/GSE99933_E12.5/UMAP_projections/mouseE12.5_NMF_umap.RDS")
+query_projection_list <- readRDS("db/GSE99933_E12.5/UMAP_projections/mouseE12.5_query_projections_list.RDS")
+#query_projection_list <- readRDS("results/UMAP_projections/mouseE12.5_query_projections_list.RDS")
+
+umap_correction_t <- 0.02
+#cluster_ids       <- c("Bridge", "Chromaffin", "Dividing Cells mitotic", "SCPs", "Sympathoblasts", "No assign")
+cluster_ids       <- c("Bridge", "Chromaffin", "Dividing Cells mitotic", "SCPs", "Sympathoblasts")
+dot_size          <- 1
+query_keys        <- c("KELLY", "SK-N-AS", "SK-N-SH")
+
+##----------------------------------------------------------------------------##
+##                             Read data                                      ##
+##----------------------------------------------------------------------------##
+# Read SE annotation
+SE <- readRDS(params$SE_target)
+
+# Read NMF results
+wc_tumor <- readRDS(params$wc_tumor)
+wr_tumor <- readRDS(params$wr_tumor)
+
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                       Read expression matrices                             ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+# retrieve keys in params from gene expression matrices
+exprs_path_keys <- grep("^pathe_", names(params), value = TRUE)
+names(exprs_path_keys) <- sapply(strsplit(exprs_path_keys, "_"), "[[", 2)
+exprs_path_keys
+view_keys <- setNames(names(exprs_path_keys), names(exprs_path_keys))
+
+# read data and scale
+# read data
+exprs_norm_list <- lapply(exprs_path_keys, function(key){
+  x <- readRDS(params[[key]])
+  idx <- rowSums(x) > 0
+  x[idx,]
+})
+lapply(exprs_norm_list, "[", 1:5, 1:5)
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                       Read annotation data                                 ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+
+```
+
+
+
+```{r extractFeatures}
+##----------------------------------------------------------------------------##
+##                             Helper functions                               ##
+##----------------------------------------------------------------------------##
+##----------------------------------------------------------------------------##
+##                        Extract associated features                         ##
+##----------------------------------------------------------------------------##
+
+extract_W_features <- function(wmatrix, omics){
+  sigIDs <- setNames(colnames(wmatrix), colnames(wmatrix))
+  
+  lapply(sigIDs, function(sigID){
+    # Extract signature specific genes
+    selec_wmatrix <- do.call(cbind, lapply(as.data.frame(wmatrix), function(sign_expo){
+      sign_expo[sign_expo < quantile(sign_expo, 0.90)] <- NA
+      sign_expo
+    }))
+    rownames(selec_wmatrix) <- rownames(wmatrix)
+    selec_wmatrix <- selec_wmatrix[!is.na(selec_wmatrix[,sigID]),,drop=FALSE]
+    # Keep only the top feature if there's an overlap
+    sig_SE_IDs <- rownames(selec_wmatrix[rowMaxs(selec_wmatrix, na.rm = TRUE) == selec_wmatrix[,sigID],])
+    
+    if (omics == "ChIPseq") {
+      unique(SE[sig_SE_IDs]$target_SYMBOL)
+    } else if (omics == "RNAseq") {
+      unique(SE$target_SYMBOL[match(sig_SE_IDs, SE$target_ENSEMBL)])
+    }
+    
+    #sign_expo  <- w_tumor[,sigID]
+    #sig_SE_IDs <- names(sign_expo[sign_expo > quantile(sign_expo, 0.8)])
+    
+  })
+}
+
+
+
+signature_associated_ChIPseq <- extract_W_features(wc_tumor, omics = "ChIPseq")
+signature_associated_RNAseq  <- extract_W_features(wr_tumor, omics = "RNAseq")
+
+
+
+sigIDs <- setNames(colnames(wc_tumor), colnames(wc_tumor))
+
+
+signature_associated <- lapply(sigIDs, function(sigID){
+  
+  chip <- signature_associated_ChIPseq[[sigID]]
+  rna <- signature_associated_RNAseq[[sigID]]
+  
+  unique(c(chip, rna))
+})
+
+
+
+```
+
+
+
+```{r mean_expr_sign_genes}
+
+expression_signature_genes <- function(signature_associated, subject_data, clusterID ){
+  # Format data, get cluster ids
+  subject_annot <- subject_data$annot
+  subject_annot_list <- split(subject_annot, subject_annot[clusterID])
+  cell_types_ids <- setNames(names(subject_annot_list),names(subject_annot_list))
+  
+  # find expression of signature genes
+  by_cell_type <- lapply(cell_types_ids, function(cell_id){
+    sample_ids <- subject_annot$sample[subject_annot[clusterID] == cell_id]
+    # Only cells of indicated sub type
+    my_cell_exprs <- subject_data$exprs[,sample_ids,drop=FALSE]
+    # Only genes for each signature
+    by_sig <- lapply(signature_associated, function(sig_genes){
+      my_sig_exprs <- my_cell_exprs[rownames(my_cell_exprs) %in% sig_genes,,drop=FALSE]
+      gene_overlap <- nrow(my_sig_exprs)
+      sig_type_exprs <- colMeans(my_sig_exprs)
+      
+      # sig_type_exprs <- apply(as.matrix(my_sig_exprs), 2, function(x){
+      #   if (sum(x) > 0) {
+      #     #median(x[x>0])
+      #     mean(x[x>0])
+      #   } else {
+      #     0
+      #   }
+      #   
+      # })
+      #sig_type_exprs <- colMedians(as.matrix(my_sig_exprs))
+      #names(sig_type_exprs) <- colnames(my_sig_exprs)
+      #print(head(sig_type_exprs))
+      
+      list(gene_overlap = gene_overlap,
+           mean_expression = sig_type_exprs)
+    })
+    
+    gene_overlap <- do.call(cbind, lapply(by_sig, "[[", "gene_overlap"))
+    mean_expression <- do.call(cbind, lapply(by_sig, "[[", "mean_expression"))
+    
+    list(gene_overlap    = gene_overlap,
+         mean_expression = mean_expression)
+    
+    #do.call(cbind, by_sig)
+    #dim(my_cell_exprs)
+  })
+  
+  #by_cell_type <- do.call(rbind, by_cell_type)
+  gene_overlap <- do.call(rbind, lapply(by_cell_type, "[[", "gene_overlap"))
+  rownames(gene_overlap) <- names(by_cell_type)
+  
+  by_cell_type <- do.call(rbind, lapply(by_cell_type, "[[", "mean_expression"))
+  print(gene_overlap)
+  
+  
+  idx <- match(subject_annot$sample, rownames(by_cell_type))
+  subject_annot <- cbind(subject_annot[,c("Cluster", clusterID),drop=FALSE], by_cell_type[idx, ])
+  #print(head(subject_annot))
+  
+  # Helper function for string wrapping. 
+  # Default 20 character target width.
+  swr = function(string, nwrap=20) {
+    paste(strwrap(string, width=nwrap), collapse="\n")
+  }
+  swr = Vectorize(swr)
+  
+  
+  gg_df <- subject_annot %>%
+    #filter(!Cluster == "Intermediate Mesoderm") %>% 
+    #mutate(Cluster = swr(Cluster)) %>%
+    gather(key = Signature, value = Mean_Signature_Gene_Expression, -Cluster, -(!! clusterID)) %>% 
+    arrange(Mean_Signature_Gene_Expression) %>% 
+    group_by(Signature,) #%>% 
+    #mutate(Mean_Signature_Gene_Expression = (Mean_Signature_Gene_Expression -
+    #                                           mean(na.omit(Mean_Signature_Gene_Expression)))/sd(na.omit(Mean_Signature_Gene_Expression)))
+  
+  
+  gg_df
+  
+}
+
+# moca_data <- list(exprs = moca_exprs,
+#                   annot = moca_annot)
+
+query_sig_exprs_list <- lapply(view_keys, function(view_key){
+  x <- expression_signature_genes(#signature_associated = signature_associated_ChIPseq, 
+                                  #signature_associated = signature_associated_RNAseq, 
+                                  signature_associated = signature_associated, 
+                                  subject_data = list(exprs = exprs_norm_list[[view_key]],
+                                                      annot = query_projection_list[[view_key]]), 
+                                  clusterID = "UMAP_cluster_assign")
+  
+})
+
+
+gg_MES_genes_exprs <- bind_rows(query_sig_exprs_list) %>% 
+  filter(Signature %in% c("MYCN", "MES")) %>% 
+  group_by(Cluster, Signature, UMAP_cluster_assign) %>% 
+  mutate(Mean_Signature_Gene_Expression = if_else(
+    Mean_Signature_Gene_Expression < quantile(Mean_Signature_Gene_Expression, probs = 0.99),
+    Mean_Signature_Gene_Expression,
+    quantile(Mean_Signature_Gene_Expression, probs = 0.99)
+  )) %>%
+  group_by(Cluster) %>% 
+  mutate(Mean_Signature_Gene_Expression = Mean_Signature_Gene_Expression + abs(min(Mean_Signature_Gene_Expression))) %>% 
+  mutate(Mean_Signature_Gene_Expression = Mean_Signature_Gene_Expression/max(Mean_Signature_Gene_Expression)) %>% 
+  
+  group_by(UMAP_cluster_assign, Signature) %>%
+  filter(Mean_Signature_Gene_Expression > quantile(Mean_Signature_Gene_Expression, probs = 0.5)) %>%
+  ungroup() %>% 
+  filter(Signature %in% c("MES")) %>% 
+  
+  #mutate(UMAP_cluster_assign = factor(UMAP_cluster_assign, levels = cluster_ids)) %>% 
+  mutate(UMAP_cluster_assign = factor(UMAP_cluster_assign, levels = rev(cluster_ids))) %>% 
+  #mutate(Main_cell_type = factor(Main_cell_type, levels = rev(c( "Neural progenitor\ncells", "Early mesenchyme", "Neural Tube", "Intermediate\nMesoderm", "Schwann cell\nprecursor", "Endothelial cells", "Stromal cells")))) %>% 
+  ggplot(aes(x = UMAP_cluster_assign, y = Mean_Signature_Gene_Expression, color = Mean_Signature_Gene_Expression)) +
+  #geom_point() +
+  #geom_boxplot() +
+  geom_quasirandom() +
+  stat_summary(fun.y = median, geom = "errorbar", 
+               aes(ymax = ..y.., ymin = ..y.., group = Cluster),
+               width = 1, linetype = "solid") +
+  #geom_beeswarm(size=.5)  +
+  #geom_violin() +
+  scale_color_viridis(alpha = 0.95) +
+  #facet_grid(.~Signature, scales = "free") +
+  facet_grid(Cluster~Signature) +
+  coord_flip() +
+  xlab("Assigned cell type") +
+  ylab("Mean signature\ngene expression\non top 50% expressing cells") +
+  labs(color = "Mean signature\ngene expression") +
+  theme_cowplot()
+gg_MES_genes_exprs
+
+
+```
+
+
+# NMF mouse E12.5 developing adrenal medulla 
+
+##  UMAP of Hmatrix
+
+
+```{r panel1_projection_cluster}
+
+plot_umap_projection <- function(umap_projection, umap_correction_t, subject_umap_data, cluster_ids) {
+  umap_projection <- bind_rows(umap_projection)
+  
+  cluster_id <- unique(umap_projection$Cluster)
+  total <- nrow(umap_projection)
+  
+  
+  umap_projection <- umap_projection %>% 
+    filter(UMAP_correction > umap_correction_t) 
+  
+  x <- as.data.frame(table(umap_projection$query_id ))
+  #label_n = paste("n = ", nrow(umap_projection), "projected cells")
+  label_n = paste("n = ", x, "projected cells")
+  print(label_n)
+  
+  umapView_df <- subject_umap_data$annot
+  umapView_df$`Mouse cell type` <- umapView_df$Cluster
+  
+  umapView_df <- lapply(cluster_id, function(id){
+    umapView_df$query_id <- id
+    umapView_df
+  })
+  umapView_df <- bind_rows(umapView_df)
+  print(cluster_id)
+  print(head(umap_projection))
+  
+  
+  
+  gg_df <- bind_rows(umapView_df, umap_projection)
+  ggplot(gg_df, aes(x=UMAP1, y=UMAP2)) + 
+    #ggtitle(paste0("Projected data: ", cluster_id)) +
+    geom_point(data = function(x){x %>% filter(!Cluster == cluster_id)}, color = "grey80", alpha=0.2, size = dot_size) + 
+    geom_point(data = function(x){x %>% filter(Cluster %in% cluster_id)}, aes(color = UMAP_cluster_assign), alpha=0.8, size = dot_size) + 
+    
+    geom_text(data = data.frame(t = label_n , UMAP1 = -10, UMAP2 = 10), aes(label=t),
+              size = (6 * 0.352777778),
+              hjust = 0) +
+    
+    #annotate("text", x = -9, y = 10, label = label, size = 3, hjust =0) +
+    #geom_text(data = data.frame(t = label , x = -10, y = 10), aes(x=x, y=x, label=t)) +
+    # geom_text(data = data.frame(t = label , UMAP1 = -10, UMAP2 = 0), aes(label=t), 
+    #           size = (6 * 0.352777778), 
+    #           hjust = 0) +
+    # geom_text(data = data.frame(t = label_n , UMAP1 = -10, UMAP2 = 10), aes(label=t), 
+    #           size = (6 * 0.352777778), 
+    #           hjust = 0) +
+    scale_color_npg() +
+    xlim(-10,8.5) +
+    ylim(-7,10) +
+    facet_grid(query_id~.) +
+    #theme_cowplot(font_size = 6) +
+    theme_cowplot() 
+  
+  
+}
+
+gg_UMAP_proj <- plot_umap_projection(query_projection_list[query_keys], umap_correction_t, mouseE12.5_NMF_umap, cluster_ids)
+gg_UMAP_proj
+
+```
+
+
+```{r}
+plot_umap_assigIDs <- function(umap_projection, umap_correction_t, subject_umap_data, cluster_ids) {
+  umap_projection <- bind_rows(umap_projection)
+  
+  cluster_id <- unique(umap_projection$Cluster)
+  total <- nrow(umap_projection)
+  
+  
+  umap_projection <- umap_projection %>% 
+    filter(UMAP_correction > umap_correction_t) 
+  print(head(umap_projection))
+  
+  
+  umap_projection %>% 
+    mutate(UMAP_cluster_assign = if_else(UMAP_correction > umap_correction_t, UMAP_cluster_assign, "No assign")) %>% 
+    mutate(UMAP_cluster_assign = factor(UMAP_cluster_assign, levels = rev(cluster_ids))) %>% 
+    #mutate(UMAP_cluster_assign = factor(UMAP_cluster_assign, levels = cluster_ids)) %>% 
+    group_by(query_id, UMAP_cluster_assign) %>% 
+    summarise(n = n()) %>% 
+    ungroup() %>% 
+    group_by(query_id) %>% 
+    mutate(freq = n / sum(n)) %>% 
+    ggplot(aes(x = UMAP_cluster_assign, y = freq, fill = UMAP_cluster_assign)) +
+    geom_bar(stat = "identity") +
+    #facet_grid(.~query_id) +
+    #ylim(0, 1) +
+    scale_y_continuous(labels=scales::percent, limits = c(0, 1)) +
+    scale_x_discrete(limits = cluster_ids) +
+    #scale_x_discrete(limits = rev(cluster_ids))+
+    
+    scale_fill_npg() +
+    xlab("Assignment to mouse 12.5 adrenal gland clusters") +
+    ylab("Percentage\nof cells") +
+    labs(fill = "Assignment\nto mouse 12.5\nadrenal gland\nclusters") +
+    facet_grid(query_id~.) +
+    theme_cowplot() +
+    coord_flip() +
+    theme(
+      #axis.text = element_text(size = 7), 
+      #axis.title = element_blank(),
+      #axis.text.y = element_blank(),
+      #axis.ticks.y = element_blank(),
+      #axis.text = element_blank(),
+      axis.text.x = element_text(angle = 90, 
+                                 hjust = 1, 
+                                 vjust = 0.5),
+      panel.border = element_rect(colour = "black", fill=NA)
+      # axis.text.x = element_text(angle = 90, 
+      #                            hjust = 1, 
+      #                            vjust = 0.5)
+    )
+  
+  
+  
+}
+
+gg_UMAP_assign <- plot_umap_assigIDs(query_projection_list[query_keys], umap_correction_t, mouseE12.5_NMF_umap, rev(cluster_ids))
+gg_UMAP_assign
+```
+
+
+
+
+```{r}
+
+
+
+((gg_UMAP_proj + theme(panel.border = element_rect(colour = "black", fill=NA),
+                       legend.position = "none")) | 
+   (gg_UMAP_assign + theme(strip.text.y = element_blank())) | 
+   (gg_MES_genes_exprs + theme(panel.border = element_rect(colour = "black", fill=NA),
+                               #strip.text.y = element_blank(),
+                               axis.title.y = element_blank(), 
+                               axis.text.y = element_blank()))
+ ) + 
+  plot_layout(guides = 'collect', widths = c(0.5, 0.2, 0.3))
+
+
+ggsave("results/figures_revision/Cell_lines_projections_to_mouse_exprsMESgenes.pdf",  width = 12, height = 10)
+#        plot = l1/l2, width = 6, height = 4)
+#gg_proj_UMAP_list <- lapply(query_projection_list, plot_umap_projection, umap_correction_t, mouseE12.5_NMF_umap, cluster_ids)
+
+
+#wrap_plots(gg_proj_UMAP_list)
+
+# l1 <- #gg_umap +
+#   gg_proj_UMAP_list$`In-house-Neuroblastoma` +
+#   gg_proj_UMAP_list$`TARGET-Neuroblastoma`
+  
+l2 <- gg_proj_UMAP_list$KELLY +
+  gg_proj_UMAP_list$`SK-N-AS` +
+  gg_proj_UMAP_list$`SK-N-SH` + plot_layout(nrow = 3)
+l2
+#l1/l2
+
+
+l2 | gg_MES_genes_exprs
+
+# ggsave("results/figures/Single_cell_figure/projections_to_mouse.pdf", 
+#        plot = l1/l2, width = 6, height = 4)
+
+```
+
+
+```{r}
+
+
+genettest <- query_sig_exprs_list$`SK-N-SH` %>% 
+  filter(UMAP_cluster_assign %in% c("SCPs", "Chromaffin")) 
+t.test(Mean_Signature_Gene_Expression ~ UMAP_cluster_assign, genettest)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
