@@ -120,6 +120,7 @@ quantileNormal <-  FALSE
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 
 min.mot = ifelse(filter,10,100)
+#min.mot = 5 # for KD CCND1
 
 TTT <- mclapply(footprint_list,function(t) {
   #print(names(t))
@@ -234,7 +235,7 @@ df$symb
 df <- df[order(df$statistic.t),]
 df$pos <-1:nrow(df)
 
-
+saveRDS(df, "data/cells/atacseq/footprint/footprints_SKNASvsKELLY_ttest.RDS")
 # only CRCs
 df <- df[df$symb %in% CRCvector,]
 
@@ -280,6 +281,7 @@ ddf.flipped$val <- -ddf.flipped$val
 
 head(ddf.flipped)
 
+saveRDS(ddf, "data/cells/atacseq/footprint/footprints_SKNASvsKELLY_ttest_flipped.RDS")
 ```
 
 
