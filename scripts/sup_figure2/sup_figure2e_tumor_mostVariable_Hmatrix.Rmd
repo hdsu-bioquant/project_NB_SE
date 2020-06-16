@@ -17,7 +17,7 @@ params:
   wmatrix_wnorm : "path/to/..."
   nmf_features  : "path/to/..."
   hmatrix_hnorm : "analysis/tumor/rnaseq/NMF_mostVariable/tumor_mostVariable_K4_Hmatrix_hnorm.RDS"
-  sup_figure2e  : "results/figures..."
+  sup_figure2e  : "results/sup_figure2/sup_figure2e_tumor_mostVariablehmatrix.pdf"
 editor_options: 
   chunk_output_type: console
 ---
@@ -137,18 +137,29 @@ saveRDS(norm.nmf.hmatrix.hnorm, params$hmatrix_hnorm)
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##                        H matrix heatmap annotation                         ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+norm.nmf.hmatrix <- readRDS("analysis/tumor/rnaseq/NMF_mostVariable/tumor_mostVariable_K4_Hmatrix_wnorm.RDS")
+# read annotation 
+annot <- readRDS("annotation/annotation_tumor_with_external_phenoData.RDS")
+annot <- annot[match(colnames(norm.nmf.hmatrix), annot$ProjectID),]
+rownames(annot) <- annot$ProjectID
+annot <- annot %>% 
+  mutate(Risk = if_else(Risk == "IR" | Risk == "LR", "LR/IR", Risk))
+
+
 #Annotation for H matrix heatmap
-type.colVector <- list(Type    = c("Tumor"="grey80", "Metastasis"="grey60", "NA"="white"),
+type.colVector <- list(#Type    = c("Tumor"="grey80", "Metastasis"="grey60", "NA"="white"),
                        MYCN    = c("Amp"="grey20", "NonAmp"="grey80", "NA"="white"),
                        Stage   = c("4"="grey20", "1-3;4S"="grey80", "NA"="white"),
                        Age     = c(">18mo"="grey20", "<18mo"="grey80", "NA"="white"),
+                       Risk     = c("HR"="grey20", "LR/IR"="grey80", "NA"="white"),
                        Relapse = c("Yes"="grey20", "No"="grey80", "NA"="grey100"))
 
 #Heatmap annotation
-heat.anno <- HeatmapAnnotation(df = data.frame(Type    = annot$Type,
+heat.anno <- HeatmapAnnotation(df = data.frame(#Type    = annot$Type,
                                                MYCN    = annot$MYCN,
                                                Stage   = annot$Stage,
                                                Age     = annot$Age,
+                                               Risk    = annot$Risk,
                                                Relapse = annot$Relapse),
                                col = type.colVector,
                                show_annotation_name = TRUE, na_col = "white")
@@ -167,7 +178,7 @@ h.heatmap <- Heatmap(norm.nmf.hmatrix,
                        list(color_bar = "continuous", legend_height=unit(2, "cm")),
                      top_annotation = heat.anno,
                      show_column_names = FALSE,
-                     show_row_names = FALSE,
+                     show_row_names = TRUE,
                      cluster_rows = FALSE)
 print(h.heatmap)
 
