@@ -127,13 +127,110 @@ annot_t <- annot_t %>%
   mutate(Signature_ChIPseq = tumor_hchip[match(ProjectID, names(tumor_hchip))]) %>% 
   mutate(Signature_RNAseq = tumor_hrna[match(ProjectID, names(tumor_hrna))])
 
-
 # Save 
 saveRDS(annot_t, "annotation/annotation_tumor_phenoData_NMFassign.RDS")
+
+#lapply(list, function)
+
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                          Assignmet confidence                              ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+
+sigmoidTransform <- function(col.vector, q = 0.95) {
+  q <- as.numeric(quantile(col.vector, q))
+  x <- 2 / (1 + exp((-2) * col.vector / q)) - 1
+  return(x)
+}
+
+
+
+Hchip_t  <- readRDS("analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS")
+Hrna_tt  <- readRDS("analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS")
+
+
+best_assign <- function(H, iter){
+  
+  res <- lapply(1:iter, function(i){
+    apply(H, 1, function(x){
+      #x <- sigmoidTransform(x)
+      #x <- x/max(x)
+      k <- kmeans(x, 2)
+      max_idx <- which.max(k$centers)
+      setNames(if_else(k$cluster == max_idx, 1, 0), names(x))
+      })
+  })
+  #print(lapply(res, function(i) table(rowSums(i))))
+  best <- sapply(res, function(i){sum(rowSums(i) == 1)})
+  res <- res[[which.max(best)]]
+  #res <- res[[which.min(best)]]
+  
+  setNames(if_else(rowSums(res) == 1, "High confidence", "Low confidence"),
+           colnames(H))
+}
+
+Hchip_conf <- best_assign(H = Hchip_t, iter = 1000)
+table(Hchip_conf)
+Hchip_conf
+
+
+Hrna_conf <- best_assign(H = Hrna_tt, iter = 1000)
+table(Hrna_conf)
+Hrna_conf
+
+
+Hchip_t  <- as.data.frame(t(readRDS("analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS"))) %>% 
+  #Hchip_t  <- as.data.frame(t(readRDS(params$Hchip_t))) %>% 
+  rename_all(paste0, "_ChIP-seq") %>% 
+  rownames_to_column("ProjectID") 
+Hrna_tt  <- as.data.frame(t(readRDS("analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS"))) %>% 
+  #Hrna_tt  <- as.data.frame(t(readRDS(params$Hrna_tt))) %>% 
+  rename_all(paste0, "_RNA-seq") %>% 
+  rownames_to_column("ProjectID") 
+
+#annot_t %>% 
+annot_t <- annot_t %>% 
+  mutate(Signature_ChIPseq_confidence = Hchip_conf[match(ProjectID, names(Hchip_conf))]) %>% 
+  mutate(Signature_RNAseq_confidence = Hrna_conf[match(ProjectID, names(Hrna_conf))]) %>% 
+  mutate(Signature_ChIPseq_confidence = if_else(is.na(Signature_ChIPseq_confidence), "na", Signature_ChIPseq_confidence)) %>% 
+  mutate(Signature_RNAseq_confidence = if_else(is.na(Signature_RNAseq_confidence), "na", Signature_RNAseq_confidence)) %>% 
+  mutate(Signature_ChIPseq = if_else(Signature_ChIPseq_confidence == "High confidence", paste0("_hccc_", Signature_ChIPseq), Signature_ChIPseq)) %>% 
+  mutate(Signature_RNAseq = if_else(Signature_RNAseq_confidence == "High confidence", paste0("_hccc_", Signature_RNAseq), Signature_RNAseq)) %>% 
+  mutate(Signature_ChIPseq = if_else(is.na(Signature_ChIPseq), "_lqqq_", Signature_ChIPseq)) %>% 
+  mutate(Signature_RNAseq = if_else(is.na(Signature_RNAseq), "_lqqq_", Signature_RNAseq)) %>% 
+  
+  left_join(Hchip_t, by = "ProjectID") %>% 
+  left_join(Hrna_tt, by = "ProjectID")
+
+
+annot_t %>% 
+  filter(avail.RNAseq & avail.ChIPseq) %>% 
+  filter(Signature_ChIPseq != Signature_RNAseq) %>% 
+  filter(Signature_ChIPseq_confidence == "High confidence") %>% 
+  filter(Signature_RNAseq_confidence == "High confidence") 
+  
+
+
+
 
 write_xlsx(list(Tumors       = annot_t,
                 `Cell lines` = annot_c), 
            path = params$S1)
+
+
+annot_t %>% 
+  filter(avail.RNAseq & avail.ChIPseq) %>% 
+  filter(Signature_ChIPseq != Signature_RNAseq) %>% 
+  group_by(Signature_ChIPseq_confidence) %>% 
+  summarise(Assign_ChIPseq_confidence = n())
+
+
+annot_t %>% 
+  filter(avail.RNAseq & avail.ChIPseq) %>% 
+  filter(Signature_ChIPseq != Signature_RNAseq) %>% 
+  group_by(Signature_RNAseq_confidence) %>% 
+  summarise(Assign_RNAseq_confidence = n())
 
 
 
