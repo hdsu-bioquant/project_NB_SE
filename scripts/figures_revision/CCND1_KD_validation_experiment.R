@@ -149,3 +149,16 @@ gg_sel
 ggsave("results/figures_revision/figure_CCND1_KD_Validation_mean_selected.pdf", width = 5, height = 3.5)
 
 
+
+ccnd1kd_val %>% 
+  dplyr::select(-rep) %>% 
+  group_by(siRNA, Cell) %>% 
+  filter(n() > 1) %>% 
+  mutate(var = sd^2) %>% 
+  summarise_all(mean) %>% 
+  #mutate(var = log2(var)) %>%
+  mutate(sd = sqrt(var)) %>% 
+  ungroup() %>% 
+  mutate(siRNA = sub(" ", " #", siRNA)) %>% 
+  filter(siRNA %in% selected_tf)
+
