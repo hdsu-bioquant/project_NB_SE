@@ -474,6 +474,10 @@ hockey_box <- hockey +
 hockey_box
 
 
+write_xlsx(list(`Figure 1d part1` = hockey$data,
+                `Figure 1d part2` = top50_box$data), 
+           path = "results/figure_source_data/Figure_1d.xlsx")
+
 
 ```
 
