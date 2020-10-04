@@ -34,7 +34,7 @@ library(viridis)
 library(rtracklayer)
 library(ggrepel)
 library(matrixStats)
-
+library(writexl)
 
 NCORES <- 30L
 ```

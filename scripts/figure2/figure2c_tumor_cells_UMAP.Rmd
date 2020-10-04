@@ -9,10 +9,10 @@ output:
     toc_depth: 4
     number_sections: false
 params:
-  annot_tumor   : "path/to/metadata"
-  annot_cells   : "path/to/metadata"
-  SE_signal        : "path/to/data"
-  hmatrix_wnorm : "path/to/data"
+  annot_tumor   : "annotation/annotation_tumor.RDS"
+  annot_cells   : "annotation/annotation_cells.RDS"
+  SE_signal        : "analysis/tumor_cells/chipseq/H3K27ac/consensusSE/tumor_cells_H3K27ac_noH3K4me3_consensusSE_SignalScore.RDS"
+  hmatrix_wnorm : "analysis/tumor_cells/chipseq/H3K27ac/NMF/tumor_cells_consensusSE_K5_Hmatrix_wnorm.RDS"
   figure2c      : "results/figures/figure2/..."
 editor_options: 
   chunk_output_type: console
@@ -33,7 +33,7 @@ library(umap)
 library(tidyverse)
 library(ggrepel)
 library(viridis)
-
+library(writexl)
 
 ```
 
@@ -191,6 +191,10 @@ gg_umap <- ggplot(chip_umap_df, aes(x=UMAP1, y=UMAP2, color = MES_score)) +
   #                                      UMAP1 > 0 & UMAP2 > 2), 
   #                 mapping = aes(label=ProjectID),size=3)
 gg_umap
+
+write_xlsx(list(`Figure 2c`= gg_umap$data), 
+           path = "results/figure_source_data/Figure_2c.xlsx")
+
 
 ggsave(filename = params$figure2c, 
        plot = gg_umap, width = 4, height = 3)
