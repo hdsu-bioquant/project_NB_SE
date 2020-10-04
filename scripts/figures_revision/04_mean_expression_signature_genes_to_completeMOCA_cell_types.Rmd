@@ -1,0 +1,846 @@
+---
+title: "Revision - expression mapped to Mouse Organogenesis Atlas"
+author: "Health Data Science Unit"
+date: "`r date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 4
+    number_sections: false
+params:
+  SE_target    : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/analysis/tumor/SE_annot/tumor_consensusSE_target_GRanges.RDS"
+  wc_tumor     : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Wmatrix_Wnorm.RDS"
+  wr_tumor     : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Wmatrix_Wnorm.RDS"
+  #mouse_exprs  : "/icgc/dkfzlsdf/analysis/B080/crg/CanDevSig/analysis/MOCA_human_Symbols/main_sample/MOCA_cds.RDS"
+  mouse_exprs  : "/icgc/dkfzlsdf/analysis/B080/crg/CanDevSig/analysis/MOCA_human_Symbols/main/MOCA_cds.RDS"
+  mouse_annot  : "/icgc/dkfzlsdf/analysis/B080/crg/CanDevSig/analysis/MOCA_human_Symbols/main/MOCA_annot_df.RDS"
+  #mouse_annot  : "/icgc/dkfzlsdf/analysis/B080/crg/CanDevSig/analysis/MOCA_human_Symbols/main_sample/MOCA_annot_df.RDS"
+  mouse_nmf_umap : "analysis/MOCA_human_Symbols/UMAP_projections/MOCA_sample_NMF_UMAP_sample_scaled.RDS"
+  #figure : "results/figure2/figure2h_SEtargetExprs_mouseE12.5.pdf"
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, include=FALSE}
+#this chunk sets global options for Rmarkdown
+knitr::opts_chunk$set(echo = TRUE)
+#setting working directory. Should be home directory of the project
+options(knitr.table.format="html")
+
+library(tidyverse)
+library(viridis)
+library(ggplot2)
+library(biomaRt)
+library(scales)
+library(patchwork)
+library(rtracklayer)
+library(matrixStats)
+library(cowplot)
+```
+
+
+
+## Data loading
+  
+  
+```{r dataloading}
+
+##----------------------------------------------------------------------------##
+##                             Read data                                      ##
+##----------------------------------------------------------------------------##
+# Read SE annotation
+SE <- readRDS(params$SE_target)
+
+# Read NMF results
+wc_tumor <- readRDS(params$wc_tumor)
+wr_tumor <- readRDS(params$wr_tumor)
+
+##----------------------------------------------------------------------------##
+##                             Read MOCA data                                 ##
+##----------------------------------------------------------------------------##
+library(Seurat)
+library(limma)
+library(monocle)
+
+#moca_NMF_umap <- readRDS(params$mouse_nmf_umap)
+
+
+# Zscore of gene expression
+moca_exprs <- readRDS(params$mouse_exprs)
+moca_exprs <- exprs(moca_exprs)
+dim(moca_exprs)
+#table(rownames(moca_exprs) %in% rownames(moca_NMF_umap$exprs))
+
+
+
+# #moca_exprs <- moca_exprs[rownames(moca_exprs) %in% rownames(moca_NMF_umap$exprs), colnames(moca_NMF_umap$exprs)]
+# moca_counts<- moca_exprs
+# #moca_exprs <- moca_counts
+# seurat_obj <- CreateSeuratObject(counts = moca_exprs )
+# seurat_obj <- NormalizeData(seurat_obj)
+
+#moca_exprs <- seurat_obj@assays$RNA@counts
+#dim(moca_exprs)
+#moca_exprs[1:5,1:5]
+#seurat_obj <- FindVariableFeatures(seurat_obj, selection.method = "vst")
+#rm(moca_exprs)
+# gc()
+# seurat_obj <- ScaleData(seurat_obj,
+#                         features = rownames(seurat_obj))
+# #
+# # seurat_obj <- CellCycleScoring(seurat_obj, s.features = cc.genes$s.genes, g2m.features = cc.genes$g2m.genes, set.ident = TRUE)
+# # seurat_obj <- ScaleData(seurat_obj,
+# #                         vars.to.regress = c("S.Score", "G2M.Score"),
+# #                         features = rownames(seurat_obj))
+# 
+# dim(seurat_obj@assays$RNA@scale.data)
+# 
+# 
+# moca_exprs <- seurat_obj@assays$RNA@scale.data
+# #moca_exprs <- normalizeQuantiles(moca_exprs)
+# rm(seurat_obj)
+# gc()
+# #saveRDS(moca_exprs, "/icgc/dkfzlsdf/analysis/B080/crg/CanDevSig/analysis/MOCA_human_Symbols/main_sample/MOCA_cds_scaled_centered.RDS")
+# #moca_exprs <- scale(moca_exprs)
+
+
+
+moca_annot <- readRDS(params$mouse_annot)
+dim(moca_exprs)
+moca_exprs[1:5,1:5]
+dim(moca_annot)
+head(moca_annot)
+
+
+```
+
+
+
+```{r helper_functions}
+##----------------------------------------------------------------------------##
+##                             Helper functions                               ##
+##----------------------------------------------------------------------------##
+
+##----------------------------------------------------------------------------##
+##                        Extract associated features                         ##
+##----------------------------------------------------------------------------##
+
+extract_W_features <- function(wmatrix, omics){
+  sigIDs <- setNames(colnames(wmatrix), colnames(wmatrix))
+  
+  lapply(sigIDs, function(sigID){
+    # Extract signature specific genes
+    selec_wmatrix <- do.call(cbind, lapply(as.data.frame(wmatrix), function(sign_expo){
+      sign_expo[sign_expo < quantile(sign_expo, 0.90)] <- NA
+      sign_expo
+    }))
+    rownames(selec_wmatrix) <- rownames(wmatrix)
+    selec_wmatrix <- selec_wmatrix[!is.na(selec_wmatrix[,sigID]),,drop=FALSE]
+    # Keep only the top feature if there's an overlap
+    sig_SE_IDs <- rownames(selec_wmatrix[rowMaxs(selec_wmatrix, na.rm = TRUE) == selec_wmatrix[,sigID],])
+    
+    if (omics == "ChIPseq") {
+      unique(SE[sig_SE_IDs]$target_SYMBOL)
+    } else if (omics == "RNAseq") {
+      unique(SE$target_SYMBOL[match(sig_SE_IDs, SE$target_ENSEMBL)])
+    }
+    
+    #sign_expo  <- w_tumor[,sigID]
+    #sig_SE_IDs <- names(sign_expo[sign_expo > quantile(sign_expo, 0.8)])
+    
+  })
+}
+
+
+```
+
+```{r extractFeatures}
+
+signature_associated_ChIPseq <- extract_W_features(wc_tumor, omics = "ChIPseq")
+signature_associated_RNAseq  <- extract_W_features(wr_tumor, omics = "RNAseq")
+
+
+
+sigIDs <- setNames(colnames(wc_tumor), colnames(wc_tumor))
+
+
+signature_associated <- lapply(sigIDs, function(sigID){
+  
+  chip <- signature_associated_ChIPseq[[sigID]]
+  rna <- signature_associated_RNAseq[[sigID]]
+  
+  unique(c(chip, rna))
+})
+
+
+
+```
+
+
+```{r cluster_specific_genes}
+# Mouse-Human homologous genes
+mm_hs_map = read.delim("http://www.informatics.jax.org/downloads/reports/HOM_MouseHumanSequence.rpt", stringsAsFactors = F)
+mm_hs_map = mm_hs_map[,colnames(mm_hs_map) %in% c("HomoloGene.ID", "Symbol")]
+mm_hs_map$HomoloGene.ID = as.character(mm_hs_map$HomoloGene.ID)
+mm_hs_map = split(mm_hs_map$Symbol, mm_hs_map$HomoloGene.ID)
+mm_hs_map = mm_hs_map[sapply(mm_hs_map, length) == 2] # Keeping only one to one homologs
+mm_hs_map = do.call("rbind", mm_hs_map)
+mm_hs_map = data.frame(mouse_symbol = noquote(as.character(mm_hs_map[,1])),
+                       human_symbol = noquote(as.character(mm_hs_map[,2])))
+# Trajectory specific genes (top 100)
+mm_traje = read.csv("/icgc/dkfzlsdf/analysis/B080/crg/CanDevSig/data/MouseAtlas/DE_gene_main_trajectory.csv", stringsAsFactors = F, skip = 1)
+mm_traje = mm_traje[mm_traje$qval < 0.05 & mm_traje$gene_type == "protein_coding",]
+mm_traje = mm_traje[,c(8,16,17)]
+colnames(mm_traje) = c("mouse_symbol", "fc", "class")
+mm_traje = split(mm_traje, mm_traje$class)
+mm_traje = lapply(mm_traje, function(x){
+  dat = merge(x, mm_hs_map)
+  dat = dat[, c("fc","human_symbol")]
+  ## Uncomment below, if only top 100 hits needed
+  if(nrow(dat) > 100)
+  {
+    dat = dat[order(dat$fc, decreasing = T),][1:100,] 
+  }
+  sig.genes = unique(dat$human_symbol)
+})
+# # Cluster specific genes (top 100)
+# mm_clust = read.csv("/icgc/dkfzlsdf/analysis/B080/crg/CanDevSig/data/MouseAtlas/DE_gene_main_cluster.csv", stringsAsFactors = F, skip = 1)
+# #mm_clust= mm_clust[mm_clust$qval < 0.05 & mm_clust$gene_type == "protein_coding",]
+# mm_clust= mm_clust[mm_clust$fold.change > 1,]
+# #mm_clust= mm_clust[mm_clust$fold.change > 0.5,]
+# mm_clust = mm_clust[,c(2, 11, 12)]
+# colnames(mm_clust) = c("mouse_symbol", "fc", "class")
+# mm_clust = split(mm_clust, mm_clust$class)
+# mm_clust = lapply(mm_clust, function(x){
+#   dat = merge(x, mm_hs_map)
+#   dat = dat[, c("fc","human_symbol")]
+#   ## Uncomment below, if only top 100 hits needed
+#   # if(nrow(dat) > 100) {
+#   #   dat = dat[order(dat$fc, decreasing = T),][1:100,] 
+#   # }
+#   sig.genes = unique(dat$human_symbol)
+# })
+# mm_clust
+
+
+selected_cells <- setNames(c(3, 8, 9, 14, 16, 20, 23),
+                           c("Intermediate Mesoderm", "Early mesenchyme", "Neural progenitor cells", "Neural Tube", "Stromal cells", "Endothelial cells", "Schwann cell precursor"))
+
+selected_cells
+
+
+# mm_clust_sel <- mm_clust[selected_cells]
+# names(mm_clust_sel) <- names(selected_cells)
+# mm_clust_sel
+```
+
+
+```{r}
+
+cell_type_clusterID_map <- unique(moca_annot[,c("Main_cell_type", "Main_Cluster")])
+cell_type_clusterID_map
+
+mm_clust <- read.csv("/icgc/dkfzlsdf/analysis/B080/crg/CanDevSig/data/MouseAtlas/DE_gene_main_cluster.csv", stringsAsFactors = F, skip = 1)
+head(mm_clust)
+#mm_clust= mm_clust[mm_clust$qval < 0.05 & mm_clust$gene_type == "protein_coding",]
+#mm_clust= mm_clust[mm_clust$fold.change > 1,]
+#mm_clust= mm_clust[mm_clust$fold.change > 0.5,]
+
+mm_clust_sel <- mm_clust %>% 
+  group_by(class) %>% 
+  arrange((pval)) %>% 
+  mutate(symbol = mm_hs_map$human_symbol[match(gene_short_name, mm_hs_map$mouse_symbol)]) %>% 
+  filter(!is.na(symbol)) %>% 
+  filter(qval < 0.05) %>% 
+  #top_n(1000, pval) %>% 
+  mutate(Main_cell_type = cell_type_clusterID_map$Main_cell_type[match(class, cell_type_clusterID_map$Main_Cluster)])
+  #filter(class %in% selected_cells ) %>% 
+  #mutate(Main_cell_type = names(selected_cells)[match(class, selected_cells)])
+
+mm_clust_sel %>% 
+  group_by(Main_cell_type) %>% 
+  summarise(n = n())
+  
+
+mm_clust_sel <- lapply(split(mm_clust_sel, mm_clust_sel$Main_cell_type), "[[", "symbol")
+head(mm_clust_sel)
+sapply(mm_clust_sel, length)
+
+
+
+```
+
+
+
+```{r}
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                        Projection plot                                     ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+expression_signature_genes_plot <- function(signature_associated, mm_clust_sel, subject_data, expressed_in_subtype = FALSE){
+  
+  
+  subject_annot <- subject_data$annot
+  subject_annot <- subject_annot[subject_annot$Main_cell_type %in%  names(mm_clust_sel),]
+  
+  subject_annot_list <- split(subject_annot, subject_annot$Main_cell_type)
+  cell_types_ids <- setNames(names(subject_annot_list),names(subject_annot_list))
+  
+  
+  
+  by_cell_type <- lapply(cell_types_ids, function(cell_id){
+    sample_ids <- subject_annot$sample[subject_annot$Main_cell_type == cell_id]
+    # Only cells of indicated sub type
+    my_cell_exprs <- subject_data$exprs[,sample_ids,drop=FALSE]
+    
+    if (expressed_in_subtype) {
+      ##### Only genes expressed in indicated subtype
+      my_cell_exprs <- my_cell_exprs[rownames(my_cell_exprs) %in% mm_clust_sel[[cell_id]],,drop=FALSE]  
+    }
+    
+    
+    # Only genes for each signature
+    by_sig <- lapply(signature_associated, function(sig_genes){
+      my_sig_exprs <- my_cell_exprs[rownames(my_cell_exprs) %in% sig_genes,,drop=FALSE]
+      
+      gene_overlap <- nrow(my_sig_exprs)
+      
+      sig_type_exprs <- colMeans(my_sig_exprs)
+      
+      # sig_type_exprs <- apply(as.matrix(my_sig_exprs), 2, function(x){
+      #   if (sum(x) > 0) {
+      #     #median(x[x>0])
+      #     mean(x[x>0])
+      #   } else {
+      #     0
+      #   }
+      #   
+      # })
+      #sig_type_exprs <- colMedians(as.matrix(my_sig_exprs))
+      #names(sig_type_exprs) <- colnames(my_sig_exprs)
+      print(head(sig_type_exprs))
+      
+      list(gene_overlap = gene_overlap,
+           mean_expression = sig_type_exprs)
+    })
+    
+    gene_overlap <- do.call(cbind, lapply(by_sig, "[[", "gene_overlap"))
+    mean_expression <- do.call(cbind, lapply(by_sig, "[[", "mean_expression"))
+    
+    list(gene_overlap    = gene_overlap,
+         mean_expression = mean_expression)
+    
+    #do.call(cbind, by_sig)
+    #dim(my_cell_exprs)
+  })
+  
+  #by_cell_type <- do.call(rbind, by_cell_type)
+  gene_overlap <- do.call(rbind, lapply(by_cell_type, "[[", "gene_overlap"))
+  rownames(gene_overlap) <- names(by_cell_type)
+  
+  by_cell_type <- do.call(rbind, lapply(by_cell_type, "[[", "mean_expression"))
+  #print(gene_overlap)
+  
+  
+  idx <- match(subject_annot$sample, rownames(by_cell_type))
+  #print(head(subject_annot))
+  subject_annot <- cbind(subject_annot[,c("Main_cell_type", "development_stage")], by_cell_type[idx, ])
+  
+  # Helper function for string wrapping. 
+  # Default 20 character target width.
+  swr = function(string, nwrap=20) {
+    paste(strwrap(string, width=nwrap), collapse="\n")
+  }
+  swr = Vectorize(swr)
+  
+  
+  gg_df <- subject_annot %>%
+    #filter(!Main_cell_type == "Intermediate Mesoderm") %>% 
+    mutate(Main_cell_type = swr(Main_cell_type)) %>%
+    gather(key = Signature, value = Mean_Signature_Gene_Expression, -Main_cell_type, -development_stage) %>% 
+    arrange(Mean_Signature_Gene_Expression) %>% 
+    group_by(Signature, development_stage) %>% 
+    mutate(Mean_Signature_Gene_Expression = (Mean_Signature_Gene_Expression -
+                                               mean(na.omit(Mean_Signature_Gene_Expression)))/sd(na.omit(Mean_Signature_Gene_Expression)))
+  
+  
+  gg_df
+  
+}
+
+moca_data <- list(exprs = moca_exprs,
+                  annot = moca_annot)
+
+
+
+x <- expression_signature_genes_plot(signature_associated_ChIPseq, mm_clust_sel, moca_data, expressed_in_subtype = FALSE)
+#x <- expression_signature_genes_plot(signature_associated_RNAseq, mm_clust_sel, moca_data, expressed_in_subtype = FALSE)
+#x <- expression_signature_genes_plot(signature_associated, mm_clust_sel, moca_data, expressed_in_subtype = FALSE)
+
+head(x)
+
+x %>%
+  group_by(Main_cell_type) %>% 
+  summarise(n = n(), min = min(Mean_Signature_Gene_Expression))
+
+
+
+
+
+x %>%
+  group_by(Signature) %>% 
+  mutate(Mean_Signature_Gene_Expression = Mean_Signature_Gene_Expression + abs(min(Mean_Signature_Gene_Expression))) %>% 
+  mutate(Mean_Signature_Gene_Expression = Mean_Signature_Gene_Expression/max(Mean_Signature_Gene_Expression)) %>% 
+  group_by(Main_cell_type, Signature) %>% 
+  filter(Mean_Signature_Gene_Expression > quantile(Mean_Signature_Gene_Expression, probs = 0.95)) %>% 
+  ggplot(aes(x = Main_cell_type, y = Mean_Signature_Gene_Expression, color = Signature)) +
+  #ggplot(aes(x = UMAP1, y = UMAP2, color = Mean_Signature_Gene_Expression)) +
+  #geom_point() +
+  #geom_boxplot() +
+  geom_violin() +
+  #scale_color_viridis() +
+  facet_grid(.~Signature, scales = "free") +
+  #ggtitle(sigID) +
+  # ylab("Dimension 2") +
+  # xlab("Dimension 1") +
+  coord_flip() +
+  theme_cowplot()
+
+# gg_list <- lapply(split(x, x$Signature), function(x){
+#   x %>%
+#     ggplot(aes(x = Main_cell_type, y = Mean_Signature_Gene_Expression, color = Signature)) +
+#     geom_violin() +
+#     facet_grid(.~Signature, scales = "free") +
+#     coord_flip() +
+#     theme_cowplot()
+# })
+# wrap_plots(gg_list, ncol = 4)
+
+
+library(ggbeeswarm)
+
+x %>%
+  group_by(Signature) %>% 
+  mutate(Mean_Signature_Gene_Expression = Mean_Signature_Gene_Expression + abs(min(Mean_Signature_Gene_Expression))) %>% 
+  mutate(Mean_Signature_Gene_Expression = Mean_Signature_Gene_Expression/max(Mean_Signature_Gene_Expression)) %>% 
+  group_by(Main_cell_type, Signature) %>%
+  filter(Mean_Signature_Gene_Expression > quantile(Mean_Signature_Gene_Expression, probs = 0.95)) %>%
+  
+  ggplot(aes(x = Main_cell_type, y = Mean_Signature_Gene_Expression, color = Mean_Signature_Gene_Expression)) +
+  #geom_point() +
+  #geom_boxplot() +
+  geom_quasirandom() +
+  #geom_beeswarm(size=.5)  +
+  #geom_violin() +
+  scale_color_viridis(alpha = 0.95) +
+  facet_grid(.~Signature, scales = "free") +
+  coord_flip() +
+  xlab("MOCA cell type") +
+  ylab("Mean signature gene expression") +
+  labs(color = "Mean signature\ngene expression") +
+  theme_cowplot()
+
+library(ggpubr)
+
+x %>%
+  #mutate(development_stage = match(, moca_annot$development_stage)) %>% 
+  group_by(Signature, development_stage) %>% 
+  mutate(Mean_Signature_Gene_Expression = Mean_Signature_Gene_Expression + abs(min(Mean_Signature_Gene_Expression))) %>% 
+  mutate(Mean_Signature_Gene_Expression = Mean_Signature_Gene_Expression/max(Mean_Signature_Gene_Expression)) %>% 
+  group_by(Main_cell_type, Signature, development_stage) %>%
+  filter(Mean_Signature_Gene_Expression > quantile(Mean_Signature_Gene_Expression, probs = 0.9)) %>%
+  ungroup() %>% 
+  mutate(Main_cell_type = factor(Main_cell_type, levels = rev(c( "Neural progenitor\ncells", "Early mesenchyme", "Neural Tube", "Intermediate\nMesoderm", "Schwann cell\nprecursor", "Endothelial cells", "Stromal cells")))) %>% 
+  ggplot(aes(x = Main_cell_type, y = Mean_Signature_Gene_Expression, color = Mean_Signature_Gene_Expression)) +
+  #geom_point() +
+  #geom_boxplot() +
+  geom_quasirandom() +
+  stat_summary(fun.y = median, geom = "errorbar", 
+             aes(ymax = ..y.., ymin = ..y.., group = Main_cell_type),
+             width = 1, linetype = "solid") +
+  #geom_beeswarm(size=.5)  +
+  #geom_violin() +
+  scale_color_viridis(alpha = 0.95) +
+  #facet_grid(.~Signature, scales = "free") +
+  facet_grid(development_stage~Signature, scales = "free") +
+  coord_flip() +
+  xlab("MOCA cell type") +
+  ylab("Mean signature gene expression") +
+  labs(color = "Mean signature\ngene expression") +
+  theme_cowplot()
+
+
+ggsave("results/figures/MOCAcomplete_cell_type_vs_Signatues_main_genes_exprs_quasirandom_top5percent_cells.pdf", width = 20, height = 20)
+
+
+
+x %>%
+  #mutate(development_stage = match(, moca_annot$development_stage)) %>% 
+  group_by(Signature, development_stage) %>% 
+  mutate(Mean_Signature_Gene_Expression = Mean_Signature_Gene_Expression + abs(min(Mean_Signature_Gene_Expression))) %>% 
+  mutate(Mean_Signature_Gene_Expression = Mean_Signature_Gene_Expression/max(Mean_Signature_Gene_Expression)) %>% 
+  group_by(Main_cell_type, Signature, development_stage) %>%
+  filter(Mean_Signature_Gene_Expression > quantile(Mean_Signature_Gene_Expression, probs = 0.9)) %>%
+  filter(Signature == "MES") %>%
+  filter(development_stage %in% c("9.5", "10.5")) %>%
+  ungroup() %>% 
+  mutate(Main_cell_type = factor(Main_cell_type, levels = rev(c( "Neural progenitor\ncells", "Early mesenchyme", "Neural Tube", "Intermediate\nMesoderm", "Schwann cell\nprecursor", "Endothelial cells", "Stromal cells")))) %>% 
+  ggplot(aes(x = Main_cell_type, y = Mean_Signature_Gene_Expression, color = Mean_Signature_Gene_Expression)) +
+  #geom_point() +
+  #geom_boxplot() +
+  geom_quasirandom() +
+  stat_summary(fun.y = median, geom = "errorbar", 
+             aes(ymax = ..y.., ymin = ..y.., group = Main_cell_type),
+             width = 1, linetype = "solid") +
+  #geom_beeswarm(size=.5)  +
+  #geom_violin() +
+  scale_color_viridis(alpha = 0.95) +
+  #facet_grid(.~Signature, scales = "free") +
+  facet_grid(development_stage~Signature, scales = "free") +
+  coord_flip() +
+  xlab("MOCA cell type") +
+  ylab("Mean signature gene expression") +
+  labs(color = "Mean signature\ngene expression") +
+  theme_cowplot()
+
+
+ggsave("results/figures/MOCAcomplete_cell_type_vs_Signatues_main_genes_exprs_quasirandom_top10percent_cells_onlyMES.pdf", width = 7, height = 12)
+
+
+
+
+
+
+
+
+
+
+
+
+x %>%
+  #mutate(development_stage = match(, moca_annot$development_stage)) %>% 
+  group_by(Signature, development_stage) %>% 
+  mutate(Mean_Signature_Gene_Expression = Mean_Signature_Gene_Expression + abs(min(Mean_Signature_Gene_Expression))) %>% 
+  mutate(Mean_Signature_Gene_Expression = Mean_Signature_Gene_Expression/max(Mean_Signature_Gene_Expression)) %>% 
+  group_by(Main_cell_type, Signature, development_stage) %>%
+  filter(Mean_Signature_Gene_Expression > quantile(Mean_Signature_Gene_Expression, probs = 0.9)) %>%
+  filter(Signature == "MES") %>%
+  #filter(development_stage %in% c("9.5", "10.5")) %>%
+  ungroup() %>% 
+  filter(Main_cell_type %in% c("Stromal cells", "Neural progenitor\ncells", "Neural Tube", "Schwann cell\nprecursor")) %>% 
+  mutate(Main_cell_type = factor(Main_cell_type, levels = c("Endothelial cells", "Stromal cells", "Neural progenitor\ncells", "Early mesenchyme", "Neural Tube", "Intermediate\nMesoderm", "Schwann cell\nprecursor"))) %>% 
+  #mutate(Main_cell_type = factor(Main_cell_type, levels = c("Endothelial cells", "Stromal cells", "Neural progenitor\ncells", "Early mesenchyme", "Neural Tube", "Intermediate\nMesoderm", "Schwann cell\nprecursor"))) %>% 
+  ggplot(aes(x = Main_cell_type, y = Mean_Signature_Gene_Expression, color = Mean_Signature_Gene_Expression)) +
+  #geom_point() +
+  #geom_boxplot() +
+  geom_quasirandom(alpha = 0.95) +
+  stat_summary(fun.y = median, geom = "errorbar", 
+             aes(ymax = ..y.., ymin = ..y.., group = Main_cell_type),
+             width = 1, linetype = "solid") +
+  #geom_beeswarm(size=.5)  +
+  #geom_violin() +
+  scale_color_viridis(alpha = 0.95) +
+  #facet_grid(.~Signature, scales = "free") +
+  #geom_vline(xintercept = 0.2) +
+  #geom_vline(xintercept = 2.5) +
+  #facet_grid(development_stage~Signature, scales = "free") +
+  facet_wrap(development_stage~., scales = "free", ncol = 2) +
+  #facet_wrap(development_stage~., ncol = 2) +
+  coord_flip() +
+  xlab("MOCA cell type") +
+  ylab("Mean signature gene expression") +
+  labs(color = "Mean signature\ngene expression") +
+  theme_cowplot()
+
+
+ggsave("results/figures/MOCAcomplete_CellType_vs_MES_genes_exprs_top10percent_cells_wrap.pdf", width = 10, height = 9)
+
+
+x %>%
+  #mutate(development_stage = match(, moca_annot$development_stage)) %>% 
+  group_by(Signature, development_stage) %>% 
+  mutate(Mean_Signature_Gene_Expression = Mean_Signature_Gene_Expression + abs(min(Mean_Signature_Gene_Expression))) %>% 
+  mutate(Mean_Signature_Gene_Expression = Mean_Signature_Gene_Expression/max(Mean_Signature_Gene_Expression)) %>% 
+  group_by(Main_cell_type, Signature, development_stage) %>%
+  filter(Mean_Signature_Gene_Expression > quantile(Mean_Signature_Gene_Expression, probs = 0.9)) %>%
+  filter(Signature == "MES") %>%
+  #filter(development_stage %in% c("9.5", "10.5")) %>%
+  ungroup() %>% 
+  filter(Main_cell_type %in% c("Stromal cells", "Neural progenitor\ncells", "Neural Tube", "Schwann cell\nprecursor")) %>% 
+  mutate(Main_cell_type = factor(Main_cell_type, levels = c("Endothelial cells", "Stromal cells", "Neural progenitor\ncells", "Early mesenchyme", "Neural Tube", "Intermediate\nMesoderm", "Schwann cell\nprecursor"))) %>% 
+  #mutate(Main_cell_type = factor(Main_cell_type, levels = c("Endothelial cells", "Stromal cells", "Neural progenitor\ncells", "Early mesenchyme", "Neural Tube", "Intermediate\nMesoderm", "Schwann cell\nprecursor"))) %>% 
+  ggplot(aes(x = Main_cell_type, y = Mean_Signature_Gene_Expression, color = Mean_Signature_Gene_Expression)) +
+  #geom_point() +
+  #geom_boxplot() +
+  geom_quasirandom(alpha = 0.95) +
+  stat_summary(fun.y = median, geom = "errorbar", 
+             aes(ymax = ..y.., ymin = ..y.., group = Main_cell_type),
+             width = 1, linetype = "solid") +
+  #geom_beeswarm(size=.5)  +
+  #geom_violin() +
+  scale_color_viridis(alpha = 0.95) +
+  #facet_grid(.~Signature, scales = "free") +
+  #geom_vline(xintercept = 0.2) +
+  #geom_vline(xintercept = 2.5) +
+  facet_grid(.~development_stage, scales = "free") +
+  #facet_wrap(development_stage~., scales = "free", ncol = 2) +
+  coord_flip() +
+  xlab("MOCA cell type") +
+  ylab("Mean signature gene expression") +
+  labs(color = "Mean signature\ngene expression") +
+  theme_cowplot()
+
+ggsave("results/figures/MOCAcomplete_CellType_vs_MES_genes_exprs_top10percent_cells_grid.pdf", width = 12, height = 6)
+
+saveRDS(x, "results/figures/MOCAcomplete_CellType_vs_Sgnature_genes_exprs.RDS")
+
+
+
+
+
+
+
+
+
+x %>%
+  #mutate(development_stage = match(, moca_annot$development_stage)) %>% 
+  group_by(Signature, development_stage) %>% 
+  mutate(Mean_Signature_Gene_Expression = Mean_Signature_Gene_Expression + abs(min(Mean_Signature_Gene_Expression))) %>% 
+  mutate(Mean_Signature_Gene_Expression = Mean_Signature_Gene_Expression/max(Mean_Signature_Gene_Expression)) %>% 
+  group_by(Main_cell_type, Signature, development_stage) %>%
+  filter(Mean_Signature_Gene_Expression > quantile(Mean_Signature_Gene_Expression, probs = 0.9)) %>%
+  filter(Signature == "MES") %>%
+  #filter(development_stage %in% c("9.5", "10.5")) %>%
+  ungroup() %>% 
+  mutate(Main_cell_type = factor(Main_cell_type, levels = c("Endothelial cells", "Stromal cells", "Neural progenitor\ncells", "Early mesenchyme", "Neural Tube", "Intermediate\nMesoderm", "Schwann cell\nprecursor"))) %>% 
+  ggplot(aes(x = Main_cell_type, y = Mean_Signature_Gene_Expression, color = Mean_Signature_Gene_Expression)) +
+  #geom_point() +
+  #geom_boxplot() +
+  geom_quasirandom(alpha = 0.95) +
+  stat_summary(fun.y = median, geom = "errorbar", 
+             aes(ymax = ..y.., ymin = ..y.., group = Main_cell_type),
+             width = 1, linetype = "solid") +
+  #geom_beeswarm(size=.5)  +
+  #geom_violin() +
+  scale_color_viridis(alpha = 0.95) +
+  #facet_grid(.~Signature, scales = "free") +
+  #geom_vline(xintercept = 0.2) +
+  geom_vline(xintercept = 2.5) +
+  #facet_grid(development_stage~Signature, scales = "free") +
+  #facet_wrap(development_stage~., scales = "free", ncol = 2) +
+  facet_wrap(development_stage~., ncol = 2) +
+  coord_flip() +
+  xlab("MOCA cell type") +
+  ylab("Mean signature gene expression") +
+  labs(color = "Mean signature\ngene expression") +
+  theme_cowplot()
+
+
+ggsave("results/figures/MOCAcomplete_cell_type_vs_Signatues_main_genes_exprs_quasirandom_top10percent_cells_onlyMES_.pdf", width = 10, height = 10)
+
+
+# 
+# projection_plot(signature_associated_RNAseq, mm_clust_sel, moca_data)
+# projection_plot(signature_associated, mm_clust_sel, moca_data)
+# 
+# 
+# 
+# #projection_plot(signature_associated_ChIPseq, mm_clust_sel, moca_data)
+# projection_plot(signature_associated_ChIPseq, mm_clust_sel, moca_data, expressed_in_subtype = FALSE)
+# ggsave("results/figures/Signature_genes_mean_expression_Mouse_organogenesis_atlas_all.pdf", width = 15, height = 12)
+# projection_plot(signature_associated_ChIPseq, mm_clust_sel, moca_data, expressed_in_subtype = TRUE)
+# ggsave("results/figures/Signature_genes_mean_expression_Mouse_organogenesis_atlas.pdf", width = 15, height = 12)
+# 
+
+x %>%
+  #mutate(development_stage = match(, moca_annot$development_stage)) %>% 
+  group_by(Signature, development_stage) %>% 
+  mutate(Mean_Signature_Gene_Expression = Mean_Signature_Gene_Expression + abs(min(Mean_Signature_Gene_Expression))) %>% 
+  mutate(Mean_Signature_Gene_Expression = Mean_Signature_Gene_Expression/max(Mean_Signature_Gene_Expression)) %>% 
+  group_by(Main_cell_type, Signature, development_stage) %>%
+  ungroup() %>% 
+  group_by(Signature, development_stage) %>%
+  filter(Mean_Signature_Gene_Expression > quantile(Mean_Signature_Gene_Expression, probs = 0.9)) %>%
+  filter(Signature == "MES") %>%
+  #filter(development_stage %in% c("9.5", "10.5")) %>%
+  ungroup() %>% 
+  mutate(Main_cell_type = factor(Main_cell_type, levels = c("Endothelial cells", "Stromal cells", "Neural progenitor\ncells", "Early mesenchyme", "Neural Tube", "Intermediate\nMesoderm", "Schwann cell\nprecursor"))) %>% 
+  ggplot(aes(x = Main_cell_type, y = Mean_Signature_Gene_Expression, color = Mean_Signature_Gene_Expression)) +
+  #geom_point() +
+  #geom_boxplot() +
+  geom_quasirandom(alpha = 0.95) +
+  stat_summary(fun.y = median, geom = "errorbar", 
+             aes(ymax = ..y.., ymin = ..y.., group = Main_cell_type),
+             width = 1, linetype = "solid") +
+  #geom_beeswarm(size=.5)  +
+  #geom_violin() +
+  scale_color_viridis(alpha = 0.95) +
+  #facet_grid(.~Signature, scales = "free") +
+  #geom_vline(xintercept = 0.2) +
+  geom_vline(xintercept = 2.5) +
+  #facet_grid(development_stage~Signature, scales = "free") +
+  #facet_wrap(development_stage~., scales = "free", ncol = 2) +
+  facet_wrap(development_stage~., ncol = 2) +
+  coord_flip() +
+  xlab("MOCA cell type") +
+  ylab("Mean signature gene expression") +
+  labs(color = "Mean signature\ngene expression") +
+  theme_cowplot()
+
+
+#ggsave("results/figures/MOCAcomplete_cell_type_vs_Signatues_main_genes_exprs_quasirandom_top10percent_cells_onlyMES_.pdf", width = 10, height = 10)
+
+
+
+```
+
+
+Steps:
+1. Estimate Mean expression of MES signature genes for each MOCA cells.
+2. Off all cells, keep only the 10% top expressing cells.
+3. Estimate the proportion of cells per cell type (n cell type)/(total n cell)
+
+```{r}
+y <- x %>%
+  #mutate(development_stage = match(, moca_annot$development_stage)) %>% 
+  group_by(Signature, development_stage) %>% 
+  mutate(Mean_Signature_Gene_Expression = Mean_Signature_Gene_Expression + abs(min(Mean_Signature_Gene_Expression))) %>% 
+  mutate(Mean_Signature_Gene_Expression = Mean_Signature_Gene_Expression/max(Mean_Signature_Gene_Expression)) %>% 
+  group_by(Main_cell_type, Signature, development_stage) %>%
+  mutate(total_N_cell_type = n()) %>% 
+  #original_n
+  ungroup() %>% 
+  group_by(Signature, development_stage) %>%
+  filter(Mean_Signature_Gene_Expression > quantile(Mean_Signature_Gene_Expression, probs = 0.90)) %>%
+  filter(Signature == "MES") %>%
+  group_by(Main_cell_type, Signature, development_stage) %>%
+  mutate(total_n_cell_type = n()) %>% 
+  summarize(top10_n           = n(), 
+            total_N_cell_type = unique(total_N_cell_type),
+            total_n_cell_type = unique(total_n_cell_type),
+            Mean_Signature_Gene_Expression = mean(Mean_Signature_Gene_Expression)) %>% 
+  group_by(Signature, development_stage) %>%
+  mutate(try = sum(total_n_cell_type)) %>% 
+  mutate(percent_all_cells_n = top10_n/sum(total_n_cell_type)) %>% 
+  mutate(percent_original_cells_N = total_N_cell_type/sum(total_N_cell_type)) %>% 
+  
+  mutate(percent_all_cells_N = top10_n/sum(total_N_cell_type)) %>% 
+  mutate(percent_per_cell_type = top10_n/total_N_cell_type) %>%
+  mutate(log_ratio_cell_type = log(percent_all_cells_n/percent_original_cells_N)) %>% 
+  ungroup() %>% 
+  #mutate(Main_cell_type = factor(Main_cell_type, levels = c("Endothelial cells", "Stromal cells", "Neural progenitor\ncells", "Early mesenchyme", "Neural Tube", "Intermediate\nMesoderm", "Schwann cell\nprecursor"))) %>% 
+  mutate(Main_cell_type_class = if_else(Main_cell_type %in% c("Neural progenitor\ncells", "Early mesenchyme", "Neural Tube", "Intermediate\nMesoderm", "Schwann cell\nprecursor"), " NB progenitors", "other")) %>% 
+  mutate(Main_cell_type_class = if_else(Main_cell_type %in% c("White blood cells", "Primitive erythroid\nlineage", "Megakaryocytes", "Endothelial cells", "Definitive\nerythroid lineage"), "Immune cells", Main_cell_type_class)) %>%
+  mutate(development_stage = factor(as.character(development_stage), levels = unique(development_stage))) %>% 
+  group_by(Main_cell_type) %>% 
+  mutate(sortingidx = sum(percent_per_cell_type)) %>%
+  group_by(Main_cell_type_class) %>% 
+  arrange(sortingidx) %>% 
+  ungroup() %>% 
+  mutate(Main_cell_type = factor(Main_cell_type, levels = unique(Main_cell_type)))
+
+  # mutate(development_stage = paste0(development_stage, "\nweeks")) %>% 
+  # mutate(development_stage = factor(development_stage, levels = unique(development_stage)))  
+ y 
+ 
+ gg_nN <- ggplot(y, aes(x = development_stage, y = Main_cell_type, color = Mean_Signature_Gene_Expression, size = percent_per_cell_type)) +
+  ggtitle("(n top10% cell type) / sum(N cell type)") +
+  geom_point() +
+  scale_color_viridis(alpha = 0.95) +
+  #geom_hline(yintercept = 2.5) +
+  facet_grid(Main_cell_type_class~., scales = "free", space='free') +
+  ylab("MOCA cell type") +
+  xlab("Development stage") +
+  labs(color = "Mean expression\nMES signature genes") +
+  theme_cowplot()
+ gg_nN
+ ggsave("results/figures/MOCA_cell_type_vs_MES_genes_expr_proportions_top10percent.pdf", gg_nN, width = 7, height = 15)
+ # y %>% 
+ #   filter( !Main_cell_type_class == "other") %>% 
+ #   ggplot( aes(x = development_stage, y = Main_cell_type, color = Mean_Signature_Gene_Expression, size = percent_per_cell_type)) +
+ #  ggtitle("(n top10% cell type) / sum(N cell type)") +
+ #  geom_point() +
+ #  scale_color_viridis(alpha = 0.95) +
+ #  #geom_hline(yintercept = 2.5) +
+ #  facet_grid(Main_cell_type_class~., scales = "free", space='free') +
+ #  ylab("MOCA cell type") +
+ #  xlab("Development stage") +
+ #  labs(color = "Mean expression\nMES signature genes") +
+ #  theme_cowplot()
+ # 
+ 
+
+gg_nsn <- ggplot(y, aes(x = development_stage, y = Main_cell_type, color = Mean_Signature_Gene_Expression, size = percent_all_cells_n)) +
+  ggtitle("(n top10% cell type) / sum(n top10% selected cell types)") +
+  geom_point() +
+  scale_color_viridis(alpha = 0.95) +
+  geom_hline(yintercept = 2.5) +
+  ylab("MOCA cell type") +
+  xlab("Development stage") +
+  labs(color = "Mean expression\nMES signature genes") +
+  theme_cowplot()
+  
+gg_nsN <- ggplot(y, aes(x = development_stage, y = Main_cell_type, color = Mean_Signature_Gene_Expression, size = percent_all_cells_N)) +
+  ggtitle("(n top10% cell type) / sum(N selected cell types)") +
+  geom_point() +
+  scale_color_viridis(alpha = 0.95) +
+  geom_hline(yintercept = 2.5) +
+  ylab("MOCA cell type") +
+  xlab("Development stage") +
+  labs(color = "Mean expression\nMES signature genes") +
+  theme_cowplot()
+
+gg_nN <- ggplot(y, aes(x = development_stage, y = Main_cell_type, color = Mean_Signature_Gene_Expression, size = percent_per_cell_type)) +
+  ggtitle("(n top10% cell type) / sum(N cell type)") +
+  geom_point() +
+  scale_color_viridis(alpha = 0.95) +
+  geom_hline(yintercept = 2.5) +
+  ylab("MOCA cell type") +
+  xlab("Development stage") +
+  labs(color = "Mean expression\nMES signature genes") +
+  theme_cowplot()
+
+gg_nsn + gg_nsN + gg_nN
+colnames(y)
+
+# "Main_cell_type"                 "Signature"                      "development_stage"              "top10_n"                        "total_N_cell_type"              "total_n_cell_type"             
+#  [7] "Mean_Signature_Gene_Expression" "percent_all_cells_n"            "percent_original_cells_N"       "percent_all_cells_N"            "percent_per_cell_type"          "log_ratio_cell_type"
+
+y %>% 
+  group_by(development_stage) %>% 
+  summarise(percent_original_cells_N = sum(percent_original_cells_N),
+            percent_all_cells_n = sum(percent_all_cells_n))
+
+
+y %>% 
+  dplyr::select(Main_cell_type, development_stage, percent_original_cells_N, percent_all_cells_n) %>% 
+  pivot_longer(-c("Main_cell_type", "development_stage"), names_to = "prop_type", values_to = "Proportion") %>% 
+  mutate(prop_type = ifelse(prop_type == "percent_original_cells_N", " Original", "After Filter")) %>% 
+  mutate(Main_cell_type = factor(Main_cell_type, levels = rev(levels(Main_cell_type)))) %>% 
+  
+  ggplot(aes(x = prop_type, y = Proportion, fill = prop_type)) +
+  
+  geom_bar(stat = "identity") +
+  facet_grid(Main_cell_type~development_stage) +
+  #scale_color_viridis(alpha = 0.95) +
+  #scale_fill_viridis_d(alpha = 0.95) +
+  theme_cowplot() +
+  theme(axis.text.x = element_text(angle = 90), 
+        strip.text.y = element_text(angle = 0),  
+        strip.background.y = element_blank())
+
+head(y)
+  
+ggplot(y, aes(x = development_stage, y = Main_cell_type, color = log_ratio_cell_type, size = log_ratio_cell_type)) +
+  #ggtitle("(n top10% cell type) / sum(n top10% selected cell types)") +
+  geom_point() +
+  scale_color_viridis(alpha = 0.95) +
+  theme_cowplot()
+
+
+
+```
+
