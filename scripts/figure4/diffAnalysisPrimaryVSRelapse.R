@@ -10,7 +10,7 @@ outpath1 = as.character(args[6])
 outpath2 = as.character(args[7])
 
 #-------------------------------------------------------------------------------------------------
-# DATAPATH = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/"
+# DATAPATH = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/"
 # 
 # NBexprs  = paste0(DATAPATH, 'data/tumor/rnaseq/exprs/tumor_RNAseq_Counts_Matrix.RDS')
 # rasSigr  = paste0(DATAPATH, 'db/publicGeneSigs/ras_target_genes.RDS')
@@ -109,6 +109,14 @@ par(mfrow=c(1,2), mar=c(3,1,1,0.5), mgp=c(1.5,0.5,0), cex=0.7)
             main = paste0("Jun Fos target genes | fdr=", signif(cam$FDR, 1)[2]),
             alpha=0.1, worm=F, col.bars="firebrick")
 dev.off()
+
+
+write_xlsx(list(`Figure 6e`= rownames_to_column(lrt$table[idx[["RasUp"]],], "GeneID")), 
+           path = "results/figure_source_data/Figure_6e.xlsx")
+write_xlsx(list(`Figure 6f`= rownames_to_column(lrt$table[idx[["JunFos"]],], "GeneID")), 
+           path = "results/figure_source_data/Figure_6f.xlsx")
+
+
 rm(rasUp, tmplist, idx, cam)
 
 # pdf("~/Documents/tmp/primary_relapseVolcano.pdf", width=3, height=3)
@@ -171,6 +179,11 @@ p.allTF = ggplot(resAllTF, aes(x=TFact, y=logFDR)) + theme_bw(base_size=10) +
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank())
 
+
+write_xlsx(list(`Extended Data figure 8e` = p.allTF$data), 
+           path = "results/figure_source_data/Extended_Data_figure_8e.xlsx")
+
+
 pdf(paste0(outpath2,"sup_figure4/all_TF_in_relapse_pri_enriched.pdf"), width=5, height=3.5)
 print(p.allTF)
 dev.off()
@@ -191,6 +204,13 @@ p.crc = ggplot(resOnlyCRC, aes(x=TFact, y=logFDR)) + theme_bw(base_size=10) +
         legend.direction="vertical",
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank())
+
+
+
+write_xlsx(list(`Figure 6b`= p.crc$data), 
+           path = "results/figure_source_data/Figure_6b.xlsx")
+
+
 
 pdf(paste0(outpath2,"figure4/crcTF_in_relapse_pri_enriched.pdf"), width=5, height=3.5)
 print(p.crc)
