@@ -400,9 +400,182 @@ gg_junfos <- plot_umap_projection(exprs_mat = tumor_exprs,
 projection_gg <- gg_ras | gg_junfos
 projection_gg
 
+
+
 ggsave("results/figure4/RasJunFos_Exprs_mouseE12.5_UMAPcoords_projection.pdf", projection_gg, width = 11, height = 5)
 
 ```
+
+
+```{r}
+# Raw data
+
+
+plot_umap_projection <- function(exprs_mat, geneIDs, sigID,
+                                 umap_projection, umap_correction_t, 
+                                 subject_umap_data, cluster_ids) {
+  # Setup
+  dot_size <- 3
+  cluster_id <- unique(umap_projection$Cluster)
+  total <- nrow(umap_projection)
+  
+  # Find Mouse Homologous
+  # get mean expression
+  #geneSet_Mean <- colMeans(exprs_mat[rownames(exprs_mat) %in% geneIDs,])
+  geneSet_Mean <- setNames(colMedians(exprs_mat[rownames(exprs_mat) %in% geneIDs,]),
+                           colnames(exprs_mat))
+  #print(geneSet_Mean)
+  # map to cells
+  #umapdf$exprs <- geneSet_Mean[match(umapdf$CellID, names(geneSet_Mean))]
+  
+  
+  
+  ##--------------------------------------------------------------------------##
+  ##                                Barplot                                   ##
+  ##--------------------------------------------------------------------------##
+
+  gg_cluster_assign <- umap_projection %>% 
+    mutate(UMAP_cluster_assign = if_else(UMAP_correction > umap_correction_t, UMAP_cluster_assign, "No assign")) %>% 
+    mutate(UMAP_cluster_assign = factor(UMAP_cluster_assign, levels = cluster_ids)) %>% 
+    group_by(query_id, UMAP_cluster_assign) %>% 
+    summarise(n = n()) %>% 
+    ungroup() %>% 
+    group_by(query_id) %>% 
+    mutate(freq = n / sum(n)) %>% 
+    ggplot(aes(x = UMAP_cluster_assign, y = freq, fill = UMAP_cluster_assign)) +
+    geom_bar(stat = "identity") +
+    #facet_grid(.~query_id) +
+    #ylim(0, 1) +
+    scale_y_continuous(labels=scales::percent, limits = c(0, 1)) +
+    #scale_x_discrete(limits = cluster_ids) +
+    scale_x_discrete(limits = rev(cluster_ids))+
+    scale_fill_npg() +
+    #xlab("Assignment to\nmouse 12.5\nadrenal gland clusters") +
+    ylab("Percentage of in house bulk NB RNA-seq") +
+    #theme_cowplot(font_size = 6) +
+    theme_cowplot() +
+    coord_flip() +
+    theme(
+      legend.position = "none",
+      axis.title.y = element_blank()
+    )
+  
+  ##--------------------------------------------------------------------------##
+  ##                                Beeswarm                                  ##
+  ##--------------------------------------------------------------------------##
+
+  gg_gene_exprs_cat <- umap_projection %>% 
+    # add mean gene expression
+    mutate(mean_exprs = geneSet_Mean[match(ProjectID, names(geneSet_Mean))]) %>% 
+    mutate(mean_exprs = (mean_exprs - mean(mean_exprs)) / sd(mean_exprs)) %>% 
+    # correct categ
+    mutate(UMAP_cluster_assign = if_else(UMAP_correction > umap_correction_t, UMAP_cluster_assign, "No assign")) %>% 
+    mutate(UMAP_cluster_assign = factor(UMAP_cluster_assign, levels = rev(cluster_ids))) %>% 
+    
+    ggplot(aes(x = UMAP_cluster_assign, y = mean_exprs, color = mean_exprs)) +
+    geom_quasirandom() +
+    stat_summary(fun.y = median, geom = "errorbar", 
+                 aes(ymax = ..y.., ymin = ..y.., group = Cluster),
+                 width = 1, linetype = "solid") +
+    scale_color_viridis(alpha = 0.95) +
+    coord_flip() +
+    #xlab("Assigned cell type") +
+    ylab("Median signature expression") +
+    #labs(color = "Mean signature\ngene expression") +
+    theme_cowplot() +
+    theme(legend.position = "none",
+          axis.title.y = element_blank(), 
+          axis.text.y = element_blank(), 
+          axis.ticks.y = element_blank())
+    
+  
+  ##--------------------------------------------------------------------------##
+  ##                                Dotplot                                   ##
+  ##--------------------------------------------------------------------------##
+  umap_projection <- umap_projection %>% 
+    filter(UMAP_correction > umap_correction_t) %>% 
+    mutate(mean_exprs = geneSet_Mean[match(ProjectID, names(geneSet_Mean))]) %>% 
+    mutate(mean_exprs = (mean_exprs - mean(mean_exprs)) / sd(mean_exprs))
+  #print(hist(umap_projection$exprs))
+  #xxxxxxx
+  # Create label with percentage of projected samples
+  n <- nrow(umap_projection)
+  
+  
+  umapView_df <- subject_umap_data$annot
+  umapView_df$`Mouse cell type` <- umapView_df$Cluster
+  umap_projection$`Projected view` <- umap_projection$Cluster
+  # Create corect label if bulk or singel cell
+  label_n = paste("n = ", nrow(umap_projection), "projected bulk samples")
+  print(label_n)
+  
+  gg_umap_proj <- bind_rows(umapView_df, umap_projection) %>% 
+    arrange(mean_exprs) %>% 
+    ggplot(aes(x=UMAP1, y=UMAP2)) + 
+    #ggtitle(paste0("Projected data: ", cluster_id)) +
+    geom_point(data = function(x){x %>% filter(!Cluster == cluster_id)}, 
+               color = "grey80", alpha=0.2, size = dot_size) + 
+    
+    geom_point(data = function(x){x %>% filter(Cluster %in% cluster_id)}, 
+               aes(color = mean_exprs), alpha=0.95, size = dot_size) + 
+    
+    
+    # geom_text(data = data.frame(t = label_n , UMAP1 = -10, UMAP2 = 10), aes(label=t), 
+    #           size = (6 * 0.352777778), 
+    #           hjust = 0) +
+    
+    scale_color_viridis() +
+    ggtitle(sigID) +
+    xlim(-10,8.5) +
+    ylim(-7,10) +
+    labs(color = paste0("Median ", sigID," signature\ngene expression")) +
+    #theme_cowplot(font_size = 6) +
+    theme_cowplot() 
+  
+  list(projection = gg_umap_proj$data,
+       barplot = gg_cluster_assign$data,
+       exprs = gg_gene_exprs_cat$data)
+}
+
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+##                          Plot projections                                  ##
+##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+
+gg_ras <- plot_umap_projection(exprs_mat = tumor_exprs,
+                     geneIDs   = ras,
+                     sigID = "RAS",
+                     umap_projection = query_projection,
+                     umap_correction_t = 0.02, 
+                     subject_umap_data = mouseE12.5_NMF_umap, 
+                     cluster_ids = c("Bridge", "Chromaffin", 
+                                     "Dividing Cells mitotic", 
+                                     "SCPs", "Sympathoblasts", "No assign")
+)
+gg_junfos <- plot_umap_projection(exprs_mat = tumor_exprs,
+                     geneIDs   = junfos,
+                     sigID = "JUN/FOS",
+                     umap_projection = query_projection,
+                     umap_correction_t = 0.02, 
+                     subject_umap_data = mouseE12.5_NMF_umap, 
+                     cluster_ids = c("Bridge", "Chromaffin", 
+                                     "Dividing Cells mitotic", 
+                                     "SCPs", "Sympathoblasts", "No assign")
+)
+
+
+write_xlsx(list(`Extended Data figure 9c` = gg_ras$projection,
+                `Extended Data figure 9c bar` = gg_ras$barplot,
+                `Extended Data figure 9c expr` = gg_ras$exprs), 
+           path = "results/figure_source_data/Extended_Data_figure_9c.xlsx")
+write_xlsx(list(`Extended Data figure 9d` = gg_junfos$projection,
+                `Extended Data figure 9d bar` = gg_junfos$barplot,
+                `Extended Data figure 9d expr` = gg_junfos$exprs), 
+           path = "results/figure_source_data/Extended_Data_figure_9d.xlsx")
+
+
+
+```
+
 
 
 
