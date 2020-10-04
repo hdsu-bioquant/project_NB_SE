@@ -97,6 +97,21 @@ text(x=3, y=5000,label=paste0("rho=",round(corr,2)))
 mtext(text="JUN/FOS TF family target genes median expression per sample (log2 TPM)", side=1,outer=T, line=0, cex=0.72)
 dev.off()
 
+
+
+sd <- as.data.frame(t(expo)) %>% 
+  rownames_to_column("ProjectID") %>% 
+  left_join(rownames_to_column(data.frame(JUN_FOS = vals1), "ProjectID"), by = "ProjectID")
+
+
+write_xlsx(list(`Figure 7b` = sd %>% dplyr::select(ProjectID, MES, JUN_FOS)), 
+           path = "results/figure_source_data/Figure_7b.xlsx")
+write_xlsx(list(`Extended Data figure 9b` = sd), 
+           path = "results/figure_source_data/Extended_Data_figure_9b.xlsx")
+
+
+
+
 #----------
 # RAS plot
 #----------
@@ -155,6 +170,21 @@ rm(xmark, ymark)
 
 mtext(text="RAS target genes median expression per sample (log2 TPM)", side=1,outer=T, line=0, cex=0.72)
 dev.off()
+
+
+
+sd <- as.data.frame(t(expo)) %>% 
+  rownames_to_column("ProjectID") %>% 
+  left_join(rownames_to_column(data.frame(RAS = vals2), "ProjectID"), by = "ProjectID") %>% 
+  mutate(RAS_pathway_gene_mutations =  ProjectID %in% colnames(NBmuts))
+
+write_xlsx(list(`Figure 7a` = sd %>% dplyr::select(ProjectID, MES, RAS, RAS_pathway_gene_mutations)), 
+           path = "results/figure_source_data/Figure_7a.xlsx")
+write_xlsx(list(`Extended Data figure 9a` = sd), 
+           path = "results/figure_source_data/Extended_Data_figure_9a.xlsx")
+
+
+
 
 ##################################
 
