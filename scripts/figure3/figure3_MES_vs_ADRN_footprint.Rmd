@@ -286,6 +286,15 @@ saveRDS(ddf, "data/cells/atacseq/footprint/footprints_SKNASvsKELLY_ttest_flipped
 
 
 ```{r}
+ddf <- readRDS("data/cells/atacseq/footprint/footprints_SKNASvsKELLY_ttest_flipped.RDS")
+ddf.flipped <- ddf
+ddf.flipped$pos <- rev(ddf.flipped$pos)
+ddf.flipped$val <- -ddf.flipped$val
+MES_activity <- readRDS(params$MES_activity)
+names(MES_activity$es$p.value)[MES_activity$es$p.value < 0.05]
+MES_activity <- MES_activity$es$nes
+
+
 m <- ggplot(ddf, aes(pos, val)) + geom_point() + 
   geom_text_repel(aes(label=as.character(rownames(ddf)))) +
   xlab("")+  ylab("t.statistic")
@@ -334,28 +343,30 @@ cor.df <- data.frame(x = 35, y = -400, text = paste0("Spearman = ", round(co.v, 
 #   mutate(labelpos = rev(seq(min(val), max(val), length.out = n())))
 # 
 
-dfgg <- ddf.flipped
+dfgg <- ddf.flipped %>% 
+  rownames_to_column("Symbol") %>% 
+  filter(Symbol %in% CRCvector) %>% 
+  mutate(pos = n():1)
 dfgg$labelpos <- 0
 midval <- sum(dfgg$val > median(dfgg$val))
 dfgg$labelpos[dfgg$val > median(dfgg$val)] <- rev(seq(min(dfgg$val), max(dfgg$val), length.out = midval))
 dfgg$labelpos[dfgg$val <= median(dfgg$val)] <- rev(seq(min(dfgg$val), max(dfgg$val), length.out = nrow(dfgg) - midval))
 
-
-
-m <- ggplot(dfgg, aes(x = pos, y = val, color = mes)) + 
+m <- dfgg %>% 
+  ggplot(aes(x = pos, y = val, color = mes)) + 
   #geom_point(size=4) +
-  xlim(-8, 90) +
+  xlim(-8, 120) +
   # geom_text(data = dfgg,
   #           mapping = aes(x = 80, y = labelpos, label = name),
   #           parse = TRUE, hjust = 0) +
   geom_text(data = dfgg[dfgg$val > median(dfgg$val),],
-            mapping = aes(x = 80, y = labelpos, label = name),
+            mapping = aes(x = 105, y = labelpos, label = name),
             parse = TRUE, hjust = 0, color = "black") +
   geom_text(data = dfgg[dfgg$val <= median(dfgg$val),],
             mapping = aes(x = -8, y = labelpos, label = name),
             parse = TRUE, hjust = 0, color = "black") +
   geom_segment(data = dfgg[dfgg$val > median(dfgg$val),],
-               mapping = aes(x = pos, xend = 79, y = val, yend = labelpos),
+               mapping = aes(x = pos, xend = 104, y = val, yend = labelpos),
                color = "black", size = 0.1) +
   geom_segment(data = dfgg[dfgg$val <= median(dfgg$val),],
                mapping = aes(x = pos, xend = -2, y = val, yend = labelpos),
@@ -366,6 +377,14 @@ m
 
 
 ggsave(params$figure, m, width = 15, height = 6.5) 
+
+
+write_xlsx(list(`Extended Data figure 7c` = m$data %>% select(Symbol, pos, val, mes)), 
+           path = "results/figure_source_data/Extended_Data_figure_7c.xlsx")
+
+
+
+
 ```
 
 
