@@ -64,7 +64,7 @@ p = ggplot(diffKD.res, aes(x = Diff_NB_vs_Rest, y = medianKD_NB)) + theme_bw(bas
     geom_text_repel(data = subset(diffKD.res, diffKD.res$topHits == "Yes"), aes(label = Gene), size=2.5) +
     theme(panel.grid = element_blank(),
           legend.position = "none")
-
+p
 pdf(paste0(outpath,"figure3/SEtargetGenes_DiffKDprofileNBcellsVsRest.pdf"), width=3.5, height=3.5)
   print(p)
 dev.off()
@@ -85,6 +85,11 @@ dev.off()
 
 rm(diffKD, diffKD.res, p, medrnk, class, topHits, nbcells.kd.anno, nbcells.kd)
 
+write_xlsx(list(`Figure 4a scatter` = p$data,
+                `Figure 4a bar` = rownames_to_column(nbcells.kd, "ID")), 
+           path = "results/figure_source_data/Figure_4a.xlsx")
+
+
 ## CCND1 KD comparison across tumor types
 ccnd1.tumorType = as.numeric(KDdat$essentiality[rownames(KDdat$essentiality) == "CCND1",])
 ccnd1.tumorType = split(ccnd1.tumorType, KDdat$annotation$disease)
@@ -97,6 +102,19 @@ boxplot(ccnd1.tumorType, boxlty=1, whisklty=1, staplelty=1, medlwd=1, boxwex=0.7
         ylim=c(-3,0), ylab = "CCND1 knockdown", xlab= "", las=2, outline=T)
 abline(h = -1, lty=2)
 dev.off()
+
+sd <- lapply(names(ccnd1.tumorType), function(id){
+  tibble(Type = id,
+         CCND1_Knockdown = ccnd1.tumorType[[id]])
+})
+sd <- bind_rows(sd) %>% 
+  mutate(Type = if_else(Type == "peripheral_nervous_system", "Neuroblastoma", Type))
+write_xlsx(list(`Extended Data figure 8a` = sd), 
+           path = "results/figure_source_data/Extended_Data_figure_8a.xlsx")
+
+
+
+
 rm(ccnd1.tumorType)
 
 ## CCND1 expression comparison across tumor types
@@ -111,6 +129,17 @@ par(mar=c(11,3.5,0.25,0.25), mgp=c(2.2,0.5,0), cex=0.8, xaxs="i")
 boxplot(ccnd1Exp, boxlty=1, whisklty=1, staplelty=1, medlwd=1, boxwex=0.7, pch=20, ylim =c(0,12),
         ylab = "CCND1 expression (log2 TPM)", xlab= "", las=2, outline=T)
 dev.off()
+
+
+sd <- lapply(names(ccnd1Exp), function(id){
+  tibble(Type = id,
+         CCND1_expression = ccnd1Exp[[id]])
+})
+sd <- bind_rows(sd) %>% 
+  mutate(Type = if_else(Type == "peripheral_nervous_system", "Neuroblastoma", Type))
+write_xlsx(list(`Extended Data figure 8c` = sd), 
+           path = "results/figure_source_data/Extended_Data_figure_8c.xlsx")
+
 rm(ccnd1Exp)
 
 #CCND1 expression comparision NBcells vs Rest
@@ -129,4 +158,10 @@ pdf(paste0(outpath,"sup_figure3/CCND1_ExpressionProfile_NBcellsVsRest.pdf"), wid
   text(x = 2, y = -0.3, labels = paste0("n=", sum(ccnd1Exp$Type == "Others")), cex=0.75)
   text(x = 1.5, y = 12, labels = paste0("p=", signif(wilcox.test(ccnd1Exp$CCND1 ~ ccnd1Exp$Type)$p.value, digits = 2)), cex=0.75)
 dev.off()
+
+
+write_xlsx(list(`Extended Data figure 8b` = rownames_to_column(ccnd1Exp, "cellID")), 
+           path = "results/figure_source_data/Extended_Data_figure_8b.xlsx")
+
+
 rm(cellsExp, ccnd1Exp, class, KDdat, SEtar)

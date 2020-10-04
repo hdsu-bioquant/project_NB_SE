@@ -442,10 +442,10 @@ g <- ggplot(df, aes(x=log2FC, y=Activity.MES)) + theme_bw(base_size=9) +
   theme(panel.grid.major = element_blank(),
         panel.grid.minor = element_blank())
 
-write_xlsx(list(`Figure 3d` = g$data), 
+write_xlsx(list(`Figure 3d` = rownames_to_column(g$data, "TF")), 
            path = "results/figure_source_data/Figure_3d.xlsx")
 
-g
+
 rm(a,b,cmn,corr,df)
 dev.off()
 
