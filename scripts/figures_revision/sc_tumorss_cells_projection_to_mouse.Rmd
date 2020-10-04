@@ -422,6 +422,11 @@ gg_umap <- mouseE12.5_NMF_umap$annot %>%
     legend.title = element_blank(), 
     legend.key.height = unit(0.7,"line"))
 gg_umap
+
+write_xlsx(list(`Figure 5a`= gg_umap$data), 
+           path = "results/figure_source_data/Figure_5a.xlsx")
+
+
 ```
 
 ## Projections to queries 
@@ -553,6 +558,11 @@ l2 <- gg_proj_UMAP_list$KELLY +
   gg_proj_UMAP_list$`SK-N-AS` +
   gg_proj_UMAP_list$`SK-N-SH` + plot_layout(ncol = 3)
 l1/l2
+
+
+write_xlsx(list(`Figure 5b`= gg_proj_UMAP_list$`In-house-Neuroblastoma`$data), 
+           path = "results/figure_source_data/Figure_5b.xlsx")
+
 
 
 
@@ -707,6 +717,11 @@ lapply(query_projection_list, summary)
 
 ggsave("results/figures_revision/tumor_and_cells_projections_to_mouse_exposure_to_Tumor_signatures_panelB.pdf", 
        plot = gg_exposures, width = 6, height = 6)
+
+
+
+write_xlsx(list(`Figure 5c`= gg_proj_UMAP_Exposure_list$`In-house-Neuroblastoma`$data), 
+           path = "results/figure_source_data/Figure_5c.xlsx")
 
 
 
