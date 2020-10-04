@@ -241,11 +241,11 @@ rna_annotation <- data.frame(ProjectID = annot$ProjectID,
 
 source_data_SEtarget <- rna_annotation %>% 
   left_join(rownames_to_column(as.data.frame(t(norm_mat_SE_target)), "ProjectID") , by = "ProjectID") %>% 
-  t() %>% as.data.frame()
+  t() %>% as.data.frame() %>% rownames_to_column("var")
 
 source_data_mostvar <- rna_annotation %>% 
   left_join(rownames_to_column(as.data.frame(t(norm_mat_mostvar)), "ProjectID") , by = "ProjectID") %>% 
-  t() %>% as.data.frame()
+  t() %>% as.data.frame() %>% rownames_to_column("var")
 
 write_xlsx(list(`Extended Data figure 3b SEtar` = source_data_SEtarget,
                 `Extended Data figure 3b mostvat` = source_data_mostvar), 

@@ -229,6 +229,18 @@ ggsave(params$sup_figure, sup, width = 6, height = 5)
 # ggsave(params$sup_figure, sup, width = 4, height = 5)
 
 
+
+
+
+
+
+write_xlsx(list(`Figure 2a` = ggChIP_tumor$data %>% filter(Class == "Cell migration and EMT"),
+                `Figure 2b` = ggChIP_cells$data %>% filter(Class == "Cell migration and EMT"),
+                `Figure 2d` = ggRNAs_tumor$data %>% filter(Class == "Cell migration and EMT"),
+                `Extended Data figure 3d` = ggRNAv_tumor$data %>% filter(Class == "Cell migration and EMT")), 
+           path = "results/figure_source_data/Extended_Data_figure_3d.xlsx")
+
+
 ```
 
 
