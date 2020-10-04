@@ -35,6 +35,7 @@ library(knitr)
 library(tidyverse)
 library(cowplot)
 library(ggsci)
+library(ggbeeswarm)
 
 ```
 
@@ -449,17 +450,37 @@ ggsave("results/figures_revision/Cell_lines_projections_to_mouse_exprsMESgenes.p
 #   gg_proj_UMAP_list$`In-house-Neuroblastoma` +
 #   gg_proj_UMAP_list$`TARGET-Neuroblastoma`
   
-l2 <- gg_proj_UMAP_list$KELLY +
-  gg_proj_UMAP_list$`SK-N-AS` +
-  gg_proj_UMAP_list$`SK-N-SH` + plot_layout(nrow = 3)
-l2
+# l2 <- gg_proj_UMAP_list$KELLY +
+#   gg_proj_UMAP_list$`SK-N-AS` +
+#   gg_proj_UMAP_list$`SK-N-SH` + plot_layout(nrow = 3)
+# l2
 #l1/l2
 
 
-l2 | gg_MES_genes_exprs
+# l2 | gg_MES_genes_exprs
 
 # ggsave("results/figures/Single_cell_figure/projections_to_mouse.pdf", 
 #        plot = l1/l2, width = 6, height = 4)
+
+
+  
+gg_UMAP_proj$data %>% 
+  filter(query_id == "SK-N-SH") %>% 
+  group_by(query_id, subject_id) %>% 
+  summarise(n = n())
+
+
+write_xlsx(list(`Figure 5e`= gg_UMAP_proj$data %>% filter(query_id == "SK-N-SH")), 
+           path = "results/figure_source_data/Figure_5e.xlsx")
+
+write_xlsx(list(`Figure 5f`= gg_UMAP_assign$data %>% filter(query_id == "SK-N-SH")), 
+           path = "results/figure_source_data/Figure_5f.xlsx")
+
+write_xlsx(list(`Figure 5g`= gg_MES_genes_exprs$data %>% filter(Cluster == "SK-N-SH")), 
+           path = "results/figure_source_data/Figure_5g.xlsx")
+
+
+
 
 ```
 
