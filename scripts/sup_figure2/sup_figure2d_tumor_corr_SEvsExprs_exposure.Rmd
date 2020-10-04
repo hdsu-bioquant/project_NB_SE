@@ -9,8 +9,8 @@ output:
     toc_depth: 4
     number_sections: false
 params:
-  h_SEsig : "path/to/data"
-  h_exprs : "path/to/data"
+  h_SEsig : "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS"
+  h_exprs : "analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS"
   figure  : "results/figures..."
 editor_options: 
   chunk_output_type: console
@@ -172,6 +172,21 @@ library(patchwork)
 pdf(file = params$figure, width=4, height=4)
 p_list$MYCN + p_list$MES + p_list$`MNA-LR` + p_list$`MNA-HR` + plot_layout(ncol = 2)
 dev.off()
+
+
+
+
+sd <- bind_rows(lapply(names(p_list), function(id){
+  p_list[[id]]$data %>% 
+    rownames_to_column("ProjectID") %>% 
+    mutate(SignatureID = id) %>% 
+    select(ProjectID, SignatureID, xvar, yvar, x, y)
+}))
+
+write_xlsx(list(`Extended Data figure 3a` = sd), 
+           path = "results/figure_source_data/Extended_Data_figure_3a.xlsx")
+
+ 
 
 
 
