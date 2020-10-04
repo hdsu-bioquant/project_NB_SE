@@ -8,7 +8,7 @@ SEsaturation = as.character(args[2])
 SEsaturationPlot = as.character(args[3])
 
 #-------------------------------------------------------------------------------------------------------------------------
- # DATAPATH = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/"
+ # DATAPATH = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/"
  # SEbed = paste0(DATAPATH, "data/tumor/chipseq/H3K27ac/SE")
  # SEsaturation = paste0(DATAPATH, "analysis/tumor/SE_saturation/saturation.RDS")
  # SEsaturationPlot = paste0(DATAPATH, "results/figure1/SEsaturationAnalysis_coverage_with_extrapolation.pdf")
@@ -58,6 +58,7 @@ for(i in 1:length(goodsamples))
 rm(p, i, perm_cnt)
 saveRDS(cmat, file = SEsaturation)
 
+cmat <- readRDS(file = SEsaturation)
 
 #Plotting
 pdf(SEsaturationPlot, width=2.3, height=2.3)
@@ -98,5 +99,16 @@ par(mar=c(3,3.5,0.3,0.3), mgp=c(1.8,0.5,0),cex=1)
 dev.off()
 
 #################
+
+
+source_data_saturation <- bind_rows(tibble(Sample = x, Median_coverage = ymed, Type = "Observed"),
+          tibble(Sample = x1, Median_coverage = y1, Type = "Predicted"))
+
+source_data_coverage <- tibble(Sample = 1:60, SE_coverage = apply(cmat,2,median))
+
+
+write_xlsx(list(`Extended Data figure 1c satu` = source_data_saturation,
+                `Extended Data figure 1c cov` = source_data_coverage), 
+           path = "results/figure_source_data/Extended_Data_figure_1c.xlsx")
 
 

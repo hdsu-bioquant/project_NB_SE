@@ -8,7 +8,7 @@ cNMFval = as.character(args[4])
 outpath = as.character(args[5])
 
 #-------------------------------------------------------------------------------------------------------------------------
-# DATAPATH = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/"
+# DATAPATH = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/"
 # tqcpath = paste0(DATAPATH, "data/tumor/chipseq/H3K27ac/quality_control_metrics_tumors.RDS")
 # cqcpath = paste0(DATAPATH, "data/cells/chipseq/H3K27ac/quality_control_metrics_cells.RDS")
 # tNMFval = paste0(DATAPATH, "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS")
@@ -136,8 +136,32 @@ layout(cbind(1:7,c(8,8,8,9,9,9,10)),  height=c(rep(0.6,6),0.8), width=c(1,0.25))
   par(mar=c(0,0,0,0))
   plot.new(); legend("top", legend=c("Tumor","Cell", "MYCN Amp","MYCN NonAmp", "Stage-4","Stage-1-3,4s", "Age>18mo","Age<18mo", "Relapse","Non Relapse"), fill=col,  border=NA, bty="n", x.intersp=0.3, y.intersp=0.9, cex=0.9)
 
-  rm(a,b,c,d,e,f,x)
+  #rm(a,b,c,d,e,f,x)
 dev.off()
+
+
+source_data <- tibble(ProjectID = rownames(anno),
+                      SE_frequency = a,
+                      CRC_frequency = b,
+                      Library_size = c,
+                      Broad_peaks = d[1,],
+                      Narrow_peaks = d[2,],
+                      FRiP_score_MACS2 = e[1,],
+                      FRiP_score_SICER = e[2,],
+                      NSC_quality_metric = f[1,],
+                      RSC_quality_metric = f[2,],
+                      PBC_quality_metric = f[3,])
+
+write_xlsx(list(`Extended Data figure 1a` = source_data), 
+           path = "results/figure_source_data/Extended_Data_figure_1a.xlsx")
+
+write_xlsx(list(`Extended Data figure 1b Tumor` = as.data.frame(tcor) %>% rownames_to_column("Metric"),
+                `Extended Data figure 1b Cell` = as.data.frame(ccor) %>% rownames_to_column("Metric")), 
+           path = "results/figure_source_data/Extended_Data_figure_1b.xlsx")
+
+
+
+
 
 #Only cohort description
 pdf(paste0(outpath,"figure1/cohortDespFig.pdf"),width=4.8,height=1.8)
