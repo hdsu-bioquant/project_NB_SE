@@ -176,14 +176,16 @@ dev.off()
 
 
 
-sd <- bind_rows(lapply(names(p_list), function(id){
+source_data <- lapply(names(p_list), function(id){
   p_list[[id]]$data %>% 
     rownames_to_column("ProjectID") %>% 
     mutate(SignatureID = id) %>% 
     select(ProjectID, SignatureID, xvar, yvar, x, y)
-}))
+})
+lapply(source_data, dim)
+source_data <- bind_rows(source_data)
 
-write_xlsx(list(`Extended Data figure 3a` = sd), 
+write_xlsx(list(`Extended Data figure 3a` = source_data), 
            path = "results/figure_source_data/Extended_Data_figure_3a.xlsx")
 
  
