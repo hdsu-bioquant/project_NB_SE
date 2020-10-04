@@ -9,8 +9,8 @@ output:
     toc_depth: 4
     number_sections: false
 params:
-  work_dir : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/"
-  tumor_h  : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS"
+  work_dir : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/"
+  tumor_h  : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS"
   figure   : "results/figure4/tumors_RNAseq_PrimaryVsRelapse.pdf"
 editor_options: 
   chunk_output_type: console
@@ -103,7 +103,41 @@ radars <-
 
 radars
 
+
+
 ggsave(filename = params$figure, radars, width = 3, height = 4)
+
+
+signatureRadar <- function(sampleID, hmatrix){
+  # Find Primary samples and relapse IDs
+  nspIDs <- grep(sampleID, colnames(hmatrix), value = TRUE)
+  annot <- data.frame(ProjectID = nspIDs,
+                      type      = factor(substr(nspIDs, start = 8, stop = 9), 
+                                         levels = c("PT", "RT", "RM")),
+                      stringsAsFactors = FALSE)
+  
+  print(annot)
+  # Assign color
+  group.colours <- c(PT = "#2FB47CFF", RT = "#420A68FF", RM = "#F76F5CFF")
+  group.colours <- group.colours[match(annot$type, names(group.colours))]
+  names(group.colours) <- annot$ProjectID
+  
+  # format dataframe to radar plots
+  scores <- hmatrix[,annot$ProjectID,drop=FALSE]
+  maxScale <- max(scores)
+  
+  scores <- cbind(colnames(scores), as.data.frame(t(scores)))
+  scores
+}
+
+
+
+write_xlsx(list(`Figure 6a NSP032`= signatureRadar("NSP032", tumors.nmf.hmatrix),
+                `Figure 6a NSP090`= signatureRadar("NSP090", tumors.nmf.hmatrix),
+                `Figure 6a NSP460`= signatureRadar("NSP460", tumors.nmf.hmatrix)), 
+           path = "results/figure_source_data/Figure_6a.xlsx")
+
+x <- signatureRadar("NSP032", tumors.nmf.hmatrix)$data
 
 
 ```
