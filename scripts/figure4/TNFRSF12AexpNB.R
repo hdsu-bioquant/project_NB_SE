@@ -8,7 +8,7 @@ tumorNMF = as.character(args[4])
 outpath  = as.character(args[5])
 
 #-------------------------------------------------------------------------------------------------
-# DATAPATH = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/"
+# DATAPATH = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/"
 # 
 # NBcells  = paste0(DATAPATH, 'analysis/cells/rnaseq/exprs/cells_RNAseq_TPM_Matrix_filt_log.RDS')
 # NBanno   = paste0(DATAPATH, 'annotation/annotation_cells.RDS')
@@ -53,3 +53,15 @@ par( mar=c(3.3, 3.3,0.5,0.5), mgp = c(2,0.5,0), cex=0.7, las=2, xaxs="i", yaxs="
   text(x = c(1,2) , y = 0, labels = c(paste0("n=", table(NBtumors.sig)[1]),paste0("n=", table(NBtumors.sig)[2])), cex=0.7)
 dev.off()
 
+
+
+sd <- tibble(ProjectID = names(NBcells.exp), TNFRSF12A_expression = NBcells.exp) %>% 
+  arrange() %>% 
+  mutate(Index = 1:n()) %>% 
+  mutate(top20percent = ProjectID %in% names(which(NBcells.exp > cutoff)))
+
+write_xlsx(list(`Extended Data figure 9k` = sd), 
+           path = "results/figure_source_data/Extended_Data_figure_9k.xlsx")
+
+write_xlsx(list(`Extended Data figure 9l` = tibble(ProjectID = names(NBtumors.sig), NBtumors.sig = NBtumors.sig, TNFRSF12A_expression = NBtumors.exp)), 
+           path = "results/figure_source_data/Extended_Data_figure_9l.xlsx")
