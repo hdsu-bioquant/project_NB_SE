@@ -592,8 +592,13 @@ gg_meanMES_MOCA <- x %>%
   ylab("Mean signature gene expression") +
   labs(color = "Mean signature\ngene expression") +
   theme_cowplot()
-dim(gg_meanMES_MOCA$data)
 
+dim(gg_meanMES_MOCA$data)
+write_xlsx(list(`Figure 5d`= gg_meanMES_MOCA$data), 
+           path = "results/figure_source_data/Figure_5d.xlsx")
+
+
+gg_meanMES_MOCA
 ggsave("results/figures/MOCAcomplete_CellType_vs_MES_genes_exprs_top10percent_cells_grid.pdf", width = 12, height = 6)
 
 saveRDS(x, "results/figures/MOCAcomplete_CellType_vs_Sgnature_genes_exprs.RDS")
