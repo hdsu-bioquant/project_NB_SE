@@ -23,7 +23,7 @@ library(GenomicRanges)
 library(rio)
 library(ggplot2)
 library(ggrepel)
-
+library(writexl)
 #---------------------------------------------------------------------------------------------------
 # Comparision of NB super enhancer target gene expression across multiple tumor and normal tissues
 #---------------------------------------------------------------------------------------------------
@@ -68,9 +68,19 @@ par(mar=c(17.3,2.5,0.5,0.25), mgp=c(1.5,0.5,0), yaxs="i", xaxs="i", cex=0.65)
   legend("bottomright", legend=c("Normal Tissues","Primary Tumors"), fill=c("forestgreen", "firebrick"), border = c("forestgreen", "firebrick"), x.intersp=0.3, y.intersp=0.8, bty="n")
   abline(v=which(l == a$names)-0.5, h=0, lwd=1, col= "grey30")
   text(x=which(l == a$names)-0.5, y = -8, labels = "top 25%", srt = 90, pos = 4, col = "grey30")
-  rm(id,vals,tmp,a,cols,ids,l)
 dev.off()
 
+library(tidyverse)
+sd <- lapply(names(vals), function(id){
+  tibble(type = id,
+         Sample = names(vals[[id]]),
+         val = vals[[id]])
+})
+sd <- bind_rows(sd)
+write_xlsx(list(`Extended Data figure 1f` = sd), 
+           path = "results/figure_source_data/Extended_Data_figure_1f.xlsx")
+
+rm(id,vals,tmp,a,cols,ids,l)
 rm(allexp, allexpSE, sampInfo, medallexpSE)
 
 #-------------------------------------------------------------------------
@@ -217,7 +227,7 @@ SEoverlap = data.frame(Label = names(SEoverlap), Overlap = as.numeric(SEoverlap)
 SEoverlap = cbind(anno, SEoverlap)
 
 # Main figure 
-ggplot(SEoverlap, aes(x = reorder(Label, Overlap), y = Overlap)) + 
+g <- ggplot(SEoverlap, aes(x = reorder(Label, Overlap), y = Overlap)) + 
   theme_bw(base_size = 9) +
   labs(x = "", y = "% of all SE in neuroblastoma (n=1973)") + 
   geom_point() +
@@ -228,11 +238,14 @@ ggplot(SEoverlap, aes(x = reorder(Label, Overlap), y = Overlap)) +
         axis.line = element_blank(),
         axis.ticks.x = element_blank(),
         legend.position = c(0.8,0.8),
-        axis.text.x = element_blank())  +
-  ggsave(paste0(outpath,"figure1/SE_multiple_tissue_overlap_to_NB_SE_MainFig.pdf"), width=3, height=3)
+        axis.text.x = element_blank())
+
+write_xlsx(list(`Figure 1b` = g$data), 
+           path = "results/figure_source_data/Figure_1b.xlsx")
+ggsave(paste0(outpath,"figure1/SE_multiple_tissue_overlap_to_NB_SE_MainFig.pdf"), g, width=3, height=3)
 
 # Supplementary figure with sample names
-ggplot(SEoverlap, aes(x = reorder(Label, Overlap), y = Overlap)) + 
+g <- ggplot(SEoverlap, aes(x = reorder(Label, Overlap), y = Overlap)) + 
   theme_bw(base_size = 9) + ylim(0,106) + coord_flip() +
   labs(x = "", y = "% of all SE in neuroblastoma (n=1973)") + 
   geom_bar(stat="identity") +
@@ -244,7 +257,11 @@ ggplot(SEoverlap, aes(x = reorder(Label, Overlap), y = Overlap)) +
         axis.line = element_blank(),
         axis.ticks.y = element_blank(),
         legend.position = c(0.8,0.8),
-        axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5))  +
-  ggsave(paste0(outpath,"sup_figure1/SE_multiple_tissue_overlap_to_NB_SE_SupplFig.pdf"), width=4.2, height=5)
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust=0.5)) 
+
+write_xlsx(list(`Extended Data figure 1d` = g$data), 
+           path = "results/figure_source_data/Extended_Data_figure_1d.xlsx")
+
+ggsave(paste0(outpath,"sup_figure1/SE_multiple_tissue_overlap_to_NB_SE_SupplFig.pdf"), g, width=4.2, height=5)
 
 rm(SEoverlap, overlap_threshold, anno, SElist)
