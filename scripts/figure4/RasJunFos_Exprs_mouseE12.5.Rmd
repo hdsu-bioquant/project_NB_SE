@@ -563,14 +563,14 @@ gg_junfos <- plot_umap_projection(exprs_mat = tumor_exprs,
 )
 
 
-write_xlsx(list(`Extended Data figure 9c` = gg_ras$projection,
-                `Extended Data figure 9c bar` = gg_ras$barplot,
-                `Extended Data figure 9c expr` = gg_ras$exprs), 
-           path = "results/figure_source_data/Extended_Data_figure_9c.xlsx")
-write_xlsx(list(`Extended Data figure 9d` = gg_junfos$projection,
-                `Extended Data figure 9d bar` = gg_junfos$barplot,
-                `Extended Data figure 9d expr` = gg_junfos$exprs), 
-           path = "results/figure_source_data/Extended_Data_figure_9d.xlsx")
+write_xlsx(list(`Figure 7c` = gg_ras$projection,
+                `Figure 7c bar` = gg_ras$barplot,
+                `Figure 7c expr` = gg_ras$exprs), 
+           path = "results/figure_source_data/Figure_7c.xlsx")
+write_xlsx(list(`Figure 7d` = gg_junfos$projection,
+                `Figure 7d bar` = gg_junfos$barplot,
+                `Figure 7d expr` = gg_junfos$exprs), 
+           path = "results/figure_source_data/Figure_7d.xlsx")
 
 
 
