@@ -321,7 +321,7 @@ expression_signature_genes_plot <- function(signature_associated, mm_clust_sel, 
       # })
       #sig_type_exprs <- colMedians(as.matrix(my_sig_exprs))
       #names(sig_type_exprs) <- colnames(my_sig_exprs)
-      print(head(sig_type_exprs))
+      #print(head(sig_type_exprs))
       
       list(gene_overlap = gene_overlap,
            mean_expression = sig_type_exprs)
@@ -369,7 +369,7 @@ expression_signature_genes_plot <- function(signature_associated, mm_clust_sel, 
   
   gg_df
   
-}
+} 
 
 moca_data <- list(exprs = moca_exprs,
                   annot = moca_annot)
@@ -380,7 +380,7 @@ x <- expression_signature_genes_plot(signature_associated_ChIPseq, mm_clust_sel,
 #x <- expression_signature_genes_plot(signature_associated_RNAseq, mm_clust_sel, moca_data, expressed_in_subtype = FALSE)
 #x <- expression_signature_genes_plot(signature_associated, mm_clust_sel, moca_data, expressed_in_subtype = FALSE)
 
-head(x)
+#head(x)
 
 x %>%
   group_by(Main_cell_type) %>% 
@@ -559,7 +559,7 @@ x %>%
 ggsave("results/figures/MOCAcomplete_CellType_vs_MES_genes_exprs_top10percent_cells_wrap.pdf", width = 10, height = 9)
 
 
-x %>%
+gg_meanMES_MOCA <- x %>%
   #mutate(development_stage = match(, moca_annot$development_stage)) %>% 
   group_by(Signature, development_stage) %>% 
   mutate(Mean_Signature_Gene_Expression = Mean_Signature_Gene_Expression + abs(min(Mean_Signature_Gene_Expression))) %>% 
@@ -592,6 +592,7 @@ x %>%
   ylab("Mean signature gene expression") +
   labs(color = "Mean signature\ngene expression") +
   theme_cowplot()
+dim(gg_meanMES_MOCA$data)
 
 ggsave("results/figures/MOCAcomplete_CellType_vs_MES_genes_exprs_top10percent_cells_grid.pdf", width = 12, height = 6)
 
