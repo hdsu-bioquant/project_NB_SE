@@ -148,6 +148,21 @@ ggsave(params$figure, ggExpVsPurity, width=8, height=4)
 
 
 
+write_xlsx(list(`Extended Data figure 5b chip` = gg_SEsig$data,
+                `Extended Data figure 5b rna` = gg_exprs$data), 
+           path = "results/figure_source_data/Extended_Data_figure_5b.xlsx")
+
+
+
+gg_SEsig$data %>% 
+  group_by(ProjectID) %>% 
+  summarise(n = n()) %>% 
+  mutate(n = n())
+
+gg_exprs$data %>% 
+  group_by(ProjectID) %>% 
+  summarise(n = n()) %>% 
+  mutate(n = n())
 
 ```
 
