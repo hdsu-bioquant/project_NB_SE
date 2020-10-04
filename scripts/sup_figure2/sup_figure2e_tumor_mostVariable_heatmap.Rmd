@@ -226,6 +226,32 @@ Heatmap(norm_mat_mostvar,
         top_annotation = heat.anno)
 ```
 
+```{r}
+rna_annotation <- data.frame(ProjectID = annot$ProjectID,
+                             MYCN    = annot$MYCN,
+                             Stage   = annot$Stage,
+                             Age     = annot$Age,
+                             Risk    = annot$Risk,
+                             Relapse = annot$Relapse,
+                             NMF_MYCN= annot$NMF_MYCN,
+                             NMF_MES = annot$NMF_MES,
+                             `NMF_MNA-LR` = annot$`NMF_MNA-LR`,
+                             `NMF_MNA-HR` = annot$`NMF_MNA-HR`,
+                             NMF_sign= annot$NMF_sign)
+
+source_data_SEtarget <- rna_annotation %>% 
+  left_join(rownames_to_column(as.data.frame(t(norm_mat_SE_target)), "ProjectID") , by = "ProjectID") %>% 
+  t() %>% as.data.frame()
+
+source_data_mostvar <- rna_annotation %>% 
+  left_join(rownames_to_column(as.data.frame(t(norm_mat_mostvar)), "ProjectID") , by = "ProjectID") %>% 
+  t() %>% as.data.frame()
+
+write_xlsx(list(`Extended Data figure 3b SEtar` = source_data_SEtarget,
+                `Extended Data figure 3b mostvat` = source_data_mostvar), 
+           path = "results/figure_source_data/Extended_Data_figure_3b.xlsx")
+
+```
 
   
 
