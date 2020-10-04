@@ -45,7 +45,7 @@ validated_tf <- c("CREB5 #1" = "S-K-N-AS & KELLY",
 offset <- 0.7
 
 
-ccnd1kd %>% 
+gg_ccnd1_kd <- ccnd1kd %>% 
   # mutate(KELLY = log2(KELLY) ) %>% 
   # mutate(SKNAS = log2(SKNAS) ) %>% 
   
@@ -126,6 +126,14 @@ ccnd1kd %>%
   #
   scale_color_manual(values = c("Red", "#2FB47C", "#420A68", "Black") ) +
   theme_cowplot()
+
+
+write_xlsx(list(`Figure 4d` = gg_ccnd1_kd$data), 
+           path = "results/figure_source_data/Figure_4d.xlsx")
+
+
+
+gg_ccnd1_kd
 ggsave("results/figures_revision/figure_CCND1_KD_Screening_all.pdf", width = 10, height = 6.5)
 #
 
@@ -313,7 +321,7 @@ foot_df_both <- bind_rows(lapply(foot_ranges_list, function(foot_ranges){
   foot_df
 }))
 
-foot_df_both %>%
+gg_footprint <- foot_df_both %>%
   group_by(SE_target, CellID, id) %>% 
   summarise(Count = n()) %>% 
   arrange(id) %>% 
@@ -332,7 +340,16 @@ foot_df_both %>%
   theme(axis.text.x = element_text(angle = 90))
 #
 
+
+write_xlsx(list(`Extended Data figure 8d` = gg_footprint$data), 
+           path = "results/figure_source_data/Extended_Data_figure_8d.xlsx")
+
+
+gg_footprint
 ggsave("results/figures_revision/figure_footprint_count_KD_TFs.pdf", width = 10, height = 11)
+
+
+
 # 
 # 
 # x <- as.data.frame(SE)

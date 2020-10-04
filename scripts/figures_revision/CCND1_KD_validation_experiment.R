@@ -145,9 +145,13 @@ gg_sel <- ccnd1kd_val %>%
   scale_y_continuous(breaks=c(0 , 0.25, 0.5, 0.75, 1), limits = c(0,1.1)) +
   scale_color_manual(values = c("#2FB47C", "#420A68")) +
   theme_cowplot()
-gg_sel 
+gg_sel
+
+
 ggsave("results/figures_revision/figure_CCND1_KD_Validation_mean_selected.pdf", width = 5, height = 3.5)
 
+write_xlsx(list(`Figure 4e` = gg_sel$data), 
+           path = "results/figure_source_data/Figure_4e.xlsx")
 
 
 ccnd1kd_val %>% 
