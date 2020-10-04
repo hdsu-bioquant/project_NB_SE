@@ -26,7 +26,7 @@ options(knitr.table.format="html")
 
 library(Bratwurst)
 library(viridis)
-
+library(writexl)
 
 ```
 
@@ -99,6 +99,10 @@ plot(river, plot_area=1, yscale=0.6, nodewidth=0.5)
 pdf(file=params$figure2d_cells, width=8, height=6)
 plot(river, plot_area=1, yscale=0.6, nodewidth=0.5)
 dev.off()
+
+
+saveRDS(river, "results/figure2/Extended_Data_figure_2d_cells_riverplot.RDS")
+
 ```
 
 
@@ -137,6 +141,8 @@ river <- relabelRiverplot(river, list(name_vector=name_vector,
                                       col_vector=col_vector,
                                       sig_names=sig_names))
 
+saveRDS(river, "results/figure2/Extended_Data_figure_2d_tumor_riverplot.RDS")
+
 plot(river, plot_area=1, yscale=0.6, nodewidth=0.5)
 
 pdf(file=params$figure2d_tumor, width=8, height=6)
@@ -144,6 +150,19 @@ plot(river, plot_area=1, yscale=0.6, nodewidth=0.5)
 dev.off()
 ```
 
+
+```{r source_data}
+
+river_cells <- readRDS("results/figure2/Extended_Data_figure_2d_cells_riverplot.RDS")
+river_tumor <- readRDS("results/figure2/Extended_Data_figure_2d_tumor_riverplot.RDS")
+
+write_xlsx(list(`Extended Data figure 2d ce` = river_cells$edges,
+                `Extended Data figure 2d cn` = river_cells$nodes,
+                `Extended Data figure 2d te` = river_tumor$edges,
+                `Extended Data figure 2d tn` = river_tumor$nodes), 
+           path = "results/figure_source_data/Extended_Data_figure_2d.xlsx")
+
+```
 
 
 
