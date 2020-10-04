@@ -59,6 +59,12 @@ write.table(data.frame(TFs = rownames(viperTFactivity), round(viperTFactivity,4)
 pheatmap(t(viperTFactivity), clustering_method = "ward.D2", scale = "none", cluster_rows = F,
          color = colorRampPalette(rev(brewer.pal(n = 11, name = "RdYlBu")))(11), fontsize = 6, show_colnames=F, treeheight_col = 20,
          filename = paste0(outpath,"sup_figure3/TFactivity_heatmap_across_all_signatures_ZnormPerSig.pdf"), width = 5, height = 3)
+
+write_xlsx(list(`Extended Data figure 7a` = as.data.frame(viperTFactivity) %>% rownames_to_column("TF")), 
+           path = "results/figure_source_data/Extended_Data_figure_7a.xlsx")
+
+
+
 #dev.off()
 rm(a,b,c,d)
 
@@ -278,6 +284,12 @@ pheatmap(t(fracObs_combo), scale = "none", clustering_method = "ward.D2", cluste
          #clustering_distance_rows = "correlation", clustering_distance_cols = "correlation",
          filename = paste0(outpath,"figure3/crcTF_fraction_observed_tumor_and cells_signatures_combined.pdf"), width = 6.5, height = 2.5)
 
+sd <- as.data.frame(fracObs_combo) %>% 
+  rownames_to_column("TF") %>% 
+  left_join(rownames_to_column(ids_combo, "TF"), by = "TF")
+write_xlsx(list(`Figure 3b` = sd), 
+           path = "results/figure_source_data/Figure_3b.xlsx")
+
 if(identical(rownames(selTF), rownames(fracObs_combo))){
   pheatmap(t(selTF),  scale = "none",  clustering_method = "ward.D2",  cluster_rows = F, 
            annotation_col = ids_combo, annotation_colors = color , border_color = "white", 
@@ -285,6 +297,12 @@ if(identical(rownames(selTF), rownames(fracObs_combo))){
            fontsize = 6, labels_row = gsub("Activity.", "", colnames(selTF)), 
            filename = paste0(outpath,"figure3/crcTF_TF_activity_tumor_and cells_signatures_combined.pdf"), width = 6.5, height = 2.5)
 }
+sd <- as.data.frame(selTF) %>% 
+  rownames_to_column("TF") %>% 
+  left_join(rownames_to_column(ids_combo, "TF"), by = "TF")
+write_xlsx(list(`Figure 3c` = sd), 
+           path = "results/figure_source_data/Figure_3c.xlsx")
+
 
 # Plotting the CRC TF modules with TF labelled across signatuires
 if(identical(rownames(selTF), rownames(ids_combo))){
@@ -311,6 +329,13 @@ if(identical(rownames(selTF), rownames(ids_combo))){
   pdf(paste0(outpath,"sup_figure3/crcTF_TFactivity_per_crcModule_and_Signature_labelled.pdf"), width = 7, height = 6)
   print(p)
   dev.off()
+  
+  
+  write_xlsx(list(`Extended Data figure 7b` = p$data), 
+             path = "results/figure_source_data/Extended_Data_figure_7b.xlsx")
+  
+  
+  
   rm(p, my_comparisons)
 }
 
@@ -332,6 +357,12 @@ pheatmap(t(fracObs_T), color = c("white",colorRampPalette(brewer.pal(9,"Purples"
          scale = "none", clustering_method = "ward.D2", cluster_rows = F,
          annotation_col = row_anno, annotation_colors = color, fontsize = 6, cutree_cols = 3,
          filename = paste0(outpath,"sup_figure3/crcTF_fraction_observed_tumors_only.pdf"), width = 6.5, height = 2.5)
+
+sd <- as.data.frame(fracObs_T) %>% 
+  rownames_to_column("TF") %>% 
+  left_join(rownames_to_column(row_anno, "TF"), by = "TF")
+write_xlsx(list(`Extended Data figure 6c` = sd), 
+           path = "results/figure_source_data/Extended_Data_figure_6c.xlsx")
 rm(row_anno)
 
 ## CELL LINE
@@ -351,6 +382,12 @@ pheatmap(t(fracObs_C), color = c("white",colorRampPalette(brewer.pal(9,"Purples"
          #clustering_distance_rows = "correlation", #clustering_distance_cols = "correlation",
          annotation_col = row_anno, annotation_colors = color, fontsize = 6, cutree_cols = 5,  
          filename = paste0(outpath,"sup_figure3/crcTF_fraction_observed_cells_only.pdf"), width = 6.5, height = 2.5)
+
+sd <- as.data.frame(fracObs_C) %>% 
+  rownames_to_column("TF") %>% 
+  left_join(rownames_to_column(row_anno, "TF"), by = "TF")
+write_xlsx(list(`Extended Data figure 6d` = sd), 
+           path = "results/figure_source_data/Extended_Data_figure_6d.xlsx")
 
 rm(color, row_anno)
 
@@ -396,7 +433,7 @@ a = a[match(rownames(b),rownames(a)),,drop=F]
 corr = cor.test(a$log2FC, b$Activity.MES, use="pairwise.complete.obs", method="spearman")
 df = data.frame(a,b)
 
-ggplot(df, aes(x=log2FC, y=Activity.MES)) + theme_bw(base_size=9) + 
+g <- ggplot(df, aes(x=log2FC, y=Activity.MES)) + theme_bw(base_size=9) + 
   labs(x="Knockdown sensitivity log2(GIMEN/NMB)", y="TF activity") + geom_point(size=1.5) +
   # geom_point(aes(color=log2FC),size=1.5) + scale_color_gradient(high="yellow", low="red") +
   geom_smooth(method = "lm", se = FALSE, colour="grey30") +
@@ -404,6 +441,11 @@ ggplot(df, aes(x=log2FC, y=Activity.MES)) + theme_bw(base_size=9) +
   annotate("text", x = -0.43, y = -3.3, label = paste(paste0("p=",round(corr$p.value,3)),paste0("rho=",round(corr$estimate,2)),sep="\n"), size=2.8)+
   theme(panel.grid.major = element_blank(),
         panel.grid.minor = element_blank())
+
+write_xlsx(list(`Figure 3d` = g$data), 
+           path = "results/figure_source_data/Figure_3d.xlsx")
+
+g
 rm(a,b,cmn,corr,df)
 dev.off()
 
@@ -535,3 +577,25 @@ title("MES TF activity", line=0.3, cex.main=0.6)
 axis(side=4,at=0,labels=paste("High in","MES",sep="\n"),tick=F,las=1, cex.axis=0.6)
 axis(side=2,at=0,labels=paste("High in","ADRN",sep="\n"),tick=F,las=1, cex.axis=0.6)
 dev.off()  
+
+
+
+
+#tmpCRCTumor
+#tmpCRCcell
+#crcModules
+#selTF.Mes
+
+sd <- as.data.frame(tmpCRCTumor) %>% 
+  rownames_to_column("TF") %>% 
+  left_join(rownames_to_column(as.data.frame(tmpCRCcell), "TF"), by = "TF") %>% 
+  left_join(crcModules, by = "TF") %>% 
+  left_join(rownames_to_column(selTF.Mes, "TF"), by = "TF") 
+
+write_xlsx(list(`Extended Data figure 6b` = sd), 
+           path = "results/figure_source_data/Extended_Data_figure_6b.xlsx")
+
+
+
+
+
