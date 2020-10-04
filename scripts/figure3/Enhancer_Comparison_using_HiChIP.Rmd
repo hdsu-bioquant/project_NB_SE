@@ -9,11 +9,11 @@ output:
     toc_depth: 4
     number_sections: false
 params:
-  work_dir     : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/"
+  work_dir     : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/"
   SE           : "analysis/tumor/chipseq/H3K27ac/consensusSE/tumor_H3K27ac_noH3K4me3_consensusSE.bed"
-  cells_h      : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K3_Hmatrix_hnorm.RDS"
-  cells_w      : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K3_Wmatrix_Wnorm.RDS"
-  tumor_h      : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/publication_GEO/analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS"
+  cells_h      : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K3_Hmatrix_hnorm.RDS"
+  cells_w      : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K3_Wmatrix_Wnorm.RDS"
+  tumor_h      : "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS"
   SKNAS_HiChIP : "data/cells/hichip/mango/SK-N-AS_HiChIP_mango.all"
   CLBGA_HiChIP : "data/cells/hichip/mango/CLB-GA_HiChIP_mango.all" 
   figure       : "results/figure3/Super_Enhancer_interaction.pdf"
@@ -384,6 +384,10 @@ m <- ggplot(matdf, aes(key,val, fill = SE)) + geom_col() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 m
 ggsave(filename = params$figure, m, width = 4.0, height = 5)
+
+
+write_xlsx(list(`Extended Data figure 7d` = m$data), 
+           path = "results/figure_source_data/Extended_Data_figure_7d.xlsx")
 ```
 
 
