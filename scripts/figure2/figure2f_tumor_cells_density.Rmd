@@ -9,8 +9,8 @@ output:
     toc_depth: 4
     number_sections: false
 params:
-  h_tumor  : "path/to/data"
-  h_cells  : "path/to/data"
+  h_tumor  : "analysis/tumor/chipseq/H3K27ac/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS"
+  h_cells  : "analysis/cells/chipseq/H3K27ac/NMF/cells_consensusSE_K3_Hmatrix_wnorm.RDS"
   figure2f : "results/figures/figure2/..."
 editor_options: 
   chunk_output_type: console
@@ -25,7 +25,7 @@ options(knitr.table.format="html")
 
 library(viridis)
 library(ggplot2)
-
+library(writexl)
 ```
 
 # Figure 2.f MES density
@@ -79,6 +79,10 @@ density_Mesenchymal_NMF <- ggplot(ggdf, aes(x=Zscore, group=Type, color=Type, fi
         panel.border = element_blank(),
         panel.background = element_blank())
 density_Mesenchymal_NMF
+
+write_xlsx(list(`Extended Data figure 2e` = density_Mesenchymal_NMF$data), 
+           path = "results/figure_source_data/Extended_Data_figure_2e.xlsx")
+
 
 
 ggsave(params$figure2f, plot = density_Mesenchymal_NMF, width = 3, height = 2)
