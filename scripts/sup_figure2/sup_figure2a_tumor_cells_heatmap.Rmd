@@ -27,7 +27,7 @@ options(knitr.table.format="html")
 library(ComplexHeatmap)
 library(tidyverse)
 library(viridis)
-
+library(writexl)
 
 ```
 
@@ -143,6 +143,22 @@ se.heatmap
 pdf(params$figure, width = 16, height = 7, paper = "special")
 se.heatmap
 dev.off()
+
+
+rna_annotation <- data.frame(Sample = annot$ProjectID,
+                             Type    = annot$Type,
+                             MYCN    = annot$MYCN,
+                             Stage   = annot$Stage,
+                             Age     = annot$Age,
+                             Risk    = annot$Risk,
+                             Relapse = annot$Relapse)
+
+source_data <- as.data.frame(t(quantnorm.matrix_clust_sorted)) %>% 
+  rownames_to_column("Sample") %>% 
+  left_join(rna_annotation, by = "Sample")
+write_xlsx(list(`Extended Data figure 2b` = source_data), 
+           path = "results/figure_source_data/Extended_Data_figure_2b.xlsx")
+
 
 
 ```
