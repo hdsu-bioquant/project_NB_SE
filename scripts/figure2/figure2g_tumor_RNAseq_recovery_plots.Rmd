@@ -30,7 +30,7 @@ library(ComplexHeatmap)
 library(circlize)
 library(ggplot2)
 library(knitr)
-
+library(writexl)
 
 # params <- list(K         = 4,
 #                annot     = "annotation/annotation_tumor.RDS",
@@ -106,168 +106,168 @@ dev.off()
 library(tidyverse)  
 library(cowplot)
 
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-##              Helper functin Recovery - Heatmap Z score                     ##
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-
-recovery_pval <- function(h, annot, cellID, annotID){
-  rownames(annot) <- annot[,cellID]
-  annot.factor <- as.factor(annot[,annotID])
-  n.samples = nrow(annot)
-  
-  # print(head(annot.factor))
-  # print(n.samples)
-  
-  auc <- function(rnk.list,max=NULL) {
-    aux = sapply(rnk.list,function(rnk) {
-      if (is.null(max)) {max = max(rnk)} 
-      rnk = sort(rnk)
-      X = 0
-      i = 1
-      ngenes = length(rnk)
-      while ((rnk[i] <= max) && (i <= length(rnk))) {X = X + max -rnk[i];i = i+1}
-      rauc = X/(i-1)/max
-      return(rauc)
-    })
-    return(aux)
-  }
-  
-  ALL.RNKS = lapply(levels(annot.factor),function(l) {
-    RNKS=lapply(1:nrow(h),function(i) {
-      exp = sort(h[i,],decreasing=TRUE)
-      i.rnk = match(rownames(annot)[annot.factor==l],names(exp))
-      i.rnk = sort(i.rnk[!is.na(i.rnk)])
-      return(i.rnk)
-    })
-    names(RNKS) = paste0('Sig ',1:length(RNKS))
-    return(RNKS)
-  })
-  names(ALL.RNKS) = levels(annot.factor)
-  #print(ALL.RNKS)
-  
-  AUC.RAND = lapply(ALL.RNKS,function(r) {
-    do.call('rbind',lapply(r, function(x) {
-      ##
-      l = lapply(1:500,function(i) {
-        sample(1:n.samples,length(x))
-      })
-      aux = auc(l,max=n.samples)
-      return(c(mean(aux),sd(aux)))
-    }))
-  })
-  
-  AUC = lapply(ALL.RNKS,auc,max=n.samples)
-  
-  
-  PVAL = lapply(1:length(AUC),function(i) {
-    x = data.frame(AUC.RAND[[i]],AUC[[i]])
-    colnames(x) = c('mean','sd','val')
-    z = (x[,3]-x[,1])/x[,2]
-    p = ifelse(z>0,pnorm(z,lower.tail=FALSE),pnorm(z))
-    x$z = z
-    x$p = p
-    return(x)
-  })
-  names(PVAL) = names(AUC)
-  
-  PVAL
-}
-
-
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-##                          Heatmap Z score                                   ##
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-
-recovRes <- recovery_pval(hmatrix, annot, "ProjectID", "MYCN")
-recovRes <- recovery_pval(hmatrix, annot, "ProjectID", "Stage")
-recovRes <- recovery_pval(hmatrix, annot, "ProjectID", "Age")
-recovRes <- recovery_pval(hmatrix, annot, "ProjectID", "Risk")
-recovRes <- recovery_pval(hmatrix, annot, "ProjectID", "Relapse")
-recovRes <- recovery_pval(hmatrix, annot, "ProjectID", "GenomicSubtype")
-
-annot_ids <- c("MYCN", "Stage", "Age", "Risk", "Relapse", "GenomicSubtype")
-recovMat_list <- lapply(annot_ids, function(annot_id){
-  annot[,annot_id] <- paste0(annot_id, " ", annot[,annot_id])
-  recovRes <- recovery_pval(hmatrix, annot, "ProjectID", annot_id)
-  t(do.call(cbind, lapply(recovRes, function(recorCat){
-    setNames(recorCat$z, rownames(recorCat))
-  })))
-})
-recovMat <- do.call(rbind, recovMat_list)
-colnames(recovMat) <- c("MYCN", "MES", "MNA-LR", "MNA-HR")
-
-
-recovMat <- recovMat[!rownames(recovMat) %in% c("Stage NA", "Age NA", 
-                                                "Risk NA","Risk IR", "Risk HR","Risk LR", 
-                                                "GenomicSubtype B",
-                                                #"GenomicSubtype C", "GenomicSubtype E",
-                                                "GenomicSubtype NA"), ]
-r.heatmap <- Heatmap(recovMat, 
-                     #col = inferno(100), 
-                     col = c(inferno(50, begin = 0, end = 0.2),
-                             inferno(50, begin = 0.5, end = 1)), 
-                     name = "Z score recovery",
-                     #c("white", "grey40", "black", inferno(10)[2], inferno(10)[9]),
-                     #col = RColorBrewer::brewer.pal(11, "BrBG"), 
-                      
-                     cluster_rows = FALSE, 
-                     cluster_columns = FALSE,
-                     show_row_names = TRUE, 
-                     show_column_names = TRUE)
-r.heatmap
-
-pdf(file = "results/figure2/figure2h_signatureenrichment_optionA.pdf", width=7, height=7)
-r.heatmap
-dev.off()
-
-
-
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-##                          Heatmap Z score                                   ##
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-rownames(hmatrix) <- c("MYCN", "MES", "MNA-LR", "MNA-HR")
-recovMat_list <- lapply(annot_ids, function(annot_id){
-  annot[,annot_id] <- paste0(annot_id, " ", annot[,annot_id])
-  recovRes <- recovery_pval(hmatrix, annot, "ProjectID", annot_id)
-  #print(recovRes)
-  
-  ids <- names(recovRes)
-  do.call(rbind, lapply(ids, function(id){
-    x <- recovRes[[id]]
-    rownames(x) <- c("MYCN", "MES", "MNA-LR", "MNA-HR")
-    as.data.frame(x) %>% 
-      rownames_to_column("Signature") %>% 
-      select(Signature, z , p) %>% 
-      mutate(Annotation = id)
-  }))
-})
-recovMat_list
-
-bind_rows(recovMat_list) %>% 
-#as.data.frame(recovMat) %>% 
-  #rownames_to_column("Annotation") %>% 
-  #pivot_longer(cols = -"Annotation", names_to = "Signature", values_to = "Zscore") %>% 
-  mutate(Signature = factor(Signature, levels = c("MYCN", "MES", "MNA-LR", "MNA-HR"))) %>% 
-  mutate(Annotation = factor(Annotation, levels = rev(unique(Annotation)))) %>%
-  rename("Zscore" = z) %>% 
-  mutate(log10p = -log10(p)) %>% 
-  filter(!Annotation %in% c("Stage NA", "Age NA", 
-                           "Risk NA","Risk IR", "Risk HR","Risk LR",
-                           "GenomicSubtype B",
-                           #"GenomicSubtype C", "GenomicSubtype E",
-                           "GenomicSubtype NA")) %>% 
-  ggplot(aes(x = Signature, y = Annotation, color = Zscore, size = log10p)) +
-  geom_point() +
-  #scale_colour_stepsn(colours = inferno(5)) +
-  #scale_colour_stepsn(colours = c("white", "white", "black", inferno(10)[4], inferno(10)[8])) +
-  scale_colour_gradientn(colours = c(inferno(50, begin = 0, end = 0.2),
-                                     inferno(50, begin = 0.5, end = 1))) +
-  scale_size_binned(name = "-log10(--value)", nice.breaks = FALSE, n.breaks = 3) +
-  theme_cowplot()
-
-ggsave("results/figure2/figure2h_signatureenrichment_optionB.pdf", width=6, height=6)
-
-
+# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# ##              Helper functin Recovery - Heatmap Z score                     ##
+# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# 
+# recovery_pval <- function(h, annot, cellID, annotID){
+#   rownames(annot) <- annot[,cellID]
+#   annot.factor <- as.factor(annot[,annotID])
+#   n.samples = nrow(annot)
+#   
+#   # print(head(annot.factor))
+#   # print(n.samples)
+#   
+#   auc <- function(rnk.list,max=NULL) {
+#     aux = sapply(rnk.list,function(rnk) {
+#       if (is.null(max)) {max = max(rnk)} 
+#       rnk = sort(rnk)
+#       X = 0
+#       i = 1
+#       ngenes = length(rnk)
+#       while ((rnk[i] <= max) && (i <= length(rnk))) {X = X + max -rnk[i];i = i+1}
+#       rauc = X/(i-1)/max
+#       return(rauc)
+#     })
+#     return(aux)
+#   }
+#   
+#   ALL.RNKS = lapply(levels(annot.factor),function(l) {
+#     RNKS=lapply(1:nrow(h),function(i) {
+#       exp = sort(h[i,],decreasing=TRUE)
+#       i.rnk = match(rownames(annot)[annot.factor==l],names(exp))
+#       i.rnk = sort(i.rnk[!is.na(i.rnk)])
+#       return(i.rnk)
+#     })
+#     names(RNKS) = paste0('Sig ',1:length(RNKS))
+#     return(RNKS)
+#   })
+#   names(ALL.RNKS) = levels(annot.factor)
+#   #print(ALL.RNKS)
+#   
+#   AUC.RAND = lapply(ALL.RNKS,function(r) {
+#     do.call('rbind',lapply(r, function(x) {
+#       ##
+#       l = lapply(1:500,function(i) {
+#         sample(1:n.samples,length(x))
+#       })
+#       aux = auc(l,max=n.samples)
+#       return(c(mean(aux),sd(aux)))
+#     }))
+#   })
+#   
+#   AUC = lapply(ALL.RNKS,auc,max=n.samples)
+#   
+#   
+#   PVAL = lapply(1:length(AUC),function(i) {
+#     x = data.frame(AUC.RAND[[i]],AUC[[i]])
+#     colnames(x) = c('mean','sd','val')
+#     z = (x[,3]-x[,1])/x[,2]
+#     p = ifelse(z>0,pnorm(z,lower.tail=FALSE),pnorm(z))
+#     x$z = z
+#     x$p = p
+#     return(x)
+#   })
+#   names(PVAL) = names(AUC)
+#   
+#   PVAL
+# }
+# 
+# 
+# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# ##                          Heatmap Z score                                   ##
+# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# 
+# recovRes <- recovery_pval(hmatrix, annot, "ProjectID", "MYCN")
+# recovRes <- recovery_pval(hmatrix, annot, "ProjectID", "Stage")
+# recovRes <- recovery_pval(hmatrix, annot, "ProjectID", "Age")
+# recovRes <- recovery_pval(hmatrix, annot, "ProjectID", "Risk")
+# recovRes <- recovery_pval(hmatrix, annot, "ProjectID", "Relapse")
+# recovRes <- recovery_pval(hmatrix, annot, "ProjectID", "GenomicSubtype")
+# 
+# annot_ids <- c("MYCN", "Stage", "Age", "Risk", "Relapse", "GenomicSubtype")
+# recovMat_list <- lapply(annot_ids, function(annot_id){
+#   annot[,annot_id] <- paste0(annot_id, " ", annot[,annot_id])
+#   recovRes <- recovery_pval(hmatrix, annot, "ProjectID", annot_id)
+#   t(do.call(cbind, lapply(recovRes, function(recorCat){
+#     setNames(recorCat$z, rownames(recorCat))
+#   })))
+# })
+# recovMat <- do.call(rbind, recovMat_list)
+# colnames(recovMat) <- c("MYCN", "MES", "MNA-LR", "MNA-HR")
+# 
+# 
+# recovMat <- recovMat[!rownames(recovMat) %in% c("Stage NA", "Age NA", 
+#                                                 "Risk NA","Risk IR", "Risk HR","Risk LR", 
+#                                                 "GenomicSubtype B",
+#                                                 #"GenomicSubtype C", "GenomicSubtype E",
+#                                                 "GenomicSubtype NA"), ]
+# r.heatmap <- Heatmap(recovMat, 
+#                      #col = inferno(100), 
+#                      col = c(inferno(50, begin = 0, end = 0.2),
+#                              inferno(50, begin = 0.5, end = 1)), 
+#                      name = "Z score recovery",
+#                      #c("white", "grey40", "black", inferno(10)[2], inferno(10)[9]),
+#                      #col = RColorBrewer::brewer.pal(11, "BrBG"), 
+#                       
+#                      cluster_rows = FALSE, 
+#                      cluster_columns = FALSE,
+#                      show_row_names = TRUE, 
+#                      show_column_names = TRUE)
+# r.heatmap
+# 
+# pdf(file = "results/figure2/figure2h_signatureenrichment_optionA.pdf", width=7, height=7)
+# r.heatmap
+# dev.off()
+# 
+# 
+# 
+# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# ##                          Heatmap Z score                                   ##
+# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# rownames(hmatrix) <- c("MYCN", "MES", "MNA-LR", "MNA-HR")
+# recovMat_list <- lapply(annot_ids, function(annot_id){
+#   annot[,annot_id] <- paste0(annot_id, " ", annot[,annot_id])
+#   recovRes <- recovery_pval(hmatrix, annot, "ProjectID", annot_id)
+#   #print(recovRes)
+#   
+#   ids <- names(recovRes)
+#   do.call(rbind, lapply(ids, function(id){
+#     x <- recovRes[[id]]
+#     rownames(x) <- c("MYCN", "MES", "MNA-LR", "MNA-HR")
+#     as.data.frame(x) %>% 
+#       rownames_to_column("Signature") %>% 
+#       select(Signature, z , p) %>% 
+#       mutate(Annotation = id)
+#   }))
+# })
+# recovMat_list
+# 
+# bind_rows(recovMat_list) %>% 
+# #as.data.frame(recovMat) %>% 
+#   #rownames_to_column("Annotation") %>% 
+#   #pivot_longer(cols = -"Annotation", names_to = "Signature", values_to = "Zscore") %>% 
+#   mutate(Signature = factor(Signature, levels = c("MYCN", "MES", "MNA-LR", "MNA-HR"))) %>% 
+#   mutate(Annotation = factor(Annotation, levels = rev(unique(Annotation)))) %>%
+#   rename("Zscore" = z) %>% 
+#   mutate(log10p = -log10(p)) %>% 
+#   filter(!Annotation %in% c("Stage NA", "Age NA", 
+#                            "Risk NA","Risk IR", "Risk HR","Risk LR",
+#                            "GenomicSubtype B",
+#                            #"GenomicSubtype C", "GenomicSubtype E",
+#                            "GenomicSubtype NA")) %>% 
+#   ggplot(aes(x = Signature, y = Annotation, color = Zscore, size = log10p)) +
+#   geom_point() +
+#   #scale_colour_stepsn(colours = inferno(5)) +
+#   #scale_colour_stepsn(colours = c("white", "white", "black", inferno(10)[4], inferno(10)[8])) +
+#   scale_colour_gradientn(colours = c(inferno(50, begin = 0, end = 0.2),
+#                                      inferno(50, begin = 0.5, end = 1))) +
+#   scale_size_binned(name = "-log10(--value)", nice.breaks = FALSE, n.breaks = 3) +
+#   theme_cowplot()
+# 
+# ggsave("results/figure2/figure2h_signatureenrichment_optionB.pdf", width=6, height=6)
+# 
+# 
 
 
 
@@ -280,90 +280,90 @@ ggsave("results/figure2/figure2h_signatureenrichment_optionB.pdf", width=6, heig
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
 ##                                  Data loading                              ##
 ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-
-outpath = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB_revision/"
-
-anno = readRDS("/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/annotation/annotation_tumor_with_external_phenoData.RDS")
-anno = anno[anno$avail.RNAseq,]
-anno = anno[,c("ProjectID", "MYCN", "Age", "Risk", "Stage", "Relapse","GenomicSubtype")]
-colnames(anno)[2] = "MYCN_CN"
-
-expo = t(readRDS("/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS"))
-expo = data.frame(ProjectID = rownames(expo), log2(expo+1), stringsAsFactors = F)
-dat = merge(anno, expo, by = "ProjectID")
-rownames(dat) = dat$ProjectID
-dat = dat[, -1]
-p_MYCN = vector("list", 6)
-names(p_MYCN) = c("MYCN_CN", "Age", "Risk", "Stage", "Relapse","GenomicSubtype")
-p_MES = p_MYCN
-p_MNALR = p_MYCN
-p_MNAHR = p_MYCN
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-##                                 Wilcox test                                ##
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-
-
-my_comparisons <- list(
-  list(Annotation = "MYCN_CN",        value      = "Amp"),
-  list(Annotation = "MYCN_CN",        value      = "NonAmp"),
-  list(Annotation = "Age",            value      = ">18mo"),
-  list(Annotation = "Age",            value      = "<18mo"),
-  #list(Annotation = "Risk",           value      = "HR"),
-  #list(Annotation = "Risk",           value      = "LR"),
-  list(Annotation = "Stage",          value      = "1-3;4S"),
-  list(Annotation = "Stage",          value      = "4"),
-  list(Annotation = "Relapse",        value      = "Yes"),
-  list(Annotation = "Relapse",        value      = "No"),
-  list(Annotation = "GenomicSubtype", value      = "A"),
-  list(Annotation = "GenomicSubtype", value      = "C"),
-  list(Annotation = "GenomicSubtype", value      = "D"),
-  list(Annotation = "GenomicSubtype", value      = "E")
-)
-signatures <- c("MYCN", "MES", "MNA.LR", "MNA.HR")
-names(signatures) <- signatures
-
-
-test_mat <- do.call(rbind, lapply(my_comparisons, function(my_comparison){
-  idx <- dat[, my_comparison$Annotation] == my_comparison$value
-  
-  x <- sapply(signatures, function(signature){
-    #print(dat[idx,  signature])
-    wilcox.test(x = dat[idx,  signature], 
-                y = dat[!idx, signature],
-                alternative = "greater")$p.val
-  })
-  x <- t(as.data.frame(x))
-  rownames(x) <- paste0(my_comparison$Annotation, " ", my_comparison$value)
-  x
-}))
-
-test_mat
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-##                                   Heatmap                                  ##
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-res_mat <- -log10(test_mat)
-# set non significant to NA
-res_mat[res_mat < -log10(0.05)] <- NA
-
-
-
-h <- Heatmap(res_mat, 
-        #col = inferno(100), 
-        col = RColorBrewer::brewer.pal(9, "YlOrRd")[3:9],
-        na_col = "grey96",
-        #col = RColorBrewer::brewer.pal(11, "BrBG"), 
-        #col = c(inferno(50, begin = 0, end = 0.2),
-        #        inferno(50, begin = 0.5, end = 1)),  
-        name = "-log10(p-value)",
-        cluster_rows = FALSE, 
-        cluster_columns = FALSE,
-        show_row_names = TRUE, 
-        show_column_names = TRUE)
-
-
-pdf(file = "results/figure2/figure2h_signatureenrichment_optionC.pdf", width=4, height=4)
-h
-dev.off()
+# 
+# outpath = "/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB_revision/"
+# 
+# anno = readRDS("/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/annotation/annotation_tumor_with_external_phenoData.RDS")
+# anno = anno[anno$avail.RNAseq,]
+# anno = anno[,c("ProjectID", "MYCN", "Age", "Risk", "Stage", "Relapse","GenomicSubtype")]
+# colnames(anno)[2] = "MYCN_CN"
+# 
+# expo = t(readRDS("/icgc/dkfzlsdf/analysis/B080/crg/B087_Neuroblastoma/superNB/analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_hnorm.RDS"))
+# expo = data.frame(ProjectID = rownames(expo), log2(expo+1), stringsAsFactors = F)
+# dat = merge(anno, expo, by = "ProjectID")
+# rownames(dat) = dat$ProjectID
+# dat = dat[, -1]
+# p_MYCN = vector("list", 6)
+# names(p_MYCN) = c("MYCN_CN", "Age", "Risk", "Stage", "Relapse","GenomicSubtype")
+# p_MES = p_MYCN
+# p_MNALR = p_MYCN
+# p_MNAHR = p_MYCN
+# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# ##                                 Wilcox test                                ##
+# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# 
+# 
+# my_comparisons <- list(
+#   list(Annotation = "MYCN_CN",        value      = "Amp"),
+#   list(Annotation = "MYCN_CN",        value      = "NonAmp"),
+#   list(Annotation = "Age",            value      = ">18mo"),
+#   list(Annotation = "Age",            value      = "<18mo"),
+#   #list(Annotation = "Risk",           value      = "HR"),
+#   #list(Annotation = "Risk",           value      = "LR"),
+#   list(Annotation = "Stage",          value      = "1-3;4S"),
+#   list(Annotation = "Stage",          value      = "4"),
+#   list(Annotation = "Relapse",        value      = "Yes"),
+#   list(Annotation = "Relapse",        value      = "No"),
+#   list(Annotation = "GenomicSubtype", value      = "A"),
+#   list(Annotation = "GenomicSubtype", value      = "C"),
+#   list(Annotation = "GenomicSubtype", value      = "D"),
+#   list(Annotation = "GenomicSubtype", value      = "E")
+# )
+# signatures <- c("MYCN", "MES", "MNA.LR", "MNA.HR")
+# names(signatures) <- signatures
+# 
+# 
+# test_mat <- do.call(rbind, lapply(my_comparisons, function(my_comparison){
+#   idx <- dat[, my_comparison$Annotation] == my_comparison$value
+#   
+#   x <- sapply(signatures, function(signature){
+#     #print(dat[idx,  signature])
+#     wilcox.test(x = dat[idx,  signature], 
+#                 y = dat[!idx, signature],
+#                 alternative = "greater")$p.val
+#   })
+#   x <- t(as.data.frame(x))
+#   rownames(x) <- paste0(my_comparison$Annotation, " ", my_comparison$value)
+#   x
+# }))
+# 
+# test_mat
+# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# ##                                   Heatmap                                  ##
+# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# res_mat <- -log10(test_mat)
+# # set non significant to NA
+# res_mat[res_mat < -log10(0.05)] <- NA
+# 
+# 
+# 
+# h <- Heatmap(res_mat, 
+#         #col = inferno(100), 
+#         col = RColorBrewer::brewer.pal(9, "YlOrRd")[3:9],
+#         na_col = "grey96",
+#         #col = RColorBrewer::brewer.pal(11, "BrBG"), 
+#         #col = c(inferno(50, begin = 0, end = 0.2),
+#         #        inferno(50, begin = 0.5, end = 1)),  
+#         name = "-log10(p-value)",
+#         cluster_rows = FALSE, 
+#         cluster_columns = FALSE,
+#         show_row_names = TRUE, 
+#         show_column_names = TRUE)
+# 
+# 
+# pdf(file = "results/figure2/figure2h_signatureenrichment_optionC.pdf", width=4, height=4)
+# h
+# dev.off()
 
 
 ```
@@ -372,123 +372,123 @@ dev.off()
 
 
 ```{r}
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-##                                 Read annot                                 ##
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-# read annotation 
-hmatrix_wnorm <- readRDS("analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS")
-#annot <- readRDS("annotation/annotation_tumor.RDS")
-annot <- readRDS("annotation/annotation_tumor_with_external_phenoData.RDS")
-annot <- annot[match(colnames(hmatrix_wnorm), annot$ProjectID),]
-rownames(annot) <- annot$ProjectID
-
-
-
-# Read Risk annotation
-library(readxl)
-annotf <- read_xlsx("annotation/annotation_tumors_with_external_phenoData_FW_RISK.xlsx", col_names = TRUE)
-annotf
-
-#annot %>% 
-annot <- annot %>% 
-  mutate(Risk = as.character(Risk)) %>% 
-  mutate(tmp = annotf$RISK[match(ProjectID, annotf$ProjectID)]) %>% 
-  mutate(Risk = if_else(is.na(Risk), tmp, Risk)) #%>% 
-  #filter(avail.ChIPseq) %>% 
-  #group_by(Risk) %>% 
-  #summarise(n())
-table(annot$Risk, useNA = "always")
-
-
-
-
-# annot <- annot %>%
-#   mutate_if(is.factor,  as.character) %>% 
-#   mutate(MYCN = if_else(is.na(MYCN), "NA", MYCN)) %>% 
-#   mutate(Stage = if_else(is.na(Stage), "NA", Stage)) %>% 
-#   mutate(Age = if_else(is.na(Age), "NA", Age)) %>% 
-#   mutate(Risk = if_else(is.na(Risk), "NA", Risk)) %>% 
-#   mutate(Relapse = if_else(is.na(Relapse), "NA", Relapse)) %>% 
-#   mutate(GenomicSubtype = if_else(is.na(GenomicSubtype), "NA", GenomicSubtype))
-
-
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-##                                 Wilcox test                                ##
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-
-
-my_comparisons <- list(
-  list(Annotation = "MYCN",        value      = "Amp"),
-  list(Annotation = "MYCN",        value      = "NonAmp"),
-  list(Annotation = "Stage",          value      = "1-3;4S"),
-  list(Annotation = "Stage",          value      = "4"),
-  list(Annotation = "Age",            value      = ">18mo"),
-  list(Annotation = "Age",            value      = "<18mo"),
-  list(Annotation = "Risk",           value      = "HR"),
-  list(Annotation = "Risk",           value      = "IR"),
-  list(Annotation = "Risk",           value      = "LR"),
-  list(Annotation = "Relapse",        value      = "Yes"),
-  list(Annotation = "Relapse",        value      = "No"),
-  list(Annotation = "GenomicSubtype", value      = "A"),
-  list(Annotation = "GenomicSubtype", value      = "C"),
-  list(Annotation = "GenomicSubtype", value      = "D"),
-  list(Annotation = "GenomicSubtype", value      = "E")
-)
-#signatures <- c("MYCN", "MES", "MNA.LR", "MNA.HR")
-#names(signatures) <- signatures
-
-
-#rownames(tmp.hmatrix) <- paste0("Sig", 1:4)
-test_mat <- do.call(rbind, lapply(my_comparisons, function(my_comparison){
-  idx <- annot[, my_comparison$Annotation] == my_comparison$value
-  print(paste(my_comparison$Annotation, my_comparison$value))
-  print(table(idx))
-  
-  x <- apply(hmatrix_wnorm, 1, function(signature){
-    #print(signature[idx ])
-    wilcox.test(x = signature[idx ], 
-                y = signature[!idx],
-                alternative = "greater")$p.val
-  })
-  
-  # x <- sapply(signatures, function(signature){
-  #   #print(dat[idx,  signature])
-  #   wilcox.test(x = dat[idx,  signature], 
-  #               y = dat[!idx, signature],
-  #               alternative = "greater")$p.val
-  # })
-  x <- t(as.data.frame(x))
-  rownames(x) <- paste0(my_comparison$Annotation, " ", my_comparison$value)
-  x
-}))
-test_mat
-
-
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-##                                   Heatmap                                  ##
-##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
-res_mat <- -log10(test_mat)
-# set non significant to NA
-res_mat[res_mat < -log10(0.05)] <- NA
-h <- Heatmap(res_mat, 
-        #col = inferno(100), 
-        col = RColorBrewer::brewer.pal(9, "YlOrRd")[3:9],
-        na_col = "grey96",
-        #col = RColorBrewer::brewer.pal(11, "BrBG"), 
-        #col = c(inferno(50, begin = 0, end = 0.2),
-        #        inferno(50, begin = 0.5, end = 1)),  
-        name = "-log10(p-value)",
-        cluster_rows = FALSE, 
-        cluster_columns = FALSE,
-        show_row_names = TRUE, 
-        show_column_names = TRUE)
-h
-
-
-
-pdf(file = "results/figure2/figure2h_signatureenrichment_optiond.pdf", width=4, height=4)
-h
-dev.off()
+# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# ##                                 Read annot                                 ##
+# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# # read annotation 
+# hmatrix_wnorm <- readRDS("analysis/tumor/rnaseq/NMF/tumor_consensusSE_K4_Hmatrix_wnorm.RDS")
+# #annot <- readRDS("annotation/annotation_tumor.RDS")
+# annot <- readRDS("annotation/annotation_tumor_with_external_phenoData.RDS")
+# annot <- annot[match(colnames(hmatrix_wnorm), annot$ProjectID),]
+# rownames(annot) <- annot$ProjectID
+# 
+# 
+# 
+# # Read Risk annotation
+# library(readxl)
+# annotf <- read_xlsx("annotation/annotation_tumors_with_external_phenoData_FW_RISK.xlsx", col_names = TRUE)
+# annotf
+# 
+# #annot %>% 
+# annot <- annot %>% 
+#   mutate(Risk = as.character(Risk)) %>% 
+#   mutate(tmp = annotf$RISK[match(ProjectID, annotf$ProjectID)]) %>% 
+#   mutate(Risk = if_else(is.na(Risk), tmp, Risk)) #%>% 
+#   #filter(avail.ChIPseq) %>% 
+#   #group_by(Risk) %>% 
+#   #summarise(n())
+# table(annot$Risk, useNA = "always")
+# 
+# 
+# 
+# 
+# # annot <- annot %>%
+# #   mutate_if(is.factor,  as.character) %>% 
+# #   mutate(MYCN = if_else(is.na(MYCN), "NA", MYCN)) %>% 
+# #   mutate(Stage = if_else(is.na(Stage), "NA", Stage)) %>% 
+# #   mutate(Age = if_else(is.na(Age), "NA", Age)) %>% 
+# #   mutate(Risk = if_else(is.na(Risk), "NA", Risk)) %>% 
+# #   mutate(Relapse = if_else(is.na(Relapse), "NA", Relapse)) %>% 
+# #   mutate(GenomicSubtype = if_else(is.na(GenomicSubtype), "NA", GenomicSubtype))
+# 
+# 
+# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# ##                                 Wilcox test                                ##
+# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# 
+# 
+# my_comparisons <- list(
+#   list(Annotation = "MYCN",        value      = "Amp"),
+#   list(Annotation = "MYCN",        value      = "NonAmp"),
+#   list(Annotation = "Stage",          value      = "1-3;4S"),
+#   list(Annotation = "Stage",          value      = "4"),
+#   list(Annotation = "Age",            value      = ">18mo"),
+#   list(Annotation = "Age",            value      = "<18mo"),
+#   list(Annotation = "Risk",           value      = "HR"),
+#   list(Annotation = "Risk",           value      = "IR"),
+#   list(Annotation = "Risk",           value      = "LR"),
+#   list(Annotation = "Relapse",        value      = "Yes"),
+#   list(Annotation = "Relapse",        value      = "No"),
+#   list(Annotation = "GenomicSubtype", value      = "A"),
+#   list(Annotation = "GenomicSubtype", value      = "C"),
+#   list(Annotation = "GenomicSubtype", value      = "D"),
+#   list(Annotation = "GenomicSubtype", value      = "E")
+# )
+# #signatures <- c("MYCN", "MES", "MNA.LR", "MNA.HR")
+# #names(signatures) <- signatures
+# 
+# 
+# #rownames(tmp.hmatrix) <- paste0("Sig", 1:4)
+# test_mat <- do.call(rbind, lapply(my_comparisons, function(my_comparison){
+#   idx <- annot[, my_comparison$Annotation] == my_comparison$value
+#   print(paste(my_comparison$Annotation, my_comparison$value))
+#   print(table(idx))
+#   
+#   x <- apply(hmatrix_wnorm, 1, function(signature){
+#     #print(signature[idx ])
+#     wilcox.test(x = signature[idx ], 
+#                 y = signature[!idx],
+#                 alternative = "greater")$p.val
+#   })
+#   
+#   # x <- sapply(signatures, function(signature){
+#   #   #print(dat[idx,  signature])
+#   #   wilcox.test(x = dat[idx,  signature], 
+#   #               y = dat[!idx, signature],
+#   #               alternative = "greater")$p.val
+#   # })
+#   x <- t(as.data.frame(x))
+#   rownames(x) <- paste0(my_comparison$Annotation, " ", my_comparison$value)
+#   x
+# }))
+# test_mat
+# 
+# 
+# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# ##                                   Heatmap                                  ##
+# ##––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––##
+# res_mat <- -log10(test_mat)
+# # set non significant to NA
+# res_mat[res_mat < -log10(0.05)] <- NA
+# h <- Heatmap(res_mat, 
+#         #col = inferno(100), 
+#         col = RColorBrewer::brewer.pal(9, "YlOrRd")[3:9],
+#         na_col = "grey96",
+#         #col = RColorBrewer::brewer.pal(11, "BrBG"), 
+#         #col = c(inferno(50, begin = 0, end = 0.2),
+#         #        inferno(50, begin = 0.5, end = 1)),  
+#         name = "-log10(p-value)",
+#         cluster_rows = FALSE, 
+#         cluster_columns = FALSE,
+#         show_row_names = TRUE, 
+#         show_column_names = TRUE)
+# h
+# 
+# 
+# 
+# pdf(file = "results/figure2/figure2h_signatureenrichment_optiond.pdf", width=4, height=4)
+# h
+# dev.off()
 ```
 
 
@@ -592,6 +592,11 @@ h <- Heatmap(res_mat,
         show_row_names = TRUE, 
         show_column_names = TRUE)
 h
+
+
+
+write_xlsx(list(`Figure 2e`= as.data.frame(res_mat) %>% rownames_to_column("Annotation")), 
+           path = "results/figure_source_data/Figure_2e.xlsx")
 
 
 
