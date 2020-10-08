@@ -79,8 +79,17 @@ e12.5_exprs <- read.table(params$mouse_exprs,
 e12.5_exprs[1:5,1:5]
 
 
+mouseE12.5_NMF_umap <- readRDS("db/GSE99933_E12.5/UMAP_projections/mouseE12.5_NMF_umap.RDS")
 
+e12.5_pstime <- e12.5_pstime[!is.na(e12.5_pstime$tsne_v1),]
 
+match(e12.5_pstime$SampleID, mouseE12.5_NMF_umap$annot$CellID)
+idx <- match(e12.5_pstime$tsne_v1, mouseE12.5_NMF_umap$annot$tsne_v1)
+
+e12.5_pstime$UMAP1 <- mouseE12.5_NMF_umap$annot$UMAP1[idx]
+e12.5_pstime$UMAP2 <- mouseE12.5_NMF_umap$annot$UMAP2[idx]
+
+#e12.5_pstime <- mouseE12.5_NMF_umap$annot
 ```
 
 
@@ -156,12 +165,15 @@ projection_plot <- function(signature_associated, sigID){
   e12.5_pstime$exprsZ <- geneSet_MeanZ[match(e12.5_pstime$SampleID, names(geneSet_MeanZ))]
   # print plot
   e12.5_pstime %>% 
-    ggplot(aes(x = tsne_v1, y = tsne_v2, color = exprsZ)) +
+    #ggplot(aes(x = tsne_v1, y = tsne_v2, color = exprsZ)) +
+    ggplot(aes(x = UMAP1, y = UMAP2, color = exprsZ)) +
     geom_point() +
     scale_color_gradient2()
   
   e12.5_pstime %>% 
-    ggplot(aes(x = tsne_v1, y = tsne_v2, fill = exprsZ)) +
+    #ggplot(aes(x = UMAP1, y = UMAP2, color = exprsZ)) +
+    #ggplot(aes(x = tsne_v1, y = tsne_v2, fill = exprsZ)) +
+    ggplot(aes(x = UMAP1, y = UMAP2, fill = exprsZ)) +
     geom_point(size = 3, shape = 21, color = "grey50", stroke= 0.1) +
     #scale_fill_gradient2(low = "#0CD6F5", mid = "white", high = "#A8105A", labels=c("","low","","","high")) +
     scale_fill_gradient2(low = "#0CD6F5", mid = "white", high = "#A8105A",breaks = trans_breaks(identity, identity, n = 3)) +
