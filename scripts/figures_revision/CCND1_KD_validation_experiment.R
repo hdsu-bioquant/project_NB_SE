@@ -1,5 +1,6 @@
 library(tidyverse)
 library(cowplot)
+library(patchwork)
 ccnd1kd_val <- read_delim("data/cells/CRCsiRNAknockdown/KELLY_SKNAS_validation_long.txt", delim = "\t")
 
 selected_tf <- c("CREB5 #1", "ETS1 #2", "ETV6 #1", "FOSL2 #1", "EBF1 #2", 
