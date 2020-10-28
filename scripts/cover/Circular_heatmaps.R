@@ -19,8 +19,25 @@ col_fun1 <- colorRamp2(seq(min(hmatrix_wnorm), max(hmatrix_wnorm), length.out = 
                        viridis(n=100))
 
 circos.par
-circos.par$gap.after <- 0
+
+
 circos.clear()
+circos.par$gap.after <- 0
 circos.heatmap(t(hmatrix_wnorm),
                col = col_fun1,
                track.height = .8)
+
+
+
+pdf(file = "results/figures_cover/tumor_SE_hmatrix.pdf", width=10, height=10)
+circos.clear()
+circos.par$gap.after <- 0
+circos.heatmap(t(hmatrix_wnorm),
+               col = col_fun1,
+               track.height = .8)
+
+dev.off()
+
+
+
+dir.create("results/figures_cover")
